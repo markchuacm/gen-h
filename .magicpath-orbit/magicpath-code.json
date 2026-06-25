@@ -1,0 +1,29 @@
+{
+  "mode": "edit",
+  "componentId": "419982054080544768",
+  "projectId": "419981297881083904",
+  "selectedRevisionId": "419982054080544769",
+  "jobId": "419981297637814272-external-agent-419982623184658432",
+  "generatedName": "gentle-hour-7367",
+  "name": "Orbit Launch Landing",
+  "dimensions": {
+    "width": 1440,
+    "height": 960
+  },
+  "selectedImages": [],
+  "editableFiles": [
+    {
+      "path": "src/App.tsx",
+      "sha256": "b9e52535497b9d57213c3004685655ef58c13dc5501cc4705e3fb9c64ce26031"
+    },
+    {
+      "path": "src/components/generated/OrbitLaunchLanding.tsx",
+      "sha256": "e7ae281aba0349ef235d54b898c09765b53f5acc6643892164f4a7d41388ef0c"
+    },
+    {
+      "path": "src/index.css",
+      "sha256": "3af92f9f6b5e93767188381bda25e0b3e26d2885569cffb8b46ff6d8966b1860"
+    }
+  ],
+  "baseRevisionId": "419982054080544769"
+}
