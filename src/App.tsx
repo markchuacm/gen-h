@@ -41,8 +41,8 @@ const futureHealthCards = [
   },
   {
     number: "03",
-    title: "Follow your plan",
-    text: "Take action. Test again.",
+    title: "Tailored plan",
+    text: "Reviewed with your doctor",
     visual: "plan",
   },
 ] as const;
@@ -444,10 +444,9 @@ const comparisonRows: ComparisonRow[] = [
 ];
 
 const inclusions = [
-  "Virtual initial doctor consult",
+  "Virtual initial and follow-up consults",
   "100+ longevity-focused biomarkers",
   "Blood draw with Innoquest or BP Healthcare",
-  "Virtual follow-up consult",
   "Personalized care plan",
   "Doctor-reviewed report",
   "Clear next steps for diet, sleep and exercise",
@@ -503,12 +502,12 @@ const faqs = [
   {
     question: "How is this different from a normal check-up?",
     answer:
-      "A normal check-up usually looks for disease. Gen-H looks at 100+ markers to help you understand trends, risks, and what to improve.",
+      "A normal check-up usually looks for disease today. Gen-H looks at 100+ biomarkers to help you understand your disease risks for the future, and tells you how to address them now.",
   },
   {
-    question: "Where is Founding Members available?",
+    question: "Where is Gen-H available?",
     answer:
-      "Founding Members is only for Klang Valley. Gen-H is coming to all Malaysian cities soon.",
+      "We are currently only in the Klang Valley, but we are coming to all major Malaysian cities soon.",
   },
 ];
 
@@ -1278,7 +1277,7 @@ function App() {
             <h3>
               Up to <em>RM1,250.</em>
             </h3>
-            <p className="price-note">Final pricing depends on the tests you take, and may be lower.</p>
+            <p className="price-note">Final pricing may be lower, depending on tests taken</p>
             <WhatsAppCta>Enquire about launch price</WhatsAppCta>
           </div>
 
@@ -1382,9 +1381,9 @@ function App() {
       <section className="final-cta" id="final-cta" aria-label="Final enquiry call to action">
         <div className="final-cta-inner">
           <h2>
-            Most people wait until it's <em>too late.</em>
+            For the <em>people</em> that matter most.
           </h2>
-          <p>You won't.</p>
+          <p>Take care of yourself, with Gen-H.</p>
           <WhatsAppCta>Enquire</WhatsAppCta>
         </div>
       </section>
