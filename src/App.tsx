@@ -14,7 +14,6 @@ import {
   X,
 } from "lucide-react";
 import heroVideo from "../assets/hero-draft1.mp4";
-import heroImage from "../assets/generated/hero-consult.png";
 import processBaselineImage from "../assets/process-step-teleconsult.jpg";
 import processBiomarkersImage from "../assets/process-step-biomarker-plan.jpg";
 import processLabsImage from "../assets/process-step-blood-draw.jpg";
@@ -1025,7 +1024,7 @@ function App() {
         </header>
 
         <div className="hero-frame">
-          <video className="hero-video" autoPlay muted loop playsInline poster={heroImage} aria-hidden="true">
+          <video className="hero-video" autoPlay muted loop playsInline aria-hidden="true">
             <source src={heroVideo} type="video/mp4" />
           </video>
           <div className="hero-overlay" />
@@ -1258,20 +1257,16 @@ function App() {
         <div className="founding-heading">
           <p className="eyebrow">Launch price</p>
           <h2>
-            A doctor-led longevity check-up for up to <em>RM1,250.</em>
+            Only for our first <em>150 customers</em>
           </h2>
-          <p>
-            Only for Klang Valley Founding Members. Coming to all Malaysian cities soon.
-          </p>
         </div>
 
         <div className="launch-price-card" aria-label="Launch price and inclusions">
           <div className="launch-price-copy">
-            <p className="price-label">Founding Members</p>
-            <h3>Gen-H check-up</h3>
-            <p className="price-note">
-              Includes your virtual consults, advanced blood test, doctor-reviewed report, and personalized care plan.
-            </p>
+            <h3>
+              Up to <em>RM1,250.</em>
+            </h3>
+            <p className="price-note">Final pricing depends on the tests you take, and may be lower.</p>
             <WhatsAppCta>Enquire about launch price</WhatsAppCta>
           </div>
 
