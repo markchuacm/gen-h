@@ -22,14 +22,10 @@ import processPlanImage from "../assets/generated/process-step-plan.png";
 import deannaImage from "../assets/doctors/deanna-abdul-halim.png";
 import ongImage from "../assets/doctors/ong-shiau-ying.png";
 import farheenImage from "../assets/doctors/farheen-nafisa.png";
-import innoquestLogo from "../assets/partners/innoquest.png";
-import bpHealthcareLogo from "../assets/partners/bp-healthcare.png";
 
 const whatsappMessage =
   "Hi, I'm interested in the Gen-H Founding Members program. Could you share availability and next steps?";
 const whatsappHref = `https://wa.me/60173280063?text=${encodeURIComponent(whatsappMessage)}`;
-const bpHealthcareHref = "https://bphealthcare.com/";
-const innoquestHref = "https://www.innoquest.com.my/";
 
 const futureHealthCards = [
   {
@@ -486,9 +482,9 @@ const faqs = [
       "Adults who want a deeper, doctor-led view of their health before obvious symptoms appear.",
   },
   {
-    question: "Why does the price say from RM 1,250?",
+    question: "Why does the price say up to RM1,250?",
     answer:
-      "Your doctor may prescribe additional biomarkers based on your history and goals, so the final panel can vary.",
+      "Your doctor configures the panel around what you need. If you already have recent blood tests or do not need every marker, your final price may be lower.",
   },
   {
     question: "Are the consults virtual?",
@@ -1051,7 +1047,7 @@ function App() {
             </div>
             <div>
               <strong>Accessible</strong>
-              <span>Starting at RM 1,250</span>
+              <span>Up to RM1,250</span>
             </div>
           </div>
         </div>
@@ -1173,16 +1169,6 @@ function App() {
                 <div className="process-step-hero">
                   <img src={step.image} alt={step.imageAlt} />
                   <div className="process-step-hero-shade" aria-hidden="true" />
-                  {step.visual === "labs" && (
-                    <div className="process-hero-logo-pair" aria-label="Lab partners">
-                      <a href={bpHealthcareHref} target="_blank" rel="noreferrer" aria-label="Visit BP Healthcare">
-                        <img src={bpHealthcareLogo} alt="BP Healthcare" />
-                      </a>
-                      <a href={innoquestHref} target="_blank" rel="noreferrer" aria-label="Visit Innoquest">
-                        <img src={innoquestLogo} alt="Innoquest" />
-                      </a>
-                    </div>
-                  )}
                   <div className="process-step-title">
                     <span>{step.number}</span>
                     <h3>{step.title}</h3>
@@ -1272,7 +1258,7 @@ function App() {
         <div className="founding-heading">
           <p className="eyebrow">Launch price</p>
           <h2>
-            A doctor-led longevity check-up from <em>RM 1,250.</em>
+            A doctor-led longevity check-up for up to <em>RM1,250.</em>
           </h2>
           <p>
             Only for Klang Valley Founding Members. Coming to all Malaysian cities soon.
