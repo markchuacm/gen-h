@@ -443,14 +443,24 @@ const comparisonRows: ComparisonRow[] = [
   },
 ];
 
-const inclusions = [
-  "Virtual initial and follow-up consults",
-  "100+ longevity-focused biomarkers",
-  "Blood draw with Innoquest or BP Healthcare",
-  "Personalized care plan",
-  "Doctor-reviewed report",
-  "Clear next steps for diet, sleep and exercise",
-];
+const launchPriceSteps = [
+  {
+    value: "RM99",
+    label: "Teleconsult",
+    badge: "*100% refundable",
+    note: "if unsatisfied with the consult",
+  },
+  {
+    value: "Up to RM1,200",
+    label: "Full test",
+    note: "Pricing may be lower, depending on tests",
+  },
+  {
+    value: "Included",
+    label: "Follow-up",
+    note: "Teleconsult reviewing results & action plan",
+  },
+] as const;
 
 const doctors = [
   {
@@ -485,9 +495,9 @@ const faqs = [
       "Gen-H is not a clinic, we are a health intelligence platform that helps you understand your long-term health risks and helps you achieve your health goals.",
   },
   {
-    question: "Why does the price say up to RM1,250?",
+    question: "Why does the full test say up to RM1,200?",
     answer:
-      "Your doctor configures the panel around what you need. If you already have recent blood tests or do not need every marker, your final price may be lower.",
+      "Your doctor configures the panel around what you need. If you already have recent blood tests or do not need every marker, your final test price may be lower.",
   },
   {
     question: "Are the consults virtual?",
@@ -539,6 +549,7 @@ function App() {
   const [visibleBiomarkerIndexes, setVisibleBiomarkerIndexes] = useState<number[]>([]);
   const [isBiomarkerListOpen, setIsBiomarkerListOpen] = useState(false);
   const [visibleFutureCardIndexes, setVisibleFutureCardIndexes] = useState<number[]>([]);
+  const [launchPriceProgress, setLaunchPriceProgress] = useState(0);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -1032,6 +1043,114 @@ function App() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const section = document.querySelector<HTMLElement>(".launch-price-scroll");
+    const sticky = section?.querySelector<HTMLElement>(".launch-price-sticky");
+
+    if (!section || !sticky) {
+      return;
+    }
+
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const clamp = (value: number) => Math.min(Math.max(value, 0), 1);
+    let frame = 0;
+
+    const resetSticky = () => {
+      sticky.classList.remove("is-fixed", "is-ended");
+      sticky.style.removeProperty("--launch-sticky-left");
+      sticky.style.removeProperty("--launch-sticky-width");
+      sticky.style.removeProperty("--launch-mobile-track-top");
+      sticky.style.removeProperty("--launch-mobile-track-height");
+    };
+
+    const setStickyMode = (mode: "default" | "fixed" | "ended") => {
+      sticky.classList.toggle("is-fixed", mode === "fixed");
+      sticky.classList.toggle("is-ended", mode === "ended");
+    };
+
+    const updateLaunchPriceProgress = () => {
+      frame = 0;
+
+      if (reducedMotion.matches) {
+        setLaunchPriceProgress(1);
+        resetSticky();
+        return;
+      }
+
+      const sectionRect = section.getBoundingClientRect();
+      const scrollY = window.scrollY || window.pageYOffset;
+      const sectionTop = sectionRect.top + scrollY;
+      const sectionHeight = section.offsetHeight;
+      const stickyHeight = sticky.offsetHeight;
+      const fixedStart = sectionTop;
+      const fixedEnd = sectionTop + sectionHeight - stickyHeight;
+      const scrollableDistance = Math.max(sectionHeight - window.innerHeight, 1);
+      const progress = clamp((scrollY - fixedStart) / scrollableDistance);
+
+      sticky.style.setProperty("--launch-sticky-left", `${sectionRect.left}px`);
+      sticky.style.setProperty("--launch-sticky-width", `${sectionRect.width}px`);
+
+      const timeline = sticky.querySelector<HTMLElement>(".launch-price-timeline");
+      const firstDot = sticky.querySelector<HTMLElement>(".launch-price-step:first-child .launch-step-dot");
+      const lastDot = sticky.querySelector<HTMLElement>(".launch-price-step:last-child .launch-step-dot");
+
+      if (timeline && firstDot && lastDot) {
+        const timelineRect = timeline.getBoundingClientRect();
+        const firstDotRect = firstDot.getBoundingClientRect();
+        const lastDotRect = lastDot.getBoundingClientRect();
+        const trackTop = firstDotRect.top + firstDotRect.height / 2 - timelineRect.top;
+        const trackBottom = lastDotRect.top + lastDotRect.height / 2 - timelineRect.top;
+
+        sticky.style.setProperty("--launch-mobile-track-top", `${trackTop}px`);
+        sticky.style.setProperty("--launch-mobile-track-height", `${Math.max(trackBottom - trackTop, 0)}px`);
+      }
+
+      if (fixedEnd <= fixedStart || scrollY < fixedStart) {
+        setStickyMode("default");
+      } else if (scrollY >= fixedEnd) {
+        setStickyMode("ended");
+      } else {
+        setStickyMode("fixed");
+      }
+
+      setLaunchPriceProgress((current) => (
+        Math.abs(current - progress) < 0.004 ? current : progress
+      ));
+    };
+
+    const requestLaunchPriceProgress = () => {
+      if (frame) {
+        return;
+      }
+
+      frame = window.requestAnimationFrame(updateLaunchPriceProgress);
+    };
+
+    updateLaunchPriceProgress();
+    window.addEventListener("scroll", requestLaunchPriceProgress, { passive: true });
+    window.addEventListener("resize", requestLaunchPriceProgress);
+    reducedMotion.addEventListener("change", requestLaunchPriceProgress);
+
+    return () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+
+      resetSticky();
+      window.removeEventListener("scroll", requestLaunchPriceProgress);
+      window.removeEventListener("resize", requestLaunchPriceProgress);
+      reducedMotion.removeEventListener("change", requestLaunchPriceProgress);
+    };
+  }, []);
+
+  const visibleLaunchPriceStepCount = launchPriceProgress >= 0.96
+    ? 3
+    : launchPriceProgress >= 0.5
+      ? 2
+      : launchPriceProgress >= 0.06
+        ? 1
+        : 0;
+
   return (
     <main className="site-shell">
       <section className="hero-shell" id="top">
@@ -1075,7 +1194,7 @@ function App() {
             </div>
             <div>
               <strong>Accessible</strong>
-              <span>Up to RM1,250</span>
+              <span>RM99 teleconsult</span>
             </div>
           </div>
         </div>
@@ -1322,31 +1441,51 @@ function App() {
         </div>
       </section>
 
-      <section className="founding-section" id="founding-members">
-        <div className="founding-heading">
-          <p className="eyebrow">Launch price</p>
-          <h2>
-            Early <em>Gen-H</em> baseline programme
-          </h2>
-        </div>
-
-        <div className="launch-price-card" aria-label="Launch price and inclusions">
-          <div className="launch-price-copy">
-            <h3>
-              Up to <em>RM1,250.</em>
-            </h3>
-            <p className="price-note">Final pricing may be lower, depending on tests taken</p>
-            <WhatsAppCta>Enquire about launch price</WhatsAppCta>
+      <section
+        className="founding-section launch-price-scroll"
+        id="founding-members"
+        style={{ "--launch-progress": launchPriceProgress.toFixed(3) } as CSSProperties}
+      >
+        <div className="launch-price-sticky">
+          <div className="founding-heading">
+            <p className="eyebrow">Launch price</p>
+            <h2>
+              Early <em>Gen-H</em> baseline programme
+            </h2>
           </div>
 
-          <ul className="inclusion-list">
-            {inclusions.map((item) => (
-              <li key={item}>
-                <Check aria-hidden="true" size={16} />
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
+          <div className="launch-price-timeline" aria-label="Early Gen-H baseline programme price breakdown">
+            <div className="launch-timeline-track" aria-hidden="true">
+              <span className="launch-timeline-line" />
+              <span className="launch-timeline-fill" />
+            </div>
+
+            <ol className="launch-price-steps">
+              {launchPriceSteps.map((step, index) => (
+                <li
+                  className={`launch-price-step ${visibleLaunchPriceStepCount > index ? "is-active" : ""}`}
+                  key={step.label}
+                  style={{ "--step-index": index } as CSSProperties}
+                >
+                  <span className="launch-step-dot" aria-hidden="true">
+                    <span />
+                  </span>
+                  <span className="launch-step-copy">
+                    <strong>{step.label}</strong>
+                    <span className="launch-step-label">{step.value}</span>
+                    {"badge" in step && (
+                      <span className="launch-step-badge">{step.badge}</span>
+                    )}
+                    <span className="launch-step-note">{step.note}</span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="section-cta-row launch-price-cta">
+            <WhatsAppCta>Book teleconsult</WhatsAppCta>
+          </div>
         </div>
       </section>
 
