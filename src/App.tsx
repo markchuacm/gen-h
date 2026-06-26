@@ -244,7 +244,7 @@ const processSteps = [
     number: "Step 3",
     railNumber: "3.",
     railTitle: "Partner lab",
-    title: "Visit partner blood draw facility",
+    title: "Get blood drawn at a partner lab",
     summary: "We coordinate your blood draw and route you to an established BP Healthcare or Innoquest facility.",
     visual: "labs",
     image: processLabsImage,
@@ -437,7 +437,7 @@ const comparisonRows: ComparisonRow[] = [
     standardIncluded: false,
   },
   {
-    criterion: "Virtual consults + local lab",
+    criterion: "Virtual consults",
     genhIncluded: true,
     standardIncluded: false,
   },
@@ -480,6 +480,11 @@ const faqs = [
       "Adults who want a deeper, doctor-led view of their health before obvious symptoms appear.",
   },
   {
+    question: "Is this a clinic?",
+    answer:
+      "Gen-H is not a clinic, we are a health intelligence platform that helps you understand your long-term health risks and helps you achieve your health goals.",
+  },
+  {
     question: "Why does the price say up to RM1,250?",
     answer:
       "Your doctor configures the panel around what you need. If you already have recent blood tests or do not need every marker, your final price may be lower.",
@@ -500,9 +505,24 @@ const faqs = [
       "A doctor reviews your results, explains what matters, and turns them into a practical care plan.",
   },
   {
+    question: "Who reviews my results?",
+    answer:
+      "Your results are reviewed by an MMC-registered doctor, then explained in context during your follow-up teleconsult.",
+  },
+  {
     question: "How is this different from a normal check-up?",
     answer:
       "A normal check-up usually looks for disease today. Gen-H looks at 100+ biomarkers to help you understand your disease risks for the future, and tells you how to address them now.",
+  },
+  {
+    question: "Is this suitable if my normal screening is fine?",
+    answer:
+      "Yes. Gen-H is designed for people who want to look beyond standard screening and understand long-term risks earlier.",
+  },
+  {
+    question: "What happens if something abnormal is found?",
+    answer:
+      "Your doctor will explain what it may mean, recommend next steps, and guide you on whether further care or testing is needed.",
   },
   {
     question: "Where is Gen-H available?",
@@ -518,8 +538,7 @@ function App() {
   const [visibleProcessIndexes, setVisibleProcessIndexes] = useState<number[]>([0]);
   const [visibleBiomarkerIndexes, setVisibleBiomarkerIndexes] = useState<number[]>([]);
   const [isBiomarkerListOpen, setIsBiomarkerListOpen] = useState(false);
-  const [isFutureHealthInView, setIsFutureHealthInView] = useState(false);
-  const [futureHealthAnimationKey, setFutureHealthAnimationKey] = useState(0);
+  const [visibleFutureCardIndexes, setVisibleFutureCardIndexes] = useState<number[]>([]);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -962,52 +981,53 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const futureHealthSection = document.getElementById("future-health");
+    const futureCards = Array.from(document.querySelectorAll<HTMLElement>("[data-future-card]"));
 
-    if (!futureHealthSection) {
+    if (!futureCards.length) {
       return;
     }
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
-    if (reducedMotion.matches) {
-      setIsFutureHealthInView(true);
+    if (reducedMotion.matches || !("IntersectionObserver" in window)) {
+      setVisibleFutureCardIndexes(futureHealthCards.map((_, index) => index));
       return;
     }
 
-    let hasReachedRevealPoint = false;
-    let isPersistingView = false;
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        const hasAnyIntersection = entry.isIntersecting;
-        const isAtRevealPoint = hasAnyIntersection && entry.intersectionRatio >= 0.28;
+      (entries) => {
+        entries.forEach((entry) => {
+          const card = entry.target as HTMLElement;
+          const index = Number(card.dataset.futureCardIndex);
+          if (Number.isNaN(index)) {
+            return;
+          }
 
-        if (isAtRevealPoint && !hasReachedRevealPoint) {
-          hasReachedRevealPoint = true;
-          isPersistingView = true;
-          setIsFutureHealthInView(true);
-          setFutureHealthAnimationKey((key) => key + 1);
-          return;
-        }
+          const cardRect = card.getBoundingClientRect();
+          const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+          const isCardOutOfView = cardRect.bottom <= 0 || cardRect.top >= viewportHeight;
+          const isCardInRevealZone = entry.isIntersecting && entry.intersectionRatio >= 0.5;
 
-        if (!hasAnyIntersection && isPersistingView) {
-          hasReachedRevealPoint = false;
-          isPersistingView = false;
-          setIsFutureHealthInView(false);
-        }
+          setVisibleFutureCardIndexes((current) => {
+            if (isCardInRevealZone) {
+              return current.includes(index) ? current : [...current, index];
+            }
 
-        if (hasAnyIntersection && hasReachedRevealPoint && !isPersistingView) {
-          isPersistingView = true;
-          setIsFutureHealthInView(true);
-        }
+            if (isCardOutOfView) {
+              return current.filter((visibleIndex) => visibleIndex !== index);
+            }
+
+            return current;
+          });
+        });
       },
       {
-        threshold: [0, 0.28, 0.5],
-        rootMargin: "-8% 0px -18% 0px",
+        threshold: [0, 0.5],
+        rootMargin: "0px",
       },
     );
 
-    observer.observe(futureHealthSection);
+    futureCards.forEach((card) => observer.observe(card));
 
     return () => observer.disconnect();
   }, []);
@@ -1072,19 +1092,20 @@ function App() {
         </div>
       </section>
 
-      <section
-        className={`future-health-section ${isFutureHealthInView ? "is-in-view" : ""}`}
-        id="future-health"
-        aria-label="Future health preview"
-      >
+      <section className="future-health-section" id="future-health" aria-label="Future health preview">
         <div className="future-health-heading">
           <h2>
             Your <em>future</em> health, revealed <em>today</em>.
           </h2>
         </div>
-        <div className="future-card-grid" key={futureHealthAnimationKey}>
-          {futureHealthCards.map((card) => (
-            <article className="future-card" key={card.number}>
+        <div className="future-card-grid">
+          {futureHealthCards.map((card, index) => (
+            <article
+              className={`future-card ${visibleFutureCardIndexes.includes(index) ? "is-in-view" : ""}`}
+              data-future-card
+              data-future-card-index={index}
+              key={card.number}
+            >
               <div className="future-card-copy">
                 <p className="future-card-number">{card.number}</p>
                 <h3>{card.title}</h3>
@@ -1217,6 +1238,43 @@ function App() {
         </div>
       </section>
 
+      <section className="doctors-section" id="doctors" aria-label="Gen-H doctors">
+        <div className="doctor-section-heading">
+          <p className="eyebrow">Doctors</p>
+          <h2>
+            Led by doctors who treat{" "}
+            <span className="keep-together">
+              <span className="scroll-underline doctor-emphasis-root">root causes</span>,
+            </span>{" "}
+            not just{" "}
+            <span className="scroll-underline doctor-emphasis-symptoms">symptoms</span>.
+          </h2>
+          <p>
+            Your results are reviewed in context, then translated into clear next steps for long-term health.
+          </p>
+        </div>
+
+        <div className="doctor-grid">
+          {doctors.map((doctor) => (
+            <article className="doctor-profile-card" key={doctor.name}>
+              <div className="doctor-portrait">
+                <img src={doctor.image} alt={doctor.name} />
+              </div>
+              <div className="doctor-profile-content">
+                <h3>{doctor.name}</h3>
+                <p className="doctor-role">{doctor.role}</p>
+                <div className="doctor-rule" aria-hidden="true" />
+                <p className="doctor-credential">{doctor.credential}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="section-cta-row">
+          <WhatsAppCta variant="ghost">Ask about doctors</WhatsAppCta>
+        </div>
+      </section>
+
       <section className="section comparison-section" id="compare">
         <div className="comparison-heading">
           <div>
@@ -1268,7 +1326,7 @@ function App() {
         <div className="founding-heading">
           <p className="eyebrow">Launch price</p>
           <h2>
-            Only for our first <em>150 customers</em>
+            Early <em>Gen-H</em> baseline programme
           </h2>
         </div>
 
@@ -1289,43 +1347,6 @@ function App() {
               </li>
             ))}
           </ul>
-        </div>
-      </section>
-
-      <section className="doctors-section" id="doctors" aria-label="Gen-H doctors">
-        <div className="doctor-section-heading">
-          <p className="eyebrow">Doctors</p>
-          <h2>
-            Led by doctors who treat{" "}
-            <span className="keep-together">
-              <span className="scroll-underline doctor-emphasis-root">root causes</span>,
-            </span>{" "}
-            not just{" "}
-            <span className="scroll-underline doctor-emphasis-symptoms">symptoms</span>.
-          </h2>
-          <p>
-            Your results are reviewed in context, then translated into clear next steps for long-term health.
-          </p>
-        </div>
-
-        <div className="doctor-grid">
-          {doctors.map((doctor) => (
-            <article className="doctor-profile-card" key={doctor.name}>
-              <div className="doctor-portrait">
-                <img src={doctor.image} alt={doctor.name} />
-              </div>
-              <div className="doctor-profile-content">
-                <h3>{doctor.name}</h3>
-                <p className="doctor-role">{doctor.role}</p>
-                <div className="doctor-rule" aria-hidden="true" />
-                <p className="doctor-credential">{doctor.credential}</p>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        <div className="section-cta-row">
-          <WhatsAppCta variant="ghost">Ask about doctors</WhatsAppCta>
         </div>
       </section>
 
