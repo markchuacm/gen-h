@@ -232,8 +232,8 @@ const processSteps = [
     id: "biomarker-plan",
     number: "Step 2",
     railNumber: "2.",
-    railTitle: "Biomarker plan",
-    title: "Your doctor configures your biomarker panel",
+    railTitle: "Personalized test",
+    title: "Your doctor personalizes your test to you",
     summary: "Test according to your needs and long-term health priorities.",
     visual: "biomarkers",
     image: processBiomarkersImage,
@@ -391,6 +391,8 @@ const monitorProofs = [
   "Tracked over time",
   "Monitor how your body changes",
 ];
+
+const biomarkerProofs = ["In-depth testing", "Focused on longevity", "Curated by experts"];
 
 type ComparisonRow = {
   criterion: string;
@@ -1235,6 +1237,14 @@ function App() {
           <h2>
             100+ biomarkers, expert curated for <em>longevity</em>
           </h2>
+          <div className="monitor-proof-row biomarker-proof-row" aria-label="Biomarker benefits">
+            {biomarkerProofs.map((proof) => (
+              <span key={proof}>
+                <Check aria-hidden="true" size={15} />
+                {proof}
+              </span>
+            ))}
+          </div>
         </div>
         <BiomarkerGrid visibleBiomarkerIndexes={visibleBiomarkerIndexes} />
       </section>
@@ -1285,7 +1295,7 @@ function App() {
         <div className="section-heading how-process-intro">
           <p className="eyebrow">How it works</p>
           <h2>
-            Your path to <em>long-term</em> health
+            Your tests and care plan, built specifically for <em>you</em>.
           </h2>
         </div>
 
