@@ -2552,11 +2552,15 @@ a {
   }
 
   .process-panel-baseline .process-step-hero > img {
-    object-position: 38% center;
+    object-position: 68% center;
   }
 
   .process-panel-biomarkers .process-step-hero > img {
-    object-position: 25% center;
+    object-position: 58% center;
+  }
+
+  .process-panel-review .process-step-hero > img {
+    object-position: 24% center;
   }
 
   .process-step-title {
