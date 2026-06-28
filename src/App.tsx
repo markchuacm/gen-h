@@ -1418,7 +1418,7 @@ function App() {
       <section className="final-cta" id="final-cta" aria-label="Final enquiry call to action">
         <div className="final-cta-inner">
           <h2>
-            For the <em>people</em> that matter most.
+            Do it for the <em>people</em> who matter most
           </h2>
           <p>Take care of yourself, with Gen-H.</p>
           <WhatsAppCta>Book a consult</WhatsAppCta>
