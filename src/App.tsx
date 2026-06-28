@@ -27,6 +27,9 @@ import hormonesThyroidImage from "../assets/biomarkers/hormones-thyroid.jpg";
 import inflammationImmunityImage from "../assets/biomarkers/inflammation-immunity.jpg";
 import liverKidneyImage from "../assets/biomarkers/liver-kidney.jpg";
 import nutrientsVitaminsImage from "../assets/biomarkers/nutrients-vitamins.jpg";
+import deeperTestingImage from "../assets/future-health/deeper-testing.png";
+import earlierSignalsImage from "../assets/future-health/earlier-signals.png";
+import lifestyleImpactsImage from "../assets/future-health/lifestyle-impacts.png";
 
 const whatsappMessage =
   "Hi, I'm interested in the Gen-H Founding Members program. Could you share availability and next steps?";
@@ -34,37 +37,25 @@ const whatsappHref = `https://wa.me/60173280063?text=${encodeURIComponent(whatsa
 
 const futureHealthCards = [
   {
-    number: "01",
+    number: "1",
     title: "Deeper testing",
     text: "More than a standard screening",
-    visual: "biomarkers",
+    image: deeperTestingImage,
+    imageAlt: "Blood samples beside a requisition card listing advanced biomarkers",
   },
   {
-    number: "02",
+    number: "2",
     title: "Earlier signals",
     text: "Learn where your health is going",
-    visual: "signals",
+    image: earlierSignalsImage,
+    imageAlt: "Tablet dashboard showing biomarker trends and health trajectory insights",
   },
   {
-    number: "03",
+    number: "3",
     title: "Lifestyle impacts",
-    text: "Beyond your blood test.",
-    visual: "plan",
-  },
-] as const;
-
-const futurePlanRows = [
-  {
-    title: "Diet",
-    icon: "diet",
-  },
-  {
-    title: "Exercise",
-    icon: "exercise",
-  },
-  {
-    title: "Sleep",
-    icon: "sleep",
+    text: "Beyond your blood test",
+    image: lifestyleImpactsImage,
+    imageAlt: "Breakfast, running shoes, and a sleep tracker representing lifestyle inputs",
   },
 ] as const;
 
@@ -99,120 +90,21 @@ function WhatsAppCta({
   );
 }
 
-function PlanActionIcon({ icon }: { icon: (typeof futurePlanRows)[number]["icon"] }) {
-  if (icon === "diet") {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-        <path d="M5 12h14l-1.1 5.4A3.2 3.2 0 0 1 14.8 20H9.2a3.2 3.2 0 0 1-3.1-2.6L5 12Z" />
-        <path d="M8 12a4 4 0 0 1 8 0" />
-        <path d="M9.5 9.4 8.2 7.8" />
-        <path d="M14.5 9.4l1.3-1.6" />
-        <path d="M9 15h6" />
-      </svg>
-    );
-  }
-
-  if (icon === "exercise") {
-    return (
-      <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-        <path d="M6 8v8" />
-        <path d="M18 8v8" />
-        <path d="M9 5v14" />
-        <path d="M15 5v14" />
-        <path d="M3.5 12h17" />
-      </svg>
-    );
-  }
-
+function FutureHealthVisual({
+  image,
+  imageAlt,
+  number,
+}: {
+  image: (typeof futureHealthCards)[number]["image"];
+  imageAlt: (typeof futureHealthCards)[number]["imageAlt"];
+  number: (typeof futureHealthCards)[number]["number"];
+}) {
   return (
-    <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-      <path d="M20 15.3A7.4 7.4 0 0 1 8.7 4a6.8 6.8 0 1 0 11.3 11.3Z" />
-      <path d="M14.5 6.5h.01" />
-      <path d="M17 9h.01" />
-    </svg>
-  );
-}
-
-function FutureHealthVisual({ visual }: { visual: (typeof futureHealthCards)[number]["visual"] }) {
-  if (visual === "biomarkers") {
-    return (
-      <div className="future-visual future-visual-biomarkers" aria-hidden="true">
-        <div className="biomarker-tablet-cluster">
-          <div className="standard-biomarker-row">
-            {["LDL", "HDL", "Triglycerides"].map((label) => (
-              <span className="biomarker-tablet biomarker-tablet-standard" key={label}>
-                {label}
-              </span>
-            ))}
-          </div>
-          <div className="advanced-biomarker-row">
-            {["ApoB", "Lp(a)", "Homocysteine", "hs-CRP"].map((label, index) => (
-              <span
-                className="biomarker-tablet biomarker-tablet-advanced"
-                key={label}
-                style={{ "--tablet-index": index } as CSSProperties}
-              >
-                {label}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (visual === "signals") {
-    return (
-      <div className="future-visual future-visual-signals" aria-hidden="true">
-        <div className="explained-range-card">
-          <svg className="explained-range-chart" viewBox="0 0 560 420">
-            <defs>
-              <linearGradient id="explainedRangeBandGradient" x1="0%" x2="100%" y1="0%" y2="0%">
-                <stop offset="0%" stopColor="rgba(184, 93, 53, 0.2)" />
-                <stop offset="100%" stopColor="rgba(184, 93, 53, 0)" />
-              </linearGradient>
-              <clipPath id="explainedRangeRevealClip" clipPathUnits="userSpaceOnUse">
-                <rect className="explained-range-sweep-clip" x="52" y="118" width="496" height="288" />
-              </clipPath>
-            </defs>
-            <path className="explained-range-grid" d="M28 168H548M28 274H548" />
-            <rect className="explained-range-bar explained-range-bar-empty" x="52" y="72" width="18" height="86" rx="6" />
-            <rect className="explained-range-bar explained-range-bar-active" x="52" y="178" width="18" height="86" rx="6" />
-            <rect className="explained-range-bar explained-range-bar-empty" x="52" y="284" width="18" height="86" rx="6" />
-            <text className="explained-range-label" x="112" y="115">ABOVE RANGE</text>
-            <text className="explained-range-label" x="112" y="221">IN RANGE</text>
-            <text className="explained-range-label" x="112" y="327">BELOW RANGE</text>
-            <g className="explained-range-sweep" clipPath="url(#explainedRangeRevealClip)">
-              <rect className="explained-range-band" x="52" y="168" width="496" height="106" rx="6" />
-              <path className="explained-range-columns" d="M258 184V382M390 242V382M506 218V382" />
-              <path className="explained-range-line" d="M258 184 L390 242 L506 218" />
-              <circle className="explained-range-point point-one" cx="258" cy="184" r="10" />
-              <circle className="explained-range-point point-two" cx="390" cy="242" r="10" />
-              <circle className="explained-range-point point-three" cx="506" cy="218" r="10" />
-              <text className="explained-range-value point-one" x={258} y={160}>16.7</text>
-              <text className="explained-range-value point-two" x={390} y={218}>10.0</text>
-              <text className="explained-range-value point-three" x={506} y={194}>12.5</text>
-            </g>
-          </svg>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="future-visual future-visual-plan" aria-hidden="true">
-      <div className="plan-action-stack">
-        {futurePlanRows.map((row, index) => (
-          <div className="plan-action-card" key={row.title} style={{ "--plan-index": index } as CSSProperties}>
-            <span className="plan-action-icon">
-              <PlanActionIcon icon={row.icon} />
-            </span>
-            <span className="plan-action-copy">
-              <strong>{row.title}</strong>
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className="future-visual">
+      <img src={image} alt={imageAlt} loading="lazy" />
+      <span className="future-card-number" aria-hidden="true">
+        {number}
+      </span>
     </div>
   );
 }
@@ -1225,12 +1117,11 @@ function App() {
               data-future-card-index={index}
               key={card.number}
             >
+              <FutureHealthVisual image={card.image} imageAlt={card.imageAlt} number={card.number} />
               <div className="future-card-copy">
-                <p className="future-card-number">{card.number}</p>
                 <h3>{card.title}</h3>
                 <p>{card.text}</p>
               </div>
-              <FutureHealthVisual visual={card.visual} />
             </article>
           ))}
         </div>
