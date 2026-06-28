@@ -1276,15 +1276,29 @@ function ReasonScreen({
       backTo="/onboarding/start"
     >
       <section className="member-content-card">
-        <MultiChoiceGroup
-          helper="What brings you to Gen-H?"
-          label="Select any that feel relevant"
-          onToggle={(value) => updateReason({ selected: toggleInList(story.reason.selected, value) })}
-          options={reasonOptions.map((option) => option.label)}
-          required
-          values={story.reason.selected.map((id) => reasonOptions.find((option) => option.id === id)?.label ?? id)}
-        />
-        <ReasonOptionBridge story={story} updateReason={updateReason} />
+        <fieldset className="member-choice-group">
+          <legend>
+            Select any that feel relevant<em>*</em>
+          </legend>
+          <p>What brings you to Gen-H?</p>
+          <div className="member-choice-grid">
+            {reasonOptions.map((option) => {
+              const selected = story.reason.selected.includes(option.id);
+
+              return (
+                <button
+                  className={`member-choice ${selected ? "is-selected" : ""}`}
+                  key={option.id}
+                  onClick={() => updateReason({ selected: toggleInList(story.reason.selected, option.id) })}
+                  type="button"
+                >
+                  <span>{option.label}</span>
+                  {selected ? <Check size={16} /> : <Circle size={14} />}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
         {story.reason.selected.includes("other") ? (
           <TextArea
             label="Tell us what brings you here"
@@ -1310,37 +1324,6 @@ function ReasonScreen({
         </div>
       </section>
     </OnboardingLayout>
-  );
-}
-
-function ReasonOptionBridge({
-  story,
-  updateReason,
-}: {
-  story: HealthStory;
-  updateReason: (patch: Partial<ReasonData>) => void;
-}) {
-  const selectedLabels = story.reason.selected
-    .map((id) => reasonOptions.find((option) => option.id === id)?.label)
-    .filter(Boolean);
-
-  return (
-    <div className="member-hidden-sync" aria-hidden="true">
-      {reasonOptions.map((option) => {
-        const isSelected = selectedLabels.includes(option.label);
-
-        return (
-          <button
-            key={option.id}
-            onClick={() => updateReason({ selected: toggleInList(story.reason.selected, option.id) })}
-            type="button"
-            data-selected={isSelected}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -1467,7 +1450,7 @@ function HealthContextScreen({
           <ChoiceGroup
             helper="Have you ever been diagnosed with any medical conditions?"
             label="Diagnosed conditions"
-            onChange={(conditionStatus) => updateHealth({ conditionStatus: conditionStatus as TernaryAnswer })}
+            onChange={(value) => updateHealth({ conditionStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
             options={["No known medical conditions", "Yes", "Not sure"]}
             required
             value={
@@ -1477,13 +1460,8 @@ function HealthContextScreen({
                   ? "Yes"
                   : story.health.conditionStatus === "not-sure"
                     ? "Not sure"
-                    : ""
+              : ""
             }
-          />
-          <TernaryBridge
-            current={story.health.conditionStatus}
-            map={{ "No known medical conditions": "no", Yes: "yes", "Not sure": "not-sure" }}
-            onChange={(conditionStatus) => updateHealth({ conditionStatus })}
           />
           {story.health.conditionStatus === "yes" || story.health.conditionStatus === "not-sure" ? (
             <>
@@ -1508,7 +1486,7 @@ function HealthContextScreen({
           <ChoiceGroup
             helper="Do you have any allergies or important reactions your doctor should know about?"
             label="Allergies and important reactions"
-            onChange={(allergyStatus) => updateHealth({ allergyStatus: allergyStatus as TernaryAnswer })}
+            onChange={(value) => updateHealth({ allergyStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
             options={["No known allergies or reactions", "Yes", "Not sure"]}
             required
             value={
@@ -1518,13 +1496,8 @@ function HealthContextScreen({
                   ? "Yes"
                   : story.health.allergyStatus === "not-sure"
                     ? "Not sure"
-                    : ""
+              : ""
             }
-          />
-          <TernaryBridge
-            current={story.health.allergyStatus}
-            map={{ "No known allergies or reactions": "no", Yes: "yes", "Not sure": "not-sure" }}
-            onChange={(allergyStatus) => updateHealth({ allergyStatus })}
           />
           {story.health.allergyStatus === "yes" || story.health.allergyStatus === "not-sure" ? (
             <>
@@ -1549,7 +1522,7 @@ function HealthContextScreen({
           <ChoiceGroup
             helper="Parents and siblings are most relevant. Grandparents can also be helpful if you know."
             label="Family history"
-            onChange={(familyStatus) => updateHealth({ familyStatus: familyStatus as TernaryAnswer })}
+            onChange={(value) => updateHealth({ familyStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
             options={["No known family history", "Yes", "Not sure"]}
             required
             value={
@@ -1559,13 +1532,8 @@ function HealthContextScreen({
                   ? "Yes"
                   : story.health.familyStatus === "not-sure"
                     ? "Not sure"
-                    : ""
+              : ""
             }
-          />
-          <TernaryBridge
-            current={story.health.familyStatus}
-            map={{ "No known family history": "no", Yes: "yes", "Not sure": "not-sure" }}
-            onChange={(familyStatus) => updateHealth({ familyStatus })}
           />
           {story.health.familyStatus === "yes" ? (
             <>
@@ -1598,7 +1566,7 @@ function HealthContextScreen({
           <ChoiceGroup
             helper="Are you currently taking any medications, supplements, or regular health products?"
             label="Current routine"
-            onChange={(medsStatus) => updateHealth({ medsStatus: medsStatus as TernaryAnswer })}
+            onChange={(value) => updateHealth({ medsStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
             options={["No", "Yes", "Not sure"]}
             required
             value={
@@ -1608,13 +1576,8 @@ function HealthContextScreen({
                   ? "Yes"
                   : story.health.medsStatus === "not-sure"
                     ? "Not sure"
-                    : ""
+              : ""
             }
-          />
-          <TernaryBridge
-            current={story.health.medsStatus}
-            map={{ No: "no", Yes: "yes", "Not sure": "not-sure" }}
-            onChange={(medsStatus) => updateHealth({ medsStatus })}
           />
           {story.health.medsStatus === "yes" || story.health.medsStatus === "not-sure" ? (
             <div className="member-entry-columns">
@@ -1722,26 +1685,6 @@ function HealthContextScreen({
         </section>
       </div>
     </OnboardingLayout>
-  );
-}
-
-function TernaryBridge({
-  current,
-  map,
-  onChange,
-}: {
-  current: TernaryAnswer;
-  map: Record<string, TernaryAnswer>;
-  onChange: (value: TernaryAnswer) => void;
-}) {
-  return (
-    <div className="member-hidden-sync" aria-hidden="true">
-      {Object.entries(map).map(([label, value]) => (
-        <button data-selected={current === value} key={label} onClick={() => onChange(value)} type="button">
-          {label}
-        </button>
-      ))}
-    </div>
   );
 }
 
