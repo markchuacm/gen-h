@@ -1406,12 +1406,11 @@ function App() {
         <a className="brand" href="#top" aria-label="Gen-H home">
           <span>Gen-H</span>
         </a>
-        <p>Doctor-led longevity check-ups.</p>
+        <p>Helping you stay well for life's best moments</p>
         <nav aria-label="Footer navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#what-we-test">What we test</a>
-          <a href="#compare">Compare</a>
-          <a href="#founding-members">Founding Members</a>
+          <a href="#founding-members">Pricing</a>
         </nav>
       </footer>
 
