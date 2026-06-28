@@ -658,7 +658,9 @@ function App() {
 
   useEffect(() => {
     const cards = Array.from(document.querySelectorAll<HTMLElement>(".biomarker-card"));
+    const mobileQuery = window.matchMedia("(max-width: 720px)");
     let frame = 0;
+    let isListening = false;
 
     const updateActiveBiomarker = () => {
       frame = 0;
@@ -700,17 +702,49 @@ function App() {
       frame = window.requestAnimationFrame(updateActiveBiomarker);
     };
 
-    updateActiveBiomarker();
-    window.addEventListener("scroll", requestActiveBiomarkerUpdate, { passive: true });
-    window.addEventListener("resize", requestActiveBiomarkerUpdate);
-
-    return () => {
-      if (frame) {
-        window.cancelAnimationFrame(frame);
+    const startMobileBiomarkerTracking = () => {
+      if (isListening) {
+        return;
       }
 
-      window.removeEventListener("scroll", requestActiveBiomarkerUpdate);
-      window.removeEventListener("resize", requestActiveBiomarkerUpdate);
+      isListening = true;
+      updateActiveBiomarker();
+      window.addEventListener("scroll", requestActiveBiomarkerUpdate, { passive: true });
+      window.addEventListener("resize", requestActiveBiomarkerUpdate);
+    };
+
+    const stopMobileBiomarkerTracking = (clearActiveCard = true) => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+        frame = 0;
+      }
+
+      if (isListening) {
+        window.removeEventListener("scroll", requestActiveBiomarkerUpdate);
+        window.removeEventListener("resize", requestActiveBiomarkerUpdate);
+        isListening = false;
+      }
+
+      if (clearActiveCard) {
+        setVisibleBiomarkerIndexes([]);
+      }
+    };
+
+    const syncBiomarkerTrackingMode = () => {
+      if (mobileQuery.matches) {
+        startMobileBiomarkerTracking();
+        return;
+      }
+
+      stopMobileBiomarkerTracking();
+    };
+
+    syncBiomarkerTrackingMode();
+    mobileQuery.addEventListener("change", syncBiomarkerTrackingMode);
+
+    return () => {
+      mobileQuery.removeEventListener("change", syncBiomarkerTrackingMode);
+      stopMobileBiomarkerTracking(false);
     };
   }, []);
 
