@@ -1426,23 +1426,19 @@ a {
   overflow: hidden;
   border-radius: 14px;
   background: #10100f;
-  opacity: 0;
-  filter: blur(5px);
-  transform: translateY(22px);
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.08),
     0 18px 48px rgba(32, 35, 31, 0.08);
   outline: none;
-  transition-property: opacity, filter, transform, flex-grow, box-shadow;
-  transition-duration: 640ms, 640ms, 640ms, 520ms, 240ms;
-  transition-delay: var(--stagger, 0ms), var(--stagger, 0ms), var(--stagger, 0ms), 0ms, 0ms;
+  transition-property: flex-grow, box-shadow;
+  transition-duration: 520ms, 240ms;
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .biomarker-card.is-visible {
-  opacity: 1;
-  filter: blur(0);
-  transform: translateY(0);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.1),
+    0 24px 64px rgba(32, 35, 31, 0.14);
 }
 
 .biomarker-row:has(.biomarker-card:is(:hover, :focus-visible)) .biomarker-card {
@@ -1472,6 +1468,7 @@ a {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.biomarker-card.is-visible img,
 .biomarker-card:hover img,
 .biomarker-card:focus-visible img {
   filter: grayscale(0) contrast(1.02) brightness(0.96) saturate(1.12);
@@ -1491,6 +1488,7 @@ a {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.biomarker-card.is-visible .biomarker-card-scrim,
 .biomarker-card:hover .biomarker-card-scrim,
 .biomarker-card:focus-visible .biomarker-card-scrim {
   opacity: 1;
@@ -1528,6 +1526,7 @@ a {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.biomarker-card.is-visible .biomarker-icon,
 .biomarker-card:hover .biomarker-icon,
 .biomarker-card:focus-visible .biomarker-icon {
   opacity: 1;
@@ -1574,6 +1573,7 @@ a {
   transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.biomarker-card.is-visible ul,
 .biomarker-card:hover ul,
 .biomarker-card:focus-visible ul {
   max-height: 9rem;
@@ -2766,25 +2766,6 @@ a {
 
   .biomarker-card {
     min-height: clamp(248px, 52vw, 326px);
-  }
-
-  .biomarker-card img {
-    filter: grayscale(0) contrast(1.02) brightness(0.94) saturate(1.08);
-  }
-
-  .biomarker-card-scrim {
-    opacity: 1;
-    background:
-      linear-gradient(180deg, rgba(10, 10, 10, 0.04) 0%, rgba(10, 10, 10, 0.16) 36%, rgba(10, 10, 10, 0.82) 100%),
-      linear-gradient(90deg, rgba(184, 93, 53, 0.16), rgba(10, 10, 10, 0.04));
-  }
-
-  .biomarker-card ul {
-    max-height: 9rem;
-    margin-top: 14px;
-    opacity: 1;
-    filter: none;
-    transform: none;
   }
 }
 

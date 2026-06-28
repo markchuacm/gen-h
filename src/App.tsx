@@ -660,27 +660,29 @@ function App() {
     const cards = Array.from(document.querySelectorAll<HTMLElement>(".biomarker-card"));
 
     if (!("IntersectionObserver" in window)) {
-      setVisibleBiomarkerIndexes(biomarkerGroups.map((_, index) => index));
+      setVisibleBiomarkerIndexes([]);
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (!entry.isIntersecting) {
+          const index = Number((entry.target as HTMLElement).dataset.biomarkerIndex);
+          if (Number.isNaN(index)) {
             return;
           }
 
-          const index = Number((entry.target as HTMLElement).dataset.biomarkerIndex);
-          if (!Number.isNaN(index)) {
+          if (entry.isIntersecting) {
             setVisibleBiomarkerIndexes((current) => (
               current.includes(index) ? current : [...current, index]
             ));
+            return;
           }
-          observer.unobserve(entry.target);
+
+          setVisibleBiomarkerIndexes((current) => current.filter((visibleIndex) => visibleIndex !== index));
         });
       },
-      { rootMargin: "0px 0px -24% 0px", threshold: 0.18 },
+      { rootMargin: "-12% 0px -28% 0px", threshold: 0.36 },
     );
 
     cards.forEach((card) => observer.observe(card));
