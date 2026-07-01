@@ -13,7 +13,7 @@ import {
   Waves,
   X,
 } from "lucide-react";
-import heroVideo from "../assets/hero-draft1.mp4";
+import heroVideo from "../assets/Gen-H_Hero_v1.mp4";
 import processBaselineImage from "../assets/process-step-teleconsult.jpg";
 import processBiomarkersImage from "../assets/process-step-biomarker-plan.jpg";
 import processLabsImage from "../assets/process-step-blood-draw.jpg";
@@ -29,7 +29,7 @@ const whatsappHref = `https://wa.me/60173280063?text=${encodeURIComponent(whatsa
 const futureHealthCards = [
   {
     number: "01",
-    title: "Deeper biomarkers",
+    title: "Deeper testing",
     text: "More than a standard screening",
     visual: "biomarkers",
   },
@@ -77,7 +77,7 @@ function WhatsAppIcon() {
 }
 
 function WhatsAppCta({
-  children = "Enquire",
+  children = "Book a consult",
   variant = "primary",
 }: {
   children?: string;
@@ -392,7 +392,7 @@ const monitorProofs = [
   "Monitor how your body changes",
 ];
 
-const biomarkerProofs = ["In-depth testing", "Focused on longevity", "Curated by experts"];
+const biomarkerProofs = ["100+ biomarkers", "Earlier health insights", "Doctor-led interpretation"];
 
 type ComparisonRow = {
   criterion: string;
@@ -551,6 +551,7 @@ function App() {
   const [visibleBiomarkerIndexes, setVisibleBiomarkerIndexes] = useState<number[]>([]);
   const [visibleFutureCardIndexes, setVisibleFutureCardIndexes] = useState<number[]>([]);
   const [launchPriceProgress, setLaunchPriceProgress] = useState(0);
+  const [visibleLaunchPriceStepCount, setVisibleLaunchPriceStepCount] = useState(0);
 
   useEffect(() => {
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -637,8 +638,7 @@ function App() {
         element: document.querySelector<HTMLElement>(".intro-section"),
         trigger: document.querySelector<HTMLElement>(".intro-section h2"),
         variables: [
-          { name: "--normal-underline", start: 0.25, end: 0.58 },
-          { name: "--optimal-underline", start: 0.25, end: 0.58 },
+          { name: "--changing-underline", start: 0.25, end: 0.58 },
         ],
       },
       {
@@ -1044,6 +1044,7 @@ function App() {
     }
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mobileQuery = window.matchMedia("(max-width: 720px)");
     const clamp = (value: number) => Math.min(Math.max(value, 0), 1);
     let frame = 0;
 
@@ -1060,12 +1061,59 @@ function App() {
       sticky.classList.toggle("is-ended", mode === "ended");
     };
 
+    const syncLaunchTrack = () => {
+      const timeline = sticky.querySelector<HTMLElement>(".launch-price-timeline");
+      const firstDot = sticky.querySelector<HTMLElement>(".launch-price-step:first-child .launch-step-dot");
+      const lastDot = sticky.querySelector<HTMLElement>(".launch-price-step:last-child .launch-step-dot");
+
+      if (!timeline || !firstDot || !lastDot) {
+        return { firstDot, lastDot };
+      }
+
+      const timelineRect = timeline.getBoundingClientRect();
+      const firstDotRect = firstDot.getBoundingClientRect();
+      const lastDotRect = lastDot.getBoundingClientRect();
+      const trackTop = firstDotRect.top + firstDotRect.height / 2 - timelineRect.top;
+      const trackBottom = lastDotRect.top + lastDotRect.height / 2 - timelineRect.top;
+
+      sticky.style.setProperty("--launch-mobile-track-top", `${trackTop}px`);
+      sticky.style.setProperty("--launch-mobile-track-height", `${Math.max(trackBottom - trackTop, 0)}px`);
+
+      return { firstDot, lastDot };
+    };
+
     const updateLaunchPriceProgress = () => {
       frame = 0;
 
       if (reducedMotion.matches) {
         setLaunchPriceProgress(1);
+        setVisibleLaunchPriceStepCount(3);
         resetSticky();
+        return;
+      }
+
+      if (mobileQuery.matches) {
+        resetSticky();
+        const { firstDot, lastDot } = syncLaunchTrack();
+        const steps = Array.from(sticky.querySelectorAll<HTMLElement>(".launch-price-step"));
+        const viewportCenter = (window.innerHeight || document.documentElement.clientHeight) / 2;
+        const firstDotRect = firstDot?.getBoundingClientRect();
+        const lastDotRect = lastDot?.getBoundingClientRect();
+        const firstDotCenter = firstDotRect ? firstDotRect.top + firstDotRect.height / 2 : 0;
+        const lastDotCenter = lastDotRect ? lastDotRect.top + lastDotRect.height / 2 : 1;
+        const trackDistance = Math.max(lastDotCenter - firstDotCenter, 1);
+        const progress = clamp((viewportCenter - firstDotCenter) / trackDistance);
+        const visibleStepCount = steps.filter((step) => {
+          const stepRect = step.getBoundingClientRect();
+          return stepRect.top + stepRect.height / 2 <= viewportCenter;
+        }).length;
+
+        setLaunchPriceProgress((current) => (
+          Math.abs(current - progress) < 0.004 ? current : progress
+        ));
+        setVisibleLaunchPriceStepCount((current) => (
+          current === visibleStepCount ? current : visibleStepCount
+        ));
         return;
       }
 
@@ -1081,21 +1129,7 @@ function App() {
 
       sticky.style.setProperty("--launch-sticky-left", `${sectionRect.left}px`);
       sticky.style.setProperty("--launch-sticky-width", `${sectionRect.width}px`);
-
-      const timeline = sticky.querySelector<HTMLElement>(".launch-price-timeline");
-      const firstDot = sticky.querySelector<HTMLElement>(".launch-price-step:first-child .launch-step-dot");
-      const lastDot = sticky.querySelector<HTMLElement>(".launch-price-step:last-child .launch-step-dot");
-
-      if (timeline && firstDot && lastDot) {
-        const timelineRect = timeline.getBoundingClientRect();
-        const firstDotRect = firstDot.getBoundingClientRect();
-        const lastDotRect = lastDot.getBoundingClientRect();
-        const trackTop = firstDotRect.top + firstDotRect.height / 2 - timelineRect.top;
-        const trackBottom = lastDotRect.top + lastDotRect.height / 2 - timelineRect.top;
-
-        sticky.style.setProperty("--launch-mobile-track-top", `${trackTop}px`);
-        sticky.style.setProperty("--launch-mobile-track-height", `${Math.max(trackBottom - trackTop, 0)}px`);
-      }
+      syncLaunchTrack();
 
       if (fixedEnd <= fixedStart || scrollY < fixedStart) {
         setStickyMode("default");
@@ -1105,8 +1139,19 @@ function App() {
         setStickyMode("fixed");
       }
 
+      const visibleStepCount = progress >= 0.96
+        ? 3
+        : progress >= 0.5
+          ? 2
+          : progress >= 0.06
+            ? 1
+            : 0;
+
       setLaunchPriceProgress((current) => (
         Math.abs(current - progress) < 0.004 ? current : progress
+      ));
+      setVisibleLaunchPriceStepCount((current) => (
+        current === visibleStepCount ? current : visibleStepCount
       ));
     };
 
@@ -1122,6 +1167,7 @@ function App() {
     window.addEventListener("scroll", requestLaunchPriceProgress, { passive: true });
     window.addEventListener("resize", requestLaunchPriceProgress);
     reducedMotion.addEventListener("change", requestLaunchPriceProgress);
+    mobileQuery.addEventListener("change", requestLaunchPriceProgress);
 
     return () => {
       if (frame) {
@@ -1132,16 +1178,9 @@ function App() {
       window.removeEventListener("scroll", requestLaunchPriceProgress);
       window.removeEventListener("resize", requestLaunchPriceProgress);
       reducedMotion.removeEventListener("change", requestLaunchPriceProgress);
+      mobileQuery.removeEventListener("change", requestLaunchPriceProgress);
     };
   }, []);
-
-  const visibleLaunchPriceStepCount = launchPriceProgress >= 0.96
-    ? 3
-    : launchPriceProgress >= 0.5
-      ? 2
-      : launchPriceProgress >= 0.06
-        ? 1
-        : 0;
 
   return (
     <main className="site-shell">
@@ -1180,12 +1219,12 @@ function App() {
               <span>Tailored to long-term health</span>
             </div>
             <div>
-              <strong>Personalized</strong>
-              <span>Designed for Malaysians</span>
+              <strong>Earlier risk signals</strong>
+              <span>Before symptoms appear</span>
             </div>
             <div>
-              <strong>Accessible</strong>
-              <span>RM99 teleconsult</span>
+              <strong>Tracked over time</strong>
+              <span>See what&apos;s changing</span>
             </div>
           </div>
         </div>
@@ -1193,23 +1232,19 @@ function App() {
 
       <section className="section intro-section">
         <div className="section-heading centered">
-          <p className="eyebrow">Advanced health intelligence</p>
+          <p className="eyebrow">Why it matters</p>
           <h2>
-            Most check-ups stop at{" "}
-            <span className="keep-together">
-              <span className="scroll-underline intro-emphasis-normal">normal</span>.
-            </span>{" "}
-            <span className="keep-together">Gen-H</span> looks for what is{" "}
-            <span className="scroll-underline intro-emphasis-optimal">optimal</span> for you.
+            Most people don&apos;t realise their health is{" "}
+            <span className="scroll-underline intro-emphasis-changing">changing</span> until it&apos;s{" "}
+            <em>too late</em>
           </h2>
-          <WhatsAppCta variant="ghost">Find out how</WhatsAppCta>
         </div>
       </section>
 
       <section className="future-health-section" id="future-health" aria-label="Future health preview">
         <div className="future-health-heading">
           <h2>
-            Your <em>future</em> health, revealed <em>today</em>.
+            Gen-H <em>looks deeper</em>
           </h2>
         </div>
         <div className="future-card-grid">
@@ -1235,7 +1270,7 @@ function App() {
         <div className="section-heading centered biomarker-section-heading">
           <p className="eyebrow">What we test</p>
           <h2>
-            100+ biomarkers, expert curated for <em>longevity</em>
+            The answers are in the <em>details</em>
           </h2>
           <div className="monitor-proof-row biomarker-proof-row" aria-label="Biomarker benefits">
             {biomarkerProofs.map((proof) => (
@@ -1295,7 +1330,7 @@ function App() {
         <div className="section-heading how-process-intro">
           <p className="eyebrow">How it works</p>
           <h2>
-            Your tests and care plan, built specifically for <em>you</em>.
+            From early signals to a plan you can <em>act on</em>.
           </h2>
         </div>
 
@@ -1342,7 +1377,7 @@ function App() {
         </div>
 
         <div className="section-cta-row">
-          <WhatsAppCta>Develop your personalized plan</WhatsAppCta>
+          <WhatsAppCta>Book a consult</WhatsAppCta>
         </div>
       </section>
 
@@ -1379,7 +1414,7 @@ function App() {
         </div>
 
         <div className="section-cta-row">
-          <WhatsAppCta variant="ghost">Ask about doctors</WhatsAppCta>
+          <WhatsAppCta variant="ghost">Book a consult</WhatsAppCta>
         </div>
       </section>
 
@@ -1426,7 +1461,7 @@ function App() {
           ))}
         </div>
         <div className="comparison-cta">
-          <WhatsAppCta variant="ghost">Compare your options</WhatsAppCta>
+          <WhatsAppCta variant="ghost">Book a consult</WhatsAppCta>
         </div>
       </section>
 
@@ -1439,7 +1474,7 @@ function App() {
           <div className="founding-heading">
             <p className="eyebrow">Launch price</p>
             <h2>
-              Early <em className="keep-together">Gen-H</em> baseline programme
+              Start with RM99. <em>Risk-free.</em>
             </h2>
           </div>
 
@@ -1473,7 +1508,7 @@ function App() {
           </div>
 
           <div className="section-cta-row launch-price-cta">
-            <WhatsAppCta>Book teleconsult</WhatsAppCta>
+            <WhatsAppCta>Book a consult</WhatsAppCta>
           </div>
         </div>
       </section>
@@ -1509,7 +1544,7 @@ function App() {
           ))}
         </div>
         <div className="section-cta-row">
-          <WhatsAppCta>Enquire on WhatsApp</WhatsAppCta>
+          <WhatsAppCta>Book a consult</WhatsAppCta>
         </div>
       </section>
 
@@ -1532,7 +1567,7 @@ function App() {
             For the <em>people</em> that matter most.
           </h2>
           <p>Take care of yourself, with Gen-H.</p>
-          <WhatsAppCta>Enquire</WhatsAppCta>
+          <WhatsAppCta>Book a consult</WhatsAppCta>
         </div>
       </section>
     </main>
