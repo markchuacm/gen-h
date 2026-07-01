@@ -46,6 +46,7 @@ type Route =
 type StepId = "reason" | "about" | "health" | "review";
 type StepStatus = "not-started" | "in-progress" | "complete" | "locked";
 type TernaryAnswer = "" | "no" | "yes" | "not-sure";
+type HealthSubstepId = "medical" | "medications" | "lifestyle";
 
 type Account = {
   fullName: string;
@@ -231,6 +232,24 @@ const reportTypeOptions = [
   "Other relevant document",
 ] as const;
 
+const healthSubsteps: Array<{ id: HealthSubstepId; title: string; description: string }> = [
+  {
+    id: "medical",
+    title: "Medical background",
+    description: "Conditions, allergies, and family history.",
+  },
+  {
+    id: "medications",
+    title: "Medications & supplements",
+    description: "Current products and regular routines.",
+  },
+  {
+    id: "lifestyle",
+    title: "Lifestyle snapshot",
+    description: "Sleep, movement, nutrition, and habits.",
+  },
+];
+
 const requiredSteps: Array<{
   id: StepId;
   path: Route;
@@ -242,7 +261,7 @@ const requiredSteps: Array<{
     id: "reason",
     path: "/onboarding/reason",
     title: "Your reason for joining",
-    description: "Tell your doctor what you're hoping to understand.",
+    description: "Tell your doctor what matters most to you.",
     Icon: HeartHandshake,
   },
   {
@@ -256,14 +275,14 @@ const requiredSteps: Array<{
     id: "health",
     path: "/onboarding/health-context",
     title: "Your health context",
-    description: "Share your medical background, current routine, and lifestyle snapshot.",
+    description: "Share your medical background, routine, and lifestyle snapshot.",
     Icon: ClipboardList,
   },
   {
     id: "review",
     path: "/onboarding/review",
     title: "Review and submit",
-    description: "Confirm your information and permissions before doctor review.",
+    description: "Confirm your information and permissions before review.",
     Icon: ClipboardCheck,
   },
 ];
@@ -271,6 +290,18 @@ const requiredSteps: Array<{
 function parseRoute(): Route {
   const raw = window.location.hash.replace(/^#/, "").split("?")[0] || "/login";
   return routes.includes(raw as Route) ? (raw as Route) : "/login";
+}
+
+function parseMockState() {
+  const query = window.location.hash.split("?")[1] ?? "";
+  const mock = new URLSearchParams(query).get("mock");
+  return mock === "new" || mock === "partial" || mock === "submitted" ? mock : "";
+}
+
+function createMockStory(mockState: "new" | "partial" | "submitted") {
+  if (mockState === "partial") return createPartialStory();
+  if (mockState === "submitted") return createSubmittedStory();
+  return createEmptyStory({ fullName: "Gen-H Member", email: "member@example.com", mobile: "" });
 }
 
 function navigate(route: Route) {
@@ -476,15 +507,12 @@ function isAboutComplete(about: AboutData) {
   );
 }
 
-function isAboutStarted(about: AboutData) {
+function isAboutOnboardingStarted(about: AboutData) {
   return [
-    about.legalName,
     about.preferredName,
     about.dob,
     about.sexAtBirth,
     about.idNumber,
-    about.email,
-    about.mobile,
     about.cityState,
   ].some(hasText);
 }
@@ -492,10 +520,10 @@ function isAboutStarted(about: AboutData) {
 function isHealthComplete(health: HealthData) {
   const conditionComplete =
     hasText(health.conditionStatus) &&
-    (health.conditionStatus === "no" || hasText(health.conditionsText));
+    (health.conditionStatus !== "yes" || hasText(health.conditionsText));
   const allergyComplete =
     hasText(health.allergyStatus) &&
-    (health.allergyStatus === "no" || (health.allergyTypes.length > 0 && hasText(health.allergyDetails)));
+    (health.allergyStatus !== "yes" || (health.allergyTypes.length > 0 && hasText(health.allergyDetails)));
   const familyComplete =
     hasText(health.familyStatus) &&
     (health.familyStatus !== "yes" || health.familyConditions.length > 0);
@@ -550,7 +578,7 @@ function getStepStatus(story: HealthStory, stepId: StepId): StepStatus {
   }
 
   if (stepId === "about") {
-    return aboutComplete ? "complete" : isAboutStarted(story.about) ? "in-progress" : "not-started";
+    return aboutComplete ? "complete" : isAboutOnboardingStarted(story.about) ? "in-progress" : "not-started";
   }
 
   if (stepId === "health") {
@@ -576,15 +604,34 @@ function getNextRequiredPath(story: HealthStory): Route {
   return "/onboarding/submitted";
 }
 
+function getHealthStoryEntryPath(story: HealthStory): Route {
+  const hasStarted =
+    isReasonStarted(story.reason) ||
+    isAboutOnboardingStarted(story.about) ||
+    isHealthStarted(story.health) ||
+    story.reports.intent !== "" ||
+    story.submitted;
+
+  return hasStarted ? getNextRequiredPath(story) : "/onboarding/start";
+}
+
 function statusLabel(status: StepStatus) {
   if (status === "in-progress") return "In progress";
   if (status === "complete") return "Complete";
-  if (status === "locked") return "Locked";
+  if (status === "locked") return "Available later";
   return "Not started";
 }
 
 function toggleInList(list: string[], value: string) {
   return list.includes(value) ? list.filter((item) => item !== value) : [...list, value];
+}
+
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div className="member-progress-track" aria-hidden="true">
+      <span style={{ width: `${value}%` }} />
+    </div>
+  );
 }
 
 function Field({
@@ -791,6 +838,33 @@ function InlineNotice({ children, tone = "warm" }: { children: ReactNode; tone?:
   );
 }
 
+function SegmentedSubstepNav({
+  active,
+  onChange,
+}: {
+  active: HealthSubstepId;
+  onChange: (substep: HealthSubstepId) => void;
+}) {
+  return (
+    <div className="member-substep-nav" role="tablist" aria-label="Health context sections">
+      {healthSubsteps.map((substep, index) => (
+        <button
+          aria-selected={active === substep.id}
+          className={active === substep.id ? "is-active" : ""}
+          key={substep.id}
+          onClick={() => onChange(substep.id)}
+          role="tab"
+          type="button"
+        >
+          <span>{index + 1}</span>
+          <strong>{substep.title}</strong>
+          <small>{substep.description}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function AuthLayout({ children, eyebrow }: { children: ReactNode; eyebrow: string }) {
   return (
     <main className="member-auth-shell">
@@ -922,7 +996,7 @@ function RegisterPage({
         title="Create your Gen-H account"
         copy="Set up secure access now. Your health context comes next, after we explain why it helps your doctor."
       >
-        <form className="member-form" onSubmit={submit}>
+        <form className="member-form member-register-form" onSubmit={submit}>
           <Field autoComplete="name" label="Full name" onChange={setFullName} required value={fullName} />
           <Field autoComplete="email" label="Email" onChange={setEmail} required type="email" value={email} />
           <Field autoComplete="tel" label="Mobile number" onChange={setMobile} required type="tel" value={mobile} />
@@ -997,30 +1071,28 @@ function MemberShell({
   story,
   children,
   currentRoute,
-  onApplyMockState,
   onLogout,
 }: {
   story: HealthStory;
   children: ReactNode;
   currentRoute: Route;
-  onApplyMockState: (state: "new" | "partial" | "submitted") => void;
   onLogout: () => void;
 }) {
-  const completedCount = getCompletedCount(story);
+  const memberName = story.about.preferredName || story.account.fullName || "Gen-H Member";
 
   return (
     <div className="member-app-shell">
-      <aside className="member-sidebar">
-        <button className="member-sidebar-logo" onClick={() => navigate("/dashboard")} type="button">
+      <header className="member-header">
+        <button className="member-header-logo" onClick={() => navigate("/dashboard")} type="button">
           <span>Gen-H</span>
           <small>Member space</small>
         </button>
-        <nav aria-label="Member navigation" className="member-sidebar-nav">
+        <nav aria-label="Member navigation" className="member-header-nav">
           <button className={currentRoute === "/dashboard" ? "is-active" : ""} onClick={() => navigate("/dashboard")} type="button">
             <Home size={18} />
             Dashboard
           </button>
-          <button className={currentRoute.startsWith("/onboarding") ? "is-active" : ""} onClick={() => navigate(getNextRequiredPath(story))} type="button">
+          <button className={currentRoute.startsWith("/onboarding") ? "is-active" : ""} onClick={() => navigate(getHealthStoryEntryPath(story))} type="button">
             <Sparkles size={18} />
             Health story
           </button>
@@ -1029,40 +1101,15 @@ function MemberShell({
             Reports
           </button>
         </nav>
-        <div className="member-sidebar-meta">
-          <div>
-            <span>Required progress</span>
-            <strong>{completedCount} of 4</strong>
-          </div>
-          <div>
-            <span>Your consult</span>
-            <strong>{consultDate}</strong>
-          </div>
-        </div>
-        <label className="member-preview-select">
-          <span>Preview</span>
-          <select onChange={(event) => onApplyMockState(event.target.value as "new" | "partial" | "submitted")} defaultValue="new">
-            <option value="new">New member</option>
-            <option value="partial">Partially complete</option>
-            <option value="submitted">Submitted</option>
-          </select>
-        </label>
-        <button className="member-sidebar-logout" onClick={onLogout} type="button">
-          <LogOut size={17} />
-          Sign out
-        </button>
-      </aside>
-      <div className="member-main-area">
-        <header className="member-topbar">
-          <div>
-            <span>{routeTitles[currentRoute]}</span>
-            <strong>{story.account.fullName || story.about.preferredName || "Gen-H Member"}</strong>
-          </div>
-          <button className="member-button member-button-secondary" onClick={() => navigate("/dashboard")} type="button">
-            <Home size={17} />
-            Dashboard
+        <div className="member-header-profile">
+          <span>{memberName}</span>
+          <button aria-label="Sign out" onClick={onLogout} type="button">
+            <LogOut size={17} />
+            <span>Sign out</span>
           </button>
-        </header>
+        </div>
+      </header>
+      <div className="member-main-area">
         {children}
       </div>
     </div>
@@ -1073,6 +1120,7 @@ function Dashboard({ story }: { story: HealthStory }) {
   const completedCount = getCompletedCount(story);
   const progressPercent = (completedCount / requiredSteps.length) * 100;
   const nextPath = getNextRequiredPath(story);
+  const healthStoryEntryPath = getHealthStoryEntryPath(story);
   const reasonComplete = isReasonComplete(story.reason);
   const aboutComplete = isAboutComplete(story.about);
   const healthComplete = isHealthComplete(story.health);
@@ -1080,65 +1128,104 @@ function Dashboard({ story }: { story: HealthStory }) {
   return (
     <main className="member-page member-dashboard">
       <section className={`member-dashboard-hero ${story.submitted ? "is-submitted" : ""}`}>
-        <div>
-          <p className="member-eyebrow">Consult preparation hub</p>
-          <h1>{story.submitted ? "Your health story has been submitted" : "Prepare for your first Gen-H consult"}</h1>
+        <div className="member-hero-copy">
+          <p className="member-eyebrow">Welcome to your member space</p>
+          <h1>
+            {story.submitted ? (
+              "Your health story has been submitted"
+            ) : (
+              <>
+                Prepare for your{" "}
+                <span className="member-title-line">first Gen{"\u2011"}H consult</span>
+              </>
+            )}
+          </h1>
           <p>
             {story.submitted
               ? "Your doctor will review your information before your consult."
               : "Tell us your health story so your doctor can understand your context before you meet."}
           </p>
         </div>
-        <div className="member-hero-status">
-          <span>{completedCount} of 4 required steps complete</span>
-          <div className="member-progress-track" aria-hidden="true">
-            <span style={{ width: `${progressPercent}%` }} />
+        <div className="member-hero-visual" aria-label="Consult preparation progress">
+          <div className="member-diagnostic-still-life" aria-hidden="true">
+            <div className="member-still-life-box">
+              <span>Gen-H</span>
+              <small>Preventive health panel</small>
+            </div>
+            <div className="member-still-life-tubes">
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            <div className="member-still-life-tablet">
+              <span>Your health story is taking clarity</span>
+            </div>
+            <div className="member-still-life-glass" />
+            <div className="member-still-life-pen" />
           </div>
-          <div className="member-hero-stats">
-            <span>
-              <Clock3 size={16} />
-              10-15 minutes
-            </span>
-            <span>
-              <CalendarDays size={16} />
-              {consultDate}
-            </span>
+          <div className="member-hero-status">
+            <small>Consult preparation</small>
+            <span>{completedCount} of 4 steps ready for doctor review</span>
+            <ProgressBar value={progressPercent} />
+            <div className="member-hero-stats">
+              <span>
+                <Clock3 size={16} />
+                10-15 minutes to complete
+              </span>
+              <span>
+                <CalendarDays size={16} />
+                {consultDate}
+              </span>
+            </div>
+            <button className="member-button member-button-primary" onClick={() => navigate(healthStoryEntryPath)} type="button">
+              {story.submitted ? "View submitted story" : completedCount > 0 ? "Continue your health story" : "Start my health story"}
+              <ArrowRight size={18} />
+            </button>
           </div>
-          <button className="member-button member-button-primary" onClick={() => navigate(nextPath)} type="button">
-            {story.submitted ? "View submitted story" : completedCount > 0 ? "Continue" : "Start my health story"}
-            <ArrowRight size={18} />
-          </button>
         </div>
       </section>
 
-      <section className="member-dashboard-grid" aria-label="Required preparation steps">
-        {requiredSteps.map((step) => {
-          const status = getStepStatus(story, step.id);
-          const locked = status === "locked";
-          const cta = status === "complete" ? "Review" : status === "in-progress" ? "Continue" : "Start";
-          const target = step.id === "review" && !reasonComplete ? "/onboarding/reason" : step.id === "review" && !aboutComplete ? "/onboarding/about" : step.id === "review" && !healthComplete ? "/onboarding/health-context" : step.path;
+      <section className="member-dashboard-steps-section" aria-label="Required preparation steps">
+        <div className="member-section-heading">
+          <div>
+            <p className="member-eyebrow">Your required steps</p>
+          </div>
+          <span>{story.submitted ? "Submitted" : "Continue where it helps most"}</span>
+        </div>
+        <div className="member-dashboard-grid">
+          {requiredSteps.map((step) => {
+            const status = getStepStatus(story, step.id);
+            const locked = status === "locked";
+            const cta = status === "complete" ? "Review" : status === "in-progress" ? "Continue" : "Start";
+            const target = step.id === "review" && !reasonComplete ? "/onboarding/reason" : step.id === "review" && !aboutComplete ? "/onboarding/about" : step.id === "review" && !healthComplete ? "/onboarding/health-context" : step.path;
+            const isNext = !story.submitted && !locked && step.path === nextPath;
 
-          return (
-            <article className={`member-step-card member-step-${status}`} key={step.id}>
-              <div className="member-step-icon">
-                {locked ? <LockKeyhole size={22} /> : <step.Icon size={22} />}
-              </div>
-              <div>
-                <span className="member-status-badge">{statusLabel(status)}</span>
-                <h2>{step.title}</h2>
-                <p>{step.description}</p>
-              </div>
-              <button className="member-card-link" disabled={locked} onClick={() => navigate(target)} type="button">
-                {locked ? "Complete earlier steps" : cta}
-                <ChevronRight size={17} />
-              </button>
-            </article>
-          );
-        })}
+            return (
+              <article className={`member-step-card member-step-${status} ${isNext ? "member-step-next" : ""}`} key={step.id}>
+                <div className="member-step-icon">
+                  {locked ? <LockKeyhole size={22} /> : <step.Icon size={22} />}
+                </div>
+                <div>
+                  <span className="member-status-badge">{isNext ? "In progress" : statusLabel(status)}</span>
+                  <h2>{step.title}</h2>
+                  <p>{step.description}</p>
+                </div>
+                <button className="member-card-link" disabled={locked} onClick={() => navigate(target)} type="button">
+                  {locked ? "Available after earlier steps" : cta}
+                  <ChevronRight size={17} />
+                </button>
+              </article>
+            );
+          })}
+        </div>
       </section>
 
-      <section className="member-dashboard-lower">
+      <section className="member-dashboard-bottom">
         <article className="member-reports-card">
+          <div className="member-reports-icon">
+            <FileUp size={22} />
+          </div>
           <div>
             <span className="member-status-badge member-status-optional">Optional but helpful</span>
             <h2>{story.submitted ? "Upload additional reports" : "Upload past reports"}</h2>
@@ -1154,21 +1241,28 @@ function Dashboard({ story }: { story: HealthStory }) {
         </article>
 
         <article className="member-next-card">
-          <p className="member-eyebrow">What happens next</p>
-          <ol>
-            <li>
-              <strong>Submit your health story</strong>
-              <span>We'll organise your information for your doctor.</span>
-            </li>
-            <li>
-              <strong>Your doctor reviews your context</strong>
-              <span>They'll review your background, current routine, and any uploaded reports.</span>
-            </li>
-            <li>
-              <strong>Join your first consult</strong>
-              <span>Your doctor will discuss your concerns and recommend the right next steps.</span>
-            </li>
-          </ol>
+          <div>
+            <p className="member-eyebrow">What happens next</p>
+            <ol>
+              <li>
+                <strong>Submit your health story</strong>
+                <span>We'll organise your information for your doctor.</span>
+              </li>
+              <li>
+                <strong>Doctor review</strong>
+                <span>Your doctor reviews your context and any uploaded reports.</span>
+              </li>
+              <li>
+                <strong>Join your first consult</strong>
+                <span>You'll discuss your concerns and choose the right next steps.</span>
+              </li>
+            </ol>
+          </div>
+          <div className="member-next-visual" aria-hidden="true">
+            <span />
+            <span />
+            <span />
+          </div>
         </article>
       </section>
     </main>
@@ -1226,17 +1320,23 @@ function StartScreen({ story }: { story: HealthStory }) {
       subtext="Tell us your health story so your doctor can understand your context before you meet."
     >
       <section className="member-content-card member-consent-gate">
-        <ShieldCheck size={28} />
-        <div>
-          <h2>Before we begin</h2>
-          <p>
-            We'll ask about your health background, lifestyle, current medications or supplements, and any past reports
-            you'd like your doctor to review.
-          </p>
-          <p>
-            By continuing, you consent for Gen-H to collect this information to prepare your first consult. You'll review
-            the full consent and privacy terms before submitting.
-          </p>
+        <div className="member-start-copy">
+          <ShieldCheck size={28} />
+          <div>
+            <h2>Before we begin</h2>
+            <p>
+              We'll ask about your health background, lifestyle, current medications or supplements, and any past reports
+              you'd like your doctor to review.
+            </p>
+            <p>
+              By continuing, you consent for Gen-H to collect this information to prepare your first consult. You'll review
+              the full consent and privacy terms before submitting.
+            </p>
+            <span>This usually takes 10-15 minutes. You can come back anytime before your consult.</span>
+          </div>
+        </div>
+        <div className="member-start-visual" aria-hidden="true">
+          <img alt="" src={heroConsultImage} />
         </div>
         <div className="member-sticky-actions">
           <button className="member-button member-button-primary" onClick={() => navigate("/onboarding/reason")} type="button">
@@ -1353,44 +1453,64 @@ function AboutScreen({
       subtext="We use these details to match your consult notes, reports, and lab records safely."
       backTo="/onboarding/reason"
     >
-      <section className="member-content-card">
-        <div className="member-form-grid">
-          <Field label="Full legal name" onChange={(legalName) => updateAbout({ legalName })} required value={story.about.legalName} />
-          <Field label="Preferred name" onChange={(preferredName) => updateAbout({ preferredName })} value={story.about.preferredName} />
-          <Field label="Date of birth" onChange={(dob) => updateAbout({ dob })} required type="date" value={story.about.dob} />
-          <SelectField
-            label="Sex at birth"
-            onChange={(sexAtBirth) => updateAbout({ sexAtBirth })}
-            options={sexOptions}
-            required
-            value={story.about.sexAtBirth}
-          />
-          <label className="member-field">
-            <span>
-              ID type<em>*</em>
-            </span>
-            <select
-              onChange={(event) => {
-                const idType = event.target.value as "nric" | "passport";
-                updateAbout({ idType, nationality: idType === "nric" ? "Malaysian" : "" });
-              }}
-              value={story.about.idType}
-            >
-              <option value="nric">NRIC</option>
-              <option value="passport">Passport</option>
-            </select>
-          </label>
-          <Field label="ID number" onChange={(idNumber) => updateAbout({ idNumber })} required value={story.about.idNumber} />
-          <Field
-            disabled={story.about.idType === "nric"}
-            label="Nationality"
-            onChange={(nationality) => updateAbout({ nationality })}
-            required={story.about.idType === "passport"}
-            value={story.about.nationality}
-          />
-          <Field label="Email" onChange={(email) => updateAbout({ email })} required type="email" value={story.about.email} />
-          <Field label="Mobile number" onChange={(mobile) => updateAbout({ mobile })} required type="tel" value={story.about.mobile} />
-          <Field label="City / state" onChange={(cityState) => updateAbout({ cityState })} required value={story.about.cityState} />
+      <section className="member-content-card member-about-card">
+        <div className="member-form-section-card">
+          <div className="member-section-title member-section-title-compact">
+            <IdCard size={20} />
+            <div>
+              <h2>Identity</h2>
+              <p>Used only to match your consult notes and health records safely.</p>
+            </div>
+          </div>
+          <div className="member-form-grid">
+            <Field label="Full legal name" onChange={(legalName) => updateAbout({ legalName })} required value={story.about.legalName} />
+            <Field label="Preferred name" onChange={(preferredName) => updateAbout({ preferredName })} value={story.about.preferredName} />
+            <Field label="Date of birth" onChange={(dob) => updateAbout({ dob })} required type="date" value={story.about.dob} />
+            <SelectField
+              label="Sex at birth"
+              onChange={(sexAtBirth) => updateAbout({ sexAtBirth })}
+              options={sexOptions}
+              required
+              value={story.about.sexAtBirth}
+            />
+            <label className="member-field">
+              <span>
+                ID type<em>*</em>
+              </span>
+              <select
+                onChange={(event) => {
+                  const idType = event.target.value as "nric" | "passport";
+                  updateAbout({ idType, nationality: idType === "nric" ? "Malaysian" : "" });
+                }}
+                value={story.about.idType}
+              >
+                <option value="nric">NRIC</option>
+                <option value="passport">Passport</option>
+              </select>
+            </label>
+            <Field label="ID number" onChange={(idNumber) => updateAbout({ idNumber })} required value={story.about.idNumber} />
+            <Field
+              disabled={story.about.idType === "nric"}
+              label="Nationality"
+              onChange={(nationality) => updateAbout({ nationality })}
+              required={story.about.idType === "passport"}
+              value={story.about.nationality}
+            />
+          </div>
+        </div>
+        <div className="member-form-section-card">
+          <div className="member-section-title member-section-title-compact">
+            <Mail size={20} />
+            <div>
+              <h2>Contact</h2>
+              <p>So the care team can reach you about your consult if needed.</p>
+            </div>
+          </div>
+          <div className="member-form-grid">
+            <Field label="Email" onChange={(email) => updateAbout({ email })} required type="email" value={story.about.email} />
+            <Field label="Mobile number" onChange={(mobile) => updateAbout({ mobile })} required type="tel" value={story.about.mobile} />
+            <Field label="City / state" onChange={(cityState) => updateAbout({ cityState })} required value={story.about.cityState} />
+          </div>
         </div>
         {showError && !complete ? <InlineNotice tone="warning">Complete the required details so we can match your records safely.</InlineNotice> : null}
         <div className="member-sticky-actions">
@@ -1416,6 +1536,7 @@ function HealthContextScreen({
   updateHealth: (patch: Partial<HealthData>) => void;
 }) {
   const [showError, setShowError] = useState(false);
+  const [activeSubstep, setActiveSubstep] = useState<HealthSubstepId>("medical");
   const complete = isHealthComplete(story.health);
 
   const updateLifestyle = (patch: Partial<LifestyleData>) => {
@@ -1438,252 +1559,284 @@ function HealthContextScreen({
       subtext="Share the key medical, lifestyle, and routine details your doctor should know before your consult."
       backTo="/onboarding/about"
     >
-      <div className="member-form-sections">
-        <section className="member-content-card">
-          <div className="member-section-title">
-            <IdCard size={22} />
-            <div>
-              <h2>Medical background</h2>
-              <p>Keep this to the context a doctor can scan before you meet.</p>
-            </div>
-          </div>
-          <ChoiceGroup
-            helper="Have you ever been diagnosed with any medical conditions?"
-            label="Diagnosed conditions"
-            onChange={(value) => updateHealth({ conditionStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
-            options={["No known medical conditions", "Yes", "Not sure"]}
-            required
-            value={
-              story.health.conditionStatus === "no"
-                ? "No known medical conditions"
-                : story.health.conditionStatus === "yes"
-                  ? "Yes"
-                  : story.health.conditionStatus === "not-sure"
-                    ? "Not sure"
-              : ""
-            }
-          />
-          {story.health.conditionStatus === "yes" || story.health.conditionStatus === "not-sure" ? (
-            <>
-              <TextArea
-                helper="Include roughly when it was diagnosed and whether you're currently being treated."
-                label="Tell us what you've been told or diagnosed with"
-                onChange={(conditionsText) => updateHealth({ conditionsText })}
-                placeholder="High cholesterol, thyroid issues, asthma, PCOS, gout, or anything else a doctor has mentioned."
-                required
-                value={story.health.conditionsText}
-              />
-              <MultiChoiceGroup
-                helper="Optional prompts, not a formal checklist."
-                label="Helpful prompts"
-                onToggle={(value) => updateHealth({ conditionPrompts: toggleInList(story.health.conditionPrompts, value) })}
-                options={conditionPrompts}
-                values={story.health.conditionPrompts}
-              />
-            </>
-          ) : null}
+      <section className="member-content-card member-health-card">
+        <SegmentedSubstepNav active={activeSubstep} onChange={setActiveSubstep} />
 
-          <ChoiceGroup
-            helper="Do you have any allergies or important reactions your doctor should know about?"
-            label="Allergies and important reactions"
-            onChange={(value) => updateHealth({ allergyStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
-            options={["No known allergies or reactions", "Yes", "Not sure"]}
-            required
-            value={
-              story.health.allergyStatus === "no"
-                ? "No known allergies or reactions"
-                : story.health.allergyStatus === "yes"
-                  ? "Yes"
-                  : story.health.allergyStatus === "not-sure"
-                    ? "Not sure"
-              : ""
-            }
-          />
-          {story.health.allergyStatus === "yes" || story.health.allergyStatus === "not-sure" ? (
-            <>
-              <MultiChoiceGroup
-                label="What type of allergy or reaction?"
-                onToggle={(value) => updateHealth({ allergyTypes: toggleInList(story.health.allergyTypes, value) })}
-                options={allergyTypeOptions}
-                required
-                values={story.health.allergyTypes}
-              />
-              <TextArea
-                helper="Include what caused the reaction, what symptoms you had, and how serious it was."
-                label="Tell us what happened"
-                onChange={(allergyDetails) => updateHealth({ allergyDetails })}
-                placeholder="Penicillin - rash and swelling. Shellfish - hives."
-                required
-                value={story.health.allergyDetails}
-              />
-            </>
-          ) : null}
-
-          <ChoiceGroup
-            helper="Parents and siblings are most relevant. Grandparents can also be helpful if you know."
-            label="Family history"
-            onChange={(value) => updateHealth({ familyStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
-            options={["No known family history", "Yes", "Not sure"]}
-            required
-            value={
-              story.health.familyStatus === "no"
-                ? "No known family history"
-                : story.health.familyStatus === "yes"
-                  ? "Yes"
-                  : story.health.familyStatus === "not-sure"
-                    ? "Not sure"
-              : ""
-            }
-          />
-          {story.health.familyStatus === "yes" ? (
-            <>
-              <MultiChoiceGroup
-                label="Which conditions have affected your family?"
-                onToggle={(value) => updateHealth({ familyConditions: toggleInList(story.health.familyConditions, value) })}
-                options={familyConditionOptions}
-                required
-                values={story.health.familyConditions}
-              />
-              <TextArea
-                helper="Include who was affected and roughly what age it happened, if you know."
-                label="Anything else that may be useful"
-                onChange={(familyNote) => updateHealth({ familyNote })}
-                placeholder="Father had a heart attack at 52. Mother has diabetes."
-                value={story.health.familyNote}
-              />
-            </>
-          ) : null}
-        </section>
-
-        <section className="member-content-card">
-          <div className="member-section-title">
-            <Pill size={22} />
-            <div>
-              <h2>Medications and supplements</h2>
-              <p>Prescription, over-the-counter, vitamins, herbs, and regular health products.</p>
+        {activeSubstep === "medical" ? (
+          <div className="member-health-substep">
+            <div className="member-section-title">
+              <IdCard size={22} />
+              <div>
+                <h2>Medical background</h2>
+                <p>Keep this to the context a doctor can scan before you meet.</p>
+              </div>
             </div>
-          </div>
-          <ChoiceGroup
-            helper="Are you currently taking any medications, supplements, or regular health products?"
-            label="Current routine"
-            onChange={(value) => updateHealth({ medsStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
-            options={["No", "Yes", "Not sure"]}
-            required
-            value={
-              story.health.medsStatus === "no"
-                ? "No"
-                : story.health.medsStatus === "yes"
-                  ? "Yes"
-                  : story.health.medsStatus === "not-sure"
-                    ? "Not sure"
-              : ""
-            }
-          />
-          {story.health.medsStatus === "yes" || story.health.medsStatus === "not-sure" ? (
-            <div className="member-entry-columns">
-              <EntryList
-                addLabel="Add medication"
-                description="Prescription, over-the-counter, or regular medications."
-                items={story.health.medications}
-                onAdd={() => updateHealth({ medications: [...story.health.medications, createMedication()] })}
-                onUpdate={(items) => updateHealth({ medications: items })}
-                title="Medications"
-                typeLabel="Medication"
-              />
-              <EntryList
-                addLabel="Add supplement"
-                description="Vitamins, minerals, herbs, protein powders, or other health products."
-                items={story.health.supplements}
-                onAdd={() => updateHealth({ supplements: [...story.health.supplements, createMedication()] })}
-                onUpdate={(items) => updateHealth({ supplements: items })}
-                title="Supplements"
-                typeLabel="Supplement"
-              />
-            </div>
-          ) : null}
-        </section>
-
-        <section className="member-content-card">
-          <div className="member-section-title">
-            <HeartHandshake size={22} />
-            <div>
-              <h2>Lifestyle snapshot</h2>
-              <p>Quick context only. Notes are optional.</p>
-            </div>
-          </div>
-          <div className="member-lifestyle-grid">
-            <LifestyleBlock
-              note={story.health.lifestyle.sleepNote}
-              noteLabel="Anything your doctor should know about your sleep?"
-              onNoteChange={(sleepNote) => updateLifestyle({ sleepNote })}
-              onValueChange={(sleep) => updateLifestyle({ sleep })}
-              options={sleepOptions}
-              question="How would you describe your sleep recently?"
-              title="Sleep"
-              value={story.health.lifestyle.sleep}
-            />
-            <LifestyleBlock
-              note={story.health.lifestyle.exerciseNote}
-              noteLabel="What kind of movement or exercise do you usually do?"
-              onNoteChange={(exerciseNote) => updateLifestyle({ exerciseNote })}
-              onValueChange={(exercise) => updateLifestyle({ exercise })}
-              options={exerciseOptions}
-              question="How active are you in a typical week?"
-              title="Movement and exercise"
-              value={story.health.lifestyle.exercise}
-            />
-            <LifestyleBlock
-              note={story.health.lifestyle.nutritionNote}
-              noteLabel="Anything your doctor should know about your diet?"
-              onNoteChange={(nutritionNote) => updateLifestyle({ nutritionNote })}
-              onValueChange={(nutrition) => updateLifestyle({ nutrition })}
-              options={nutritionOptions}
-              question="How would you describe your usual diet?"
-              title="Nutrition"
-              value={story.health.lifestyle.nutrition}
-            />
-            <LifestyleBlock
-              note={story.health.lifestyle.stressNote}
-              noteLabel="Any major stressors or recovery issues?"
-              onNoteChange={(stressNote) => updateLifestyle({ stressNote })}
-              onValueChange={(stress) => updateLifestyle({ stress })}
-              options={stressOptions}
-              question="How would you describe your stress recently?"
-              title="Stress and recovery"
-              value={story.health.lifestyle.stress}
-            />
-          </div>
-          <div className="member-form-grid">
             <ChoiceGroup
-              label="Do you smoke or vape?"
-              onChange={(smoking) => updateLifestyle({ smoking })}
-              options={smokingOptions}
+              helper="Have you ever been diagnosed with any medical conditions?"
+              label="Diagnosed conditions"
+              onChange={(value) => updateHealth({ conditionStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
+              options={["No known medical conditions", "Yes", "Not sure"]}
               required
-              value={story.health.lifestyle.smoking}
+              value={
+                story.health.conditionStatus === "no"
+                  ? "No known medical conditions"
+                  : story.health.conditionStatus === "yes"
+                    ? "Yes"
+                    : story.health.conditionStatus === "not-sure"
+                      ? "Not sure"
+                      : ""
+              }
             />
+            {story.health.conditionStatus === "yes" ? (
+              <>
+                <TextArea
+                  helper="Include roughly when it was diagnosed and whether you're currently being treated."
+                  label="Tell us what you've been told or diagnosed with"
+                  onChange={(conditionsText) => updateHealth({ conditionsText })}
+                  placeholder="High cholesterol, thyroid issues, asthma, PCOS, gout, or anything else a doctor has mentioned."
+                  required
+                  value={story.health.conditionsText}
+                />
+                <MultiChoiceGroup
+                  helper="Optional prompts, not a formal checklist."
+                  label="Helpful prompts"
+                  onToggle={(value) => updateHealth({ conditionPrompts: toggleInList(story.health.conditionPrompts, value) })}
+                  options={conditionPrompts}
+                  values={story.health.conditionPrompts}
+                />
+              </>
+            ) : null}
+
             <ChoiceGroup
-              label="How often do you drink alcohol?"
-              onChange={(alcohol) => updateLifestyle({ alcohol })}
-              options={alcoholOptions}
+              helper="Do you have any allergies or important reactions your doctor should know about?"
+              label="Allergies and important reactions"
+              onChange={(value) => updateHealth({ allergyStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
+              options={["No known allergies or reactions", "Yes", "Not sure"]}
               required
-              value={story.health.lifestyle.alcohol}
+              value={
+                story.health.allergyStatus === "no"
+                  ? "No known allergies or reactions"
+                  : story.health.allergyStatus === "yes"
+                    ? "Yes"
+                    : story.health.allergyStatus === "not-sure"
+                      ? "Not sure"
+                      : ""
+              }
             />
+            {story.health.allergyStatus === "yes" ? (
+              <>
+                <MultiChoiceGroup
+                  label="What type of allergy or reaction?"
+                  onToggle={(value) => updateHealth({ allergyTypes: toggleInList(story.health.allergyTypes, value) })}
+                  options={allergyTypeOptions}
+                  required
+                  values={story.health.allergyTypes}
+                />
+                <TextArea
+                  helper="Include what caused the reaction, what symptoms you had, and how serious it was."
+                  label="Tell us what happened"
+                  onChange={(allergyDetails) => updateHealth({ allergyDetails })}
+                  placeholder="Penicillin - rash and swelling. Shellfish - hives."
+                  required
+                  value={story.health.allergyDetails}
+                />
+              </>
+            ) : null}
+
+            <ChoiceGroup
+              helper="Parents and siblings are most relevant. Grandparents can also be helpful if you know."
+              label="Family history"
+              onChange={(value) => updateHealth({ familyStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
+              options={["No known family history", "Yes", "Not sure"]}
+              required
+              value={
+                story.health.familyStatus === "no"
+                  ? "No known family history"
+                  : story.health.familyStatus === "yes"
+                    ? "Yes"
+                    : story.health.familyStatus === "not-sure"
+                      ? "Not sure"
+                      : ""
+              }
+            />
+            {story.health.familyStatus === "yes" ? (
+              <>
+                <MultiChoiceGroup
+                  label="Which conditions have affected your family?"
+                  onToggle={(value) => updateHealth({ familyConditions: toggleInList(story.health.familyConditions, value) })}
+                  options={familyConditionOptions}
+                  required
+                  values={story.health.familyConditions}
+                />
+                <TextArea
+                  helper="Include who was affected and roughly what age it happened, if you know."
+                  label="Anything else that may be useful"
+                  onChange={(familyNote) => updateHealth({ familyNote })}
+                  placeholder="Father had a heart attack at 52. Mother has diabetes."
+                  value={story.health.familyNote}
+                />
+              </>
+            ) : null}
+            <div className="member-sticky-actions">
+              <button className="member-button member-button-secondary" onClick={() => navigate("/onboarding/about")} type="button">
+                <ArrowLeft size={18} />
+                Back
+              </button>
+              <button className="member-button member-button-primary" onClick={() => setActiveSubstep("medications")} type="button">
+                Continue to medications
+                <ArrowRight size={18} />
+              </button>
+            </div>
           </div>
-          {showError && !complete ? (
-            <InlineNotice tone="warning">Complete the required health context so your doctor has the essentials before you meet.</InlineNotice>
-          ) : null}
-          <div className="member-sticky-actions">
-            <button className="member-button member-button-secondary" onClick={() => navigate("/onboarding/about")} type="button">
-              <ArrowLeft size={18} />
-              Back
-            </button>
-            <button className="member-button member-button-primary" onClick={continueNext} type="button">
-              Continue
-              <ArrowRight size={18} />
-            </button>
+        ) : null}
+
+        {activeSubstep === "medications" ? (
+          <div className="member-health-substep">
+            <div className="member-section-title">
+              <Pill size={22} />
+              <div>
+                <h2>Medications and supplements</h2>
+                <p>Prescription, over-the-counter, vitamins, herbs, and regular health products.</p>
+              </div>
+            </div>
+            <ChoiceGroup
+              helper="Are you currently taking any medications, supplements, or regular health products?"
+              label="Current routine"
+              onChange={(value) => updateHealth({ medsStatus: value === "Yes" ? "yes" : value === "Not sure" ? "not-sure" : "no" })}
+              options={["No", "Yes", "Not sure"]}
+              required
+              value={
+                story.health.medsStatus === "no"
+                  ? "No"
+                  : story.health.medsStatus === "yes"
+                    ? "Yes"
+                    : story.health.medsStatus === "not-sure"
+                      ? "Not sure"
+                      : ""
+              }
+            />
+            {story.health.medsStatus === "no" ? (
+              <div className="member-soft-card">
+                <CheckCircle2 size={18} />
+                <span>No medications or supplements to add right now. You can continue.</span>
+              </div>
+            ) : null}
+            {story.health.medsStatus === "yes" || story.health.medsStatus === "not-sure" ? (
+              <div className="member-entry-columns">
+                <EntryList
+                  addLabel="Add medication"
+                  description="Prescription, over-the-counter, or regular medications."
+                  items={story.health.medications}
+                  onAdd={() => updateHealth({ medications: [...story.health.medications, createMedication()] })}
+                  onUpdate={(items) => updateHealth({ medications: items })}
+                  title="Medications"
+                  typeLabel="Medication"
+                />
+                <EntryList
+                  addLabel="Add supplement"
+                  description="Vitamins, minerals, herbs, protein powders, or other health products."
+                  items={story.health.supplements}
+                  onAdd={() => updateHealth({ supplements: [...story.health.supplements, createMedication()] })}
+                  onUpdate={(items) => updateHealth({ supplements: items })}
+                  title="Supplements"
+                  typeLabel="Supplement"
+                />
+              </div>
+            ) : null}
+            <div className="member-sticky-actions">
+              <button className="member-button member-button-secondary" onClick={() => setActiveSubstep("medical")} type="button">
+                <ArrowLeft size={18} />
+                Back
+              </button>
+              <button className="member-button member-button-primary" onClick={() => setActiveSubstep("lifestyle")} type="button">
+                Continue to lifestyle
+                <ArrowRight size={18} />
+              </button>
+            </div>
           </div>
-        </section>
-      </div>
+        ) : null}
+
+        {activeSubstep === "lifestyle" ? (
+          <div className="member-health-substep">
+            <div className="member-section-title">
+              <HeartHandshake size={22} />
+              <div>
+                <h2>Lifestyle snapshot</h2>
+                <p>Quick context only. Notes are optional.</p>
+              </div>
+            </div>
+            <div className="member-lifestyle-stack">
+              <LifestyleBlock
+                note={story.health.lifestyle.sleepNote}
+                noteLabel="Anything your doctor should know about your sleep?"
+                onNoteChange={(sleepNote) => updateLifestyle({ sleepNote })}
+                onValueChange={(sleep) => updateLifestyle({ sleep })}
+                options={sleepOptions}
+                question="How would you describe your sleep recently?"
+                title="Sleep"
+                value={story.health.lifestyle.sleep}
+              />
+              <LifestyleBlock
+                note={story.health.lifestyle.exerciseNote}
+                noteLabel="What kind of movement or exercise do you usually do?"
+                onNoteChange={(exerciseNote) => updateLifestyle({ exerciseNote })}
+                onValueChange={(exercise) => updateLifestyle({ exercise })}
+                options={exerciseOptions}
+                question="How active are you in a typical week?"
+                title="Movement"
+                value={story.health.lifestyle.exercise}
+              />
+              <LifestyleBlock
+                note={story.health.lifestyle.nutritionNote}
+                noteLabel="Anything your doctor should know about your diet?"
+                onNoteChange={(nutritionNote) => updateLifestyle({ nutritionNote })}
+                onValueChange={(nutrition) => updateLifestyle({ nutrition })}
+                options={nutritionOptions}
+                question="How would you describe your usual diet?"
+                title="Nutrition"
+                value={story.health.lifestyle.nutrition}
+              />
+              <LifestyleBlock
+                note={story.health.lifestyle.stressNote}
+                noteLabel="Any major stressors or recovery issues?"
+                onNoteChange={(stressNote) => updateLifestyle({ stressNote })}
+                onValueChange={(stress) => updateLifestyle({ stress })}
+                options={stressOptions}
+                question="How would you describe your stress recently?"
+                title="Stress"
+                value={story.health.lifestyle.stress}
+              />
+              <LifestyleBlock
+                onValueChange={(smoking) => updateLifestyle({ smoking })}
+                options={smokingOptions}
+                question="Do you smoke or vape?"
+                title="Smoking"
+                value={story.health.lifestyle.smoking}
+              />
+              <LifestyleBlock
+                onValueChange={(alcohol) => updateLifestyle({ alcohol })}
+                options={alcoholOptions}
+                question="How often do you drink alcohol?"
+                title="Alcohol"
+                value={story.health.lifestyle.alcohol}
+              />
+            </div>
+            {showError && !complete ? (
+              <InlineNotice tone="warning">Complete the required health context so your doctor has the essentials before you meet.</InlineNotice>
+            ) : null}
+            <div className="member-sticky-actions">
+              <button className="member-button member-button-secondary" onClick={() => setActiveSubstep("medications")} type="button">
+                <ArrowLeft size={18} />
+                Back
+              </button>
+              <button className="member-button member-button-primary" onClick={continueNext} type="button">
+                Continue to reports
+                <ArrowRight size={18} />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </section>
     </OnboardingLayout>
   );
 }
@@ -1757,14 +1910,25 @@ function LifestyleBlock({
   options: readonly string[];
   value: string;
   onValueChange: (value: string) => void;
-  note: string;
-  noteLabel: string;
-  onNoteChange: (value: string) => void;
+  note?: string;
+  noteLabel?: string;
+  onNoteChange?: (value: string) => void;
 }) {
+  const [noteOpen, setNoteOpen] = useState(Boolean(note));
+
   return (
     <article className="member-lifestyle-card">
       <ChoiceGroup label={title} helper={question} onChange={onValueChange} options={options} required value={value} />
-      <TextArea label={noteLabel} onChange={onNoteChange} value={note} />
+      {noteLabel && onNoteChange ? (
+        noteOpen ? (
+          <TextArea label={noteLabel} onChange={onNoteChange} value={note ?? ""} />
+        ) : (
+          <button className="member-note-toggle" onClick={() => setNoteOpen(true)} type="button">
+            <Plus size={16} />
+            Add note
+          </button>
+        )
+      ) : null}
     </article>
   );
 }
@@ -1818,8 +1982,8 @@ function ReportsScreen({
       subtext="Upload any previous blood tests, health screenings, or relevant medical reports so your doctor can review them before your consult."
       backTo={story.submitted ? "/onboarding/submitted" : "/onboarding/health-context"}
     >
-      <section className="member-content-card">
-        <InlineNotice>Don't worry if you don't have any - you can still continue.</InlineNotice>
+      <section className="member-content-card member-reports-screen-card">
+        <InlineNotice>No reports? That's okay. You can still continue.</InlineNotice>
         <ChoiceGroup
           helper="Do you have any past health reports you'd like your doctor to review?"
           label="Past reports"
@@ -1849,6 +2013,16 @@ function ReportsScreen({
               Choose files
               <input accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" multiple onChange={onFilesSelected} type="file" />
             </label>
+          </div>
+        ) : null}
+        {story.reports.intent === "later" || story.reports.intent === "none" ? (
+          <div className="member-soft-card">
+            <CheckCircle2 size={18} />
+            <span>
+              {story.reports.intent === "later"
+                ? "You can upload reports later from your dashboard."
+                : "You can continue without reports. Your doctor will still review your health story."}
+            </span>
           </div>
         ) : null}
         {story.reports.files.length > 0 ? (
@@ -1997,31 +2171,31 @@ function ReviewSummary({ story }: { story: HealthStory }) {
   return (
     <article className="member-content-card member-summary-card">
       <h2>Health story summary</h2>
-      <div className="member-summary-section">
-        <span>Your reason for joining</span>
+      <details className="member-summary-section" open>
+        <summary>Reason for joining</summary>
         <p>{selectedReasons.join(", ")}</p>
         {story.reason.doctorNote ? <small>{story.reason.doctorNote}</small> : null}
-      </div>
-      <div className="member-summary-section">
-        <span>About you</span>
+      </details>
+      <details className="member-summary-section" open>
+        <summary>About you</summary>
         <p>{story.about.legalName} · {story.about.dob} · {story.about.cityState}</p>
         <small>{story.about.email} · {story.about.mobile}</small>
-      </div>
-      <div className="member-summary-section">
-        <span>Health context</span>
+      </details>
+      <details className="member-summary-section" open>
+        <summary>Health context</summary>
         <p>
-          Conditions: {story.health.conditionStatus === "no" ? "No known medical conditions" : story.health.conditionsText || "Shared"}
+          Conditions: {story.health.conditionStatus === "no" ? "No known medical conditions" : story.health.conditionsText || statusLabelFromTernary(story.health.conditionStatus)}
         </p>
         <p>Family history: {story.health.familyStatus === "yes" ? story.health.familyConditions.join(", ") : statusLabelFromTernary(story.health.familyStatus)}</p>
         <p>Current products: {statusLabelFromTernary(story.health.medsStatus)}</p>
         <small>
-          Sleep: {story.health.lifestyle.sleep || "Not answered"} · Exercise: {story.health.lifestyle.exercise || "Not answered"} · Stress: {story.health.lifestyle.stress || "Not answered"}
+          Sleep: {story.health.lifestyle.sleep || "Not answered"} · Movement: {story.health.lifestyle.exercise || "Not answered"} · Stress: {story.health.lifestyle.stress || "Not answered"}
         </small>
-      </div>
-      <div className="member-summary-section">
-        <span>Uploaded reports</span>
+      </details>
+      <details className="member-summary-section" open>
+        <summary>Reports</summary>
         <p>{story.reports.files.length > 0 ? `${story.reports.files.length} report${story.reports.files.length === 1 ? "" : "s"} attached` : "No reports uploaded"}</p>
-      </div>
+      </details>
     </article>
   );
 }
@@ -2053,6 +2227,11 @@ function SubmittedScreen({ story }: { story: HealthStory }) {
               : "No reports uploaded yet"}
           </span>
         </div>
+        <ol className="member-success-next">
+          <li>Your doctor reviews your health story before the consult.</li>
+          <li>You can still upload additional reports before your appointment.</li>
+          <li>Bring any questions you want to prioritise during the consult.</li>
+        </ol>
         <div className="member-sticky-actions">
           <button className="member-button member-button-secondary" onClick={() => navigate("/dashboard")} type="button">
             Return to dashboard
@@ -2068,9 +2247,12 @@ function SubmittedScreen({ story }: { story: HealthStory }) {
 }
 
 export function MemberApp() {
+  const initialMockState = parseMockState();
   const [route, setRoute] = useState<Route>(parseRoute);
-  const [isAuthed, setIsAuthed] = useState(false);
-  const [story, setStory] = useState<HealthStory>(() => createEmptyStory());
+  const [isAuthed, setIsAuthed] = useState(Boolean(initialMockState));
+  const [story, setStory] = useState<HealthStory>(() =>
+    initialMockState ? createMockStory(initialMockState) : createEmptyStory(),
+  );
 
   useEffect(() => {
     const syncRoute = () => setRoute(parseRoute());
@@ -2087,10 +2269,21 @@ export function MemberApp() {
   }, [route]);
 
   useEffect(() => {
+    if (parseMockState()) return;
     if (!isAuthed && !authRoutes.includes(route)) {
       navigate("/login");
     }
   }, [isAuthed, route]);
+
+  useEffect(() => {
+    const mockState = parseMockState();
+    if (!mockState) return;
+
+    setIsAuthed(true);
+    setStory(createMockStory(mockState));
+
+    window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}#${route}`);
+  }, [route]);
 
   const helpers = useMemo(
     () => ({
@@ -2113,19 +2306,6 @@ export function MemberApp() {
     setIsAuthed(true);
     setStory(createEmptyStory(account));
     navigate("/dashboard");
-  };
-
-  const applyMockState = (state: "new" | "partial" | "submitted") => {
-    setIsAuthed(true);
-    if (state === "partial") {
-      setStory(createPartialStory());
-      return;
-    }
-    if (state === "submitted") {
-      setStory(createSubmittedStory());
-      return;
-    }
-    setStory(createEmptyStory({ fullName: "Gen-H Member", email: "member@example.com", mobile: "" }));
   };
 
   const logout = () => {
@@ -2167,7 +2347,6 @@ export function MemberApp() {
   return (
     <MemberShell
       currentRoute={route}
-      onApplyMockState={applyMockState}
       onLogout={logout}
       story={story}
     >
