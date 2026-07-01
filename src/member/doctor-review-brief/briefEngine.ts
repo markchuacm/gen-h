@@ -84,8 +84,23 @@ const SUPPLEMENT_FIELDS: Array<[keyof IntakeState["supplementsAndMeds"], string]
 /** Generic "topics for your doctor" — never derived from file contents. */
 export function computeReviewAreas(state: IntakeState): BriefItem[] {
   const out: BriefItem[] = [];
+  const insights = state.aiDocumentInsights ?? {};
+
+  state.uploadedFiles.forEach((file) => {
+    const insight = insights[file.id];
+    if (insight?.status === "done") {
+      insight.doctorReviewAreas.forEach((area, index) => {
+        out.push(item(`ra-${file.id}-${index}`, area, "system_generated"));
+      });
+    }
+  });
+
+  if (out.length > 0) return out;
+
   const cats = new Set<UploadCategory>();
-  state.uploadedFiles.forEach((f) => f.detectedCategory && cats.add(f.detectedCategory));
+  state.uploadedFiles.forEach((f) => {
+    if (!insights[f.id] && f.detectedCategory) cats.add(f.detectedCategory);
+  });
 
   cats.forEach((c) =>
     out.push(
@@ -116,20 +131,52 @@ export function buildBriefSections(state: IntakeState): RenderSection[] {
   if (reason.length) sections.push({ id: "reason", title: "Why I'm here", items: reason, editQuestionId: "reason" });
 
   if (state.uploadedFiles.length) {
+    const insights = state.aiDocumentInsights ?? {};
     sections.push({
       id: "uploads",
       title: "Uploaded context",
       editQuestionId: "upload",
-      items: state.uploadedFiles.map((f) =>
-        item(
-          `file-${f.id}`,
-          f.detectedCategory && f.detectedCategory !== "other"
-            ? `${f.name} · ${CATEGORY_LABEL[f.detectedCategory]}`
-            : f.name,
-          "uploaded_report",
-        ),
-      ),
+      items: state.uploadedFiles.map((f) => {
+        const insight = insights[f.id];
+        const labelParts = [
+          insight?.documentType || (f.detectedCategory ? CATEGORY_LABEL[f.detectedCategory] : "Health document"),
+          insight?.provider,
+          insight?.reportDate,
+        ].filter(Boolean);
+        return item(`file-${f.id}`, `${f.name}${labelParts.length ? ` · ${labelParts.join(" · ")}` : ""}`, "uploaded_report");
+      }),
     });
+
+    const visibleItems = state.uploadedFiles.flatMap((f) => {
+      const insight = insights[f.id];
+      if (insight?.status !== "done") return [];
+      const values = [...insight.sections, ...insight.visibleMarkers].slice(0, 18);
+      return values.length
+        ? [item(`visible-${f.id}`, values.join(" · "), "system_generated", insight.documentType)]
+        : [];
+    });
+    if (visibleItems.length) {
+      sections.push({
+        id: "documentSummary",
+        title: "Visible in report",
+        editQuestionId: "upload",
+        items: visibleItems,
+      });
+    }
+
+    const flaggedItems = state.uploadedFiles.flatMap((f) => {
+      const insight = insights[f.id];
+      if (insight?.status !== "done" || insight.flaggedMarkers.length === 0) return [];
+      return [item(`flagged-${f.id}`, insight.flaggedMarkers.join(" · "), "system_generated", "Marked in report")];
+    });
+    if (flaggedItems.length) {
+      sections.push({
+        id: "flaggedMarkers",
+        title: "Marked for doctor review",
+        editQuestionId: "upload",
+        items: flaggedItems,
+      });
+    }
   }
 
   const goals = listItems("goals", state.goals, state.goalsFreeText, "user_answer");

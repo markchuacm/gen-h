@@ -3,7 +3,7 @@
 // report availability → upload (if applicable) → reason → goals → symptoms →
 // lifestyle snapshot → supplements/meds/allergies → preview.
 
-import type { IntakeState, Question, UploadCategory } from "./types";
+import type { DocumentInsight, IntakeState, Question, UploadCategory } from "./types";
 
 export const REPORT_FORK: Question = {
   id: "reportFork",
@@ -134,12 +134,40 @@ const CONTEXT_QUESTIONS: Record<string, Question> = {
   },
 };
 
-function contextQuestionsFor(files: IntakeState["uploadedFiles"]): Question[] {
+function insightToQuestion(insight: DocumentInsight): Question {
+  return {
+    id: insight.questionId,
+    section: "questions",
+    itemLabel: `About your ${insight.documentType}`,
+    type: "text",
+    prompt: insight.question,
+    whyWeAsk: "This helps your doctor know exactly what to focus on when they review this document.",
+    required: false,
+  };
+}
+
+function contextQuestionsFor(
+  files: IntakeState["uploadedFiles"],
+  insights?: Record<string, DocumentInsight>,
+): Question[] {
+  const out: Question[] = [];
+  const coveredCategories = new Set<UploadCategory>();
+
+  // AI-generated questions take priority — one per file that completed successfully
+  files.forEach((f) => {
+    const insight = insights?.[f.id];
+    if ((insight?.status === "done" || insight?.status === "needs_review") && insight.question) {
+      out.push(insightToQuestion(insight));
+      if (insight.status === "done" && f.detectedCategory) coveredCategories.add(f.detectedCategory);
+    }
+  });
+
+  // Hardcoded fallbacks for recognised categories not already covered by AI
   const cats = new Set<UploadCategory>();
   files.forEach((f) => f.detectedCategory && cats.add(f.detectedCategory));
-  const out: Question[] = [];
-  if (cats.has("dna")) out.push(CONTEXT_QUESTIONS.dna);
-  if (cats.has("wearable")) out.push(CONTEXT_QUESTIONS.wearable);
+  if (cats.has("dna") && !coveredCategories.has("dna")) out.push(CONTEXT_QUESTIONS.dna);
+  if (cats.has("wearable") && !coveredCategories.has("wearable")) out.push(CONTEXT_QUESTIONS.wearable);
+
   return out;
 }
 
@@ -161,7 +189,7 @@ export function buildFlow(state: IntakeState): FlowStep[] {
   if (hasRoute(state.hasReports)) {
     steps.push({ key: "upload", kind: "upload" });
     steps.push({ key: "preparing", kind: "preparing" });
-    contextQuestionsFor(state.uploadedFiles).forEach((q) =>
+    contextQuestionsFor(state.uploadedFiles, state.aiDocumentInsights).forEach((q) =>
       steps.push({ key: q.id, kind: "question", question: q }),
     );
   } else {

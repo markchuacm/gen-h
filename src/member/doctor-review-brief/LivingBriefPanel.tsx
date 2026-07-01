@@ -60,6 +60,11 @@ function BriefSectionView({ section, onEdit }: { section: RenderSection; onEdit?
           </li>
         ))}
       </ul>
+      {section.id === "reviewAreas" && (
+        <p className="drb-brief-section-note">
+          These are topics for your doctor to review, not diagnoses or treatment recommendations.
+        </p>
+      )}
     </section>
   );
 }

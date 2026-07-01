@@ -38,6 +38,8 @@ export type BriefSectionId =
   | "symptoms"
   | "lifestyle"
   | "supplements"
+  | "documentSummary"
+  | "flaggedMarkers"
   | "reviewAreas"
   | "questions";
 
@@ -74,6 +76,8 @@ export type IntakeState = {
   symptomsFreeText?: string;
   lifestyle: LifestyleSnapshot;
   supplementsAndMeds: SupplementsAndMeds;
+  // AI-generated insights per uploaded file (keyed by fileId)
+  aiDocumentInsights?: Record<string, DocumentInsight>;
   // Deferred from the required v1 path, kept in the model for later:
   familyHistory?: string;
   priorScreeningHistory?: string;
@@ -118,8 +122,29 @@ export type RenderSection = {
 
 export type BriefStatus = "getting_started" | "useful" | "doctor_ready";
 
+// ─── AI document insights ─────────────────────────────────────────────────────
+// Populated by documentAnalysis.ts after a file is uploaded. Never surfaces
+// clinical interpretations — only visible field names + a patient-facing question.
+
+export type DocumentInsightStatus = "analyzing" | "done" | "needs_review" | "error";
+
+export type DocumentInsight = {
+  fileId: string;
+  documentType: string;
+  provider: string | null;
+  reportDate: string | null;
+  sections: string[];
+  visibleMarkers: string[];
+  flaggedMarkers: string[];
+  doctorReviewAreas: string[];
+  patientFacingSummary: string;
+  question: string;
+  questionId: string; // stable ID used as FlowStep key + contextAnswers key
+  status: DocumentInsightStatus;
+};
+
 export const SOURCE_LABEL: Record<BriefSource, string> = {
   user_answer: "from your answer",
   uploaded_report: "uploaded for doctor review",
-  system_generated: "pending clinician review",
+  system_generated: "prepared from uploaded document",
 };

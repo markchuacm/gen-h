@@ -3,9 +3,9 @@
 // supplements grid, and a file uploader. No chat bubbles, no dense forms.
 
 import { useRef, useState } from "react";
-import { Check, Paperclip, Plus, X } from "lucide-react";
+import { Check, Loader2, Paperclip, Plus, Sparkles, X } from "lucide-react";
 import { CATEGORY_LABEL } from "./briefEngine";
-import type { LifestyleSnapshot, SupplementsAndMeds, UploadedFile } from "./types";
+import type { DocumentInsight, LifestyleSnapshot, SupplementsAndMeds, UploadedFile } from "./types";
 
 // ─── Single select (report fork) ──────────────────────────────────────────────
 
@@ -253,10 +253,12 @@ function formatBytes(bytes: number): string {
 
 export function FileUpload({
   files,
+  insights,
   onAdd,
   onRemove,
 }: {
   files: UploadedFile[];
+  insights?: Record<string, DocumentInsight>;
   onAdd: (files: FileList | File[]) => void;
   onRemove: (id: string) => void;
 }) {
@@ -298,20 +300,58 @@ export function FileUpload({
 
       {files.length > 0 && (
         <ul className="drb-file-list">
-          {files.map((f) => (
-            <li key={f.id} className="drb-file-card">
-              <div className="drb-file-meta">
-                <strong>{f.name}</strong>
-                <span>
-                  {f.detectedCategory ? CATEGORY_LABEL[f.detectedCategory] : "Document"} · {formatBytes(f.size)} ·
-                  Uploaded for doctor review
-                </span>
-              </div>
-              <button type="button" className="drb-file-remove" aria-label={`Remove ${f.name}`} onClick={() => onRemove(f.id)}>
-                <X strokeWidth={2} />
-              </button>
-            </li>
-          ))}
+	          {files.map((f) => {
+	            const ins = insights?.[f.id];
+	            const isAnalyzing = ins?.status === "analyzing";
+	            const isDone = ins?.status === "done";
+	            const needsReview = ins?.status === "needs_review" || ins?.status === "error";
+	            const summaryBits = [
+	              ins?.reportDate ? `Collected: ${ins.reportDate}` : undefined,
+	              ins?.provider ? `Provider: ${ins.provider}` : undefined,
+	            ].filter(Boolean);
+	            return (
+	              <li key={f.id} className="drb-file-card">
+	                <div className="drb-file-meta">
+	                  <strong>{f.name}</strong>
+	                  <span>
+                    {f.detectedCategory ? CATEGORY_LABEL[f.detectedCategory] : "Document"} · {formatBytes(f.size)}
+                  </span>
+                  {isAnalyzing && (
+                    <span className="drb-file-status drb-file-status--analyzing">
+                      <Loader2 strokeWidth={2} className="drb-spin" aria-hidden="true" />
+                      Reviewing document…
+                    </span>
+                  )}
+	                  {isDone && ins.documentType && (
+	                    <span className="drb-file-status drb-file-status--done">
+	                      <Sparkles strokeWidth={2} aria-hidden="true" />
+	                      {ins.documentType} · added to brief
+	                    </span>
+	                  )}
+	                  {isDone && (
+	                    <div className="drb-file-intel">
+	                      {summaryBits.map((bit) => (
+	                        <span key={bit}>{bit}</span>
+	                      ))}
+	                      {ins.sections.length > 0 && <span>Visible sections: {ins.sections.slice(0, 6).join(", ")}</span>}
+	                      {ins.flaggedMarkers.length > 0 && (
+	                        <span>Marked in report: {ins.flaggedMarkers.slice(0, 6).join(", ")}</span>
+	                      )}
+	                    </div>
+	                  )}
+	                  {needsReview && (
+	                    <span className="drb-file-status">Needs doctor review</span>
+	                  )}
+	                  {!isAnalyzing && !isDone && !needsReview && (
+	                    <span className="drb-file-status">Uploaded for doctor review</span>
+	                  )}
+                </div>
+                <button type="button" className="drb-file-remove" aria-label={`Remove ${f.name}`} onClick={() => onRemove(f.id)}>
+                  <X strokeWidth={2} />
+                </button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

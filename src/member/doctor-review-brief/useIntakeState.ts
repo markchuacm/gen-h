@@ -2,11 +2,13 @@
 // Owns the captured answers + the flow position, persists everything to
 // localStorage so the member can leave and resume, and derives the living brief.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildFlow, REPORT_FORK_VALUES } from "./questions";
 import type { FlowStep } from "./questions";
 import { buildBriefSections, computeBriefSummary, detectCategory } from "./briefEngine";
+import { analyzeDocument } from "./documentAnalysis";
 import type {
+  DocumentInsight,
   IntakeState,
   LifestyleSnapshot,
   RenderSection,
@@ -61,6 +63,23 @@ function loadPersisted(): Persisted | null {
   }
 }
 
+function normalizeInsight(insight: DocumentInsight): DocumentInsight {
+  return {
+    fileId: insight.fileId,
+    documentType: insight.documentType ?? "",
+    provider: insight.provider ?? null,
+    reportDate: insight.reportDate ?? null,
+    sections: insight.sections ?? [],
+    visibleMarkers: insight.visibleMarkers ?? [],
+    flaggedMarkers: insight.flaggedMarkers ?? [],
+    doctorReviewAreas: insight.doctorReviewAreas ?? [],
+    patientFacingSummary: insight.patientFacingSummary ?? "",
+    question: insight.question ?? "",
+    questionId: insight.questionId,
+    status: insight.status === "analyzing" ? "error" : insight.status,
+  };
+}
+
 export type IntakeController = {
   state: IntakeState;
   phase: Phase;
@@ -70,6 +89,7 @@ export type IntakeController = {
   isLastIntakeStep: boolean;
   sections: RenderSection[];
   summary: ReturnType<typeof computeBriefSummary>;
+  aiAnalyzing: boolean; // true while any file is being analysed
   // mutations
   setReportFork: (optionIndex: number) => void;
   toggleMulti: (field: "reason" | "goals" | "symptoms", value: string) => void;
@@ -89,7 +109,16 @@ export type IntakeController = {
 
 export function useIntakeState(opts?: { initialPhase?: Phase }): IntakeController {
   const [persisted] = useState<Persisted | null>(loadPersisted);
-  const [state, setState] = useState<IntakeState>(() => persisted?.state ?? createInitialState());
+  // On hydration, reset any stale 'analyzing' insights to 'error' (the API call was lost on page close)
+  const [state, setState] = useState<IntakeState>(() => {
+    const base = persisted?.state ?? createInitialState();
+    if (!base.aiDocumentInsights) return base;
+    const fixed: Record<string, DocumentInsight> = {};
+    for (const [id, ins] of Object.entries(base.aiDocumentInsights)) {
+      fixed[id] = normalizeInsight(ins);
+    }
+    return { ...base, aiDocumentInsights: fixed };
+  });
   const [phase, setPhase] = useState<Phase>(opts?.initialPhase ?? persisted?.phase ?? "intake");
   const [stepIndex, setStepIndex] = useState<number>(persisted?.stepIndex ?? 0);
 
@@ -102,9 +131,17 @@ export function useIntakeState(opts?: { initialPhase?: Phase }): IntakeControlle
     }
   }, [state, phase, stepIndex]);
 
+  // Holds actual File objects between addFiles() and the async analysis call.
+  // Not state — File objects can't be serialized, and changes shouldn't re-render.
+  const fileObjectsRef = useRef<Map<string, File>>(new Map());
+
   const flow = useMemo(() => buildFlow(state), [state]);
   const sections = useMemo(() => buildBriefSections(state), [state]);
   const summary = useMemo(() => computeBriefSummary(state), [state]);
+  const aiAnalyzing = useMemo(
+    () => Object.values(state.aiDocumentInsights ?? {}).some((i) => i.status === "analyzing"),
+    [state.aiDocumentInsights],
+  );
 
   const boundedIndex = Math.min(stepIndex, Math.max(0, flow.length - 1));
   const currentStep = flow[boundedIndex];
@@ -173,26 +210,116 @@ export function useIntakeState(opts?: { initialPhase?: Phase }): IntakeControlle
 
   const addFiles = useCallback((files: FileList | File[]) => {
     const incoming = Array.from(files);
-    setState((prev) => {
-      const mapped: UploadedFile[] = incoming.map((f) => ({
-        id: uid(),
-        name: f.name,
-        type: f.type || "application/octet-stream",
-        size: f.size,
-        uploadedAt: new Date().toISOString(),
-        status: "uploaded",
-        detectedCategory: detectCategory(f.name, f.type),
-      }));
-      return { ...prev, uploadedFiles: [...prev.uploadedFiles, ...mapped], updatedAt: new Date().toISOString() };
+    const mapped: UploadedFile[] = incoming.map((f) => ({
+      id: uid(),
+      name: f.name,
+      type: f.type || "application/octet-stream",
+      size: f.size,
+      uploadedAt: new Date().toISOString(),
+      status: "uploaded",
+      detectedCategory: detectCategory(f.name, f.type),
+    }));
+
+    // Keep File objects alive for the async analysis calls below
+    mapped.forEach((meta, i) => fileObjectsRef.current.set(meta.id, incoming[i]));
+
+    // Set 'analyzing' placeholder insights immediately so the UI can react
+    const initialInsights: Record<string, DocumentInsight> = {};
+    mapped.forEach((meta) => {
+      initialInsights[meta.id] = {
+        fileId: meta.id,
+        documentType: "",
+        provider: null,
+        reportDate: null,
+        sections: [],
+        visibleMarkers: [],
+        flaggedMarkers: [],
+        doctorReviewAreas: [],
+        patientFacingSummary: "",
+        question: "",
+        questionId: `ai_q_${meta.id.slice(0, 8)}`,
+        status: "analyzing",
+      };
+    });
+
+    setState((prev) => ({
+      ...prev,
+      uploadedFiles: [...prev.uploadedFiles, ...mapped],
+      aiDocumentInsights: { ...(prev.aiDocumentInsights ?? {}), ...initialInsights },
+      updatedAt: new Date().toISOString(),
+    }));
+
+    // Fire analysis calls through our backend endpoint; no secrets live in browser code.
+    mapped.forEach((meta) => {
+      const file = fileObjectsRef.current.get(meta.id);
+      if (!file) return;
+
+      analyzeDocument(file, meta.detectedCategory)
+        .then((result) => {
+          fileObjectsRef.current.delete(meta.id);
+          setState((prev) => ({
+            ...prev,
+            aiDocumentInsights: {
+              ...(prev.aiDocumentInsights ?? {}),
+              [meta.id]: {
+                fileId: meta.id,
+                documentType: result.documentType,
+                provider: result.provider,
+                reportDate: result.reportDate,
+                sections: result.sections,
+                visibleMarkers: result.visibleMarkers,
+                flaggedMarkers: result.flaggedMarkers,
+                doctorReviewAreas: result.doctorReviewAreas,
+                patientFacingSummary: result.patientFacingSummary,
+                question: result.question,
+                questionId: `ai_q_${meta.id.slice(0, 8)}`,
+                status: result.extractionStatus === "extracted" ? "done" : "needs_review",
+              },
+            },
+            updatedAt: new Date().toISOString(),
+          }));
+        })
+        .catch(() => {
+          fileObjectsRef.current.delete(meta.id);
+          setState((prev) => ({
+            ...prev,
+            aiDocumentInsights: {
+              ...(prev.aiDocumentInsights ?? {}),
+              [meta.id]: {
+                ...(prev.aiDocumentInsights?.[meta.id] ?? {
+                  fileId: meta.id,
+                  documentType: "",
+                  provider: null,
+                  reportDate: null,
+                  sections: [],
+                  visibleMarkers: [],
+                  flaggedMarkers: [],
+                  doctorReviewAreas: [],
+                  patientFacingSummary: "",
+                  question: "",
+                  questionId: `ai_q_${meta.id.slice(0, 8)}`,
+                }),
+                status: "error",
+              },
+            },
+            updatedAt: new Date().toISOString(),
+          }));
+        });
     });
   }, []);
 
   const removeFile = useCallback((id: string) => {
-    setState((prev) => ({
-      ...prev,
-      uploadedFiles: prev.uploadedFiles.filter((f) => f.id !== id),
-      updatedAt: new Date().toISOString(),
-    }));
+    fileObjectsRef.current.delete(id);
+    setState((prev) => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { [id]: _removed, ...remainingInsights } = prev.aiDocumentInsights ?? {};
+      return {
+        ...prev,
+        uploadedFiles: prev.uploadedFiles.filter((f) => f.id !== id),
+        aiDocumentInsights: remainingInsights,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   }, []);
 
   const next = useCallback(() => {
@@ -248,6 +375,7 @@ export function useIntakeState(opts?: { initialPhase?: Phase }): IntakeControlle
     isLastIntakeStep,
     sections,
     summary,
+    aiAnalyzing,
     setReportFork,
     toggleMulti,
     setFreeText,

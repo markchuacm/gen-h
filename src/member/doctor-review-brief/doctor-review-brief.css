@@ -334,6 +334,13 @@
   line-height: 1.5;
 }
 
+.drb-brief-section-note {
+  margin-top: 12px;
+  color: var(--member-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
 .drb-source {
   flex: 0 0 auto;
   padding: 2px 8px;
@@ -674,6 +681,23 @@
 .drb-file-meta span {
   color: var(--member-muted);
   font-size: 0.76rem;
+}
+
+.drb-file-intel {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  max-width: min(520px, 100%);
+}
+
+.drb-file-meta .drb-file-intel span {
+  overflow: hidden;
+  color: var(--member-muted);
+  font-size: 0.75rem;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .drb-file-remove {
@@ -1136,13 +1160,93 @@
   }
 }
 
+/* ─── AI document analysis states ───────────────────────────────────────────*/
+
+/* Preparing step: per-file rows with richer info */
+.drb-prepare-file {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.drb-prepare-file-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.drb-prepare-file-info strong {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--member-ink);
+}
+
+.drb-prepare-file-info span {
+  font-size: 0.8rem;
+  color: var(--member-muted);
+}
+
+.drb-prepare-file.is-analyzing {
+  opacity: 0.75;
+}
+
+.drb-prepare-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: var(--member-muted);
+}
+
+.drb-prepare-note svg {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  color: var(--member-muted);
+}
+
+/* File upload card: AI status badges */
+.drb-file-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: var(--member-muted);
+  margin-top: 2px;
+}
+
+.drb-file-status--analyzing {
+  color: var(--member-muted);
+}
+
+.drb-file-status--done {
+  color: var(--member-accent);
+}
+
+.drb-file-status svg {
+  width: 12px;
+  height: 12px;
+  flex: 0 0 auto;
+}
+
+/* Spinner animation */
+@keyframes drb-spin {
+  to { transform: rotate(360deg); }
+}
+
+.drb-spin {
+  animation: drb-spin 900ms linear infinite;
+}
+
 /* ─── Reduced motion ─────────────────────────────────────────────────────────*/
 
 @media (prefers-reduced-motion: reduce) {
   .drb-shell *,
   .drb-brief-section,
   .drb-prepare-cards li,
-  .drb-toast {
+  .drb-toast,
+  .drb-spin {
     animation: none !important;
     transition: none !important;
   }

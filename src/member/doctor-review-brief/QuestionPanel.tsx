@@ -4,7 +4,7 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { ChevronLeft, ChevronRight, FolderCheck, HelpCircle, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, FolderCheck, HelpCircle, Loader2, Sparkles, TriangleAlert } from "lucide-react";
 import {
   FileUpload,
   LifestyleSnapshotInput,
@@ -113,28 +113,70 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
           title="Upload what you already have"
           helper="You don't need to know what matters. We'll organise it for your doctor."
         />
-        <FileUpload files={c.state.uploadedFiles} onAdd={c.addFiles} onRemove={c.removeFile} />
+        <FileUpload
+          files={c.state.uploadedFiles}
+          insights={c.state.aiDocumentInsights}
+          onAdd={c.addFiles}
+          onRemove={c.removeFile}
+        />
       </>
     );
   } else if (step.kind === "preparing") {
-    const count = c.state.uploadedFiles.length;
+    const files = c.state.uploadedFiles;
+    const insights = c.state.aiDocumentInsights ?? {};
     content = (
       <>
-        <StepHeader eyebrow="Preparing your brief" title="Saved for your doctor" />
-        <ul className="drb-prepare-cards">
-          <li>
-            <FolderCheck strokeWidth={1.7} aria-hidden="true" />
-            <span>{count > 0 ? `${count} file${count > 1 ? "s" : ""} uploaded for doctor review` : "Nothing uploaded — that's okay"}</span>
-          </li>
-          <li>
-            <Sparkles strokeWidth={1.7} aria-hidden="true" />
-            <span>Added to your doctor review context</span>
-          </li>
-          <li>
-            <FolderCheck strokeWidth={1.7} aria-hidden="true" />
-            <span>Your doctor will review these before the consult</span>
-          </li>
-        </ul>
+        <StepHeader
+          eyebrow="Preparing your brief"
+          title={c.aiAnalyzing ? "Reviewing your documents…" : "Ready for your doctor"}
+          helper={c.aiAnalyzing ? "We're reading the document structure so we can ask you the right questions." : undefined}
+        />
+        {files.length > 0 ? (
+          <ul className="drb-prepare-cards">
+            {files.map((f) => {
+	              const ins = insights[f.id];
+	              const isAnalyzing = ins?.status === "analyzing";
+	              const isDone = ins?.status === "done";
+	              const needsReview = ins?.status === "needs_review" || ins?.status === "error";
+	              return (
+	                <li key={f.id} className={`drb-prepare-file ${isAnalyzing ? "is-analyzing" : ""}`}>
+	                  {isAnalyzing ? (
+	                    <Loader2 strokeWidth={1.7} aria-hidden="true" className="drb-spin" />
+	                  ) : isDone ? (
+                    <Sparkles strokeWidth={1.7} aria-hidden="true" />
+                  ) : (
+                    <FolderCheck strokeWidth={1.7} aria-hidden="true" />
+                  )}
+                  <div className="drb-prepare-file-info">
+                    <strong>{f.name}</strong>
+                    <span>
+	                      {isAnalyzing
+	                        ? "Reviewing document structure…"
+	                        : isDone
+	                          ? `${ins.documentType} · added to brief`
+	                          : needsReview
+	                            ? "Needs doctor review"
+	                            : "Uploaded for doctor review"}
+	                    </span>
+	                  </div>
+	                </li>
+	              );
+            })}
+          </ul>
+        ) : (
+          <ul className="drb-prepare-cards">
+            <li>
+              <FolderCheck strokeWidth={1.7} aria-hidden="true" />
+              <span>No files uploaded — that's okay, we'll continue with your answers</span>
+            </li>
+          </ul>
+        )}
+	        {!c.aiAnalyzing && Object.values(insights).some((i) => i.status === "error" || i.status === "needs_review") && (
+	          <p className="drb-prepare-note">
+	            <TriangleAlert strokeWidth={1.7} aria-hidden="true" />
+	            Some documents need doctor review before details can be summarized.
+	          </p>
+	        )}
       </>
     );
   } else if (step.kind === "reassurance") {
@@ -149,9 +191,14 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
     );
   }
 
-  const proceed = canContinue(step, c);
+  const proceed = canContinue(step, c) && !(step.kind === "preparing" && c.aiAnalyzing);
   const showSkip = step.kind === "question" && !step.question.required;
-  const continueLabel = c.isLastIntakeStep ? "See my brief" : "Continue";
+  const continueLabel =
+    step.kind === "preparing" && c.aiAnalyzing
+      ? "Reviewing…"
+      : c.isLastIntakeStep
+        ? "See my brief"
+        : "Continue";
 
   return (
     <div className="drb-question">
