@@ -1,0 +1,29 @@
+{
+  "mode": "edit",
+  "componentId": "419982054151835648",
+  "projectId": "419981297881083904",
+  "selectedRevisionId": "419982827896082432",
+  "baseRevisionId": "419982827896082432",
+  "jobId": "419981297637814272-external-agent-419982890454106112",
+  "generatedName": "proud-river-3888",
+  "name": "Studio Desk Landing",
+  "selectedImages": [],
+  "editableFiles": [
+    {
+      "path": "src/App.tsx",
+      "sha256": "158bf454b8a38bdbd156fb8df220d18ebb6f5f01f994a9bf98a0901901071ec3"
+    },
+    {
+      "path": "src/components/generated/StudioDeskLanding.tsx",
+      "sha256": "99ac82979d7c5a9d129b9121b69d38247bc5ea71e949e8e0cdd5485df1952f03"
+    },
+    {
+      "path": "src/index.css",
+      "sha256": "39ba1d5619534ca8218a9f54b9d46738deb88adb93dbd37b5f87942fd9b750bd"
+    }
+  ],
+  "dimensions": {
+    "width": 1440,
+    "height": 960
+  }
+}
