@@ -166,37 +166,15 @@ a {
   display: inline-flex;
   min-height: 44px;
   align-items: center;
-  gap: 10px;
   font-weight: 560;
   white-space: nowrap;
-  transition-property: min-height, gap;
-  transition-duration: 220ms;
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-}
-
-.brand-mark {
-  display: inline-grid;
-  width: 36px;
-  height: 36px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
-  font-family: Georgia, "Times New Roman", serif;
-  font-weight: 700;
-  transition-property: width, height;
+  transition-property: min-height;
   transition-duration: 220ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
 .site-header-scrolled .brand {
   min-height: 40px;
-  gap: 9px;
-}
-
-.site-header-scrolled .brand-mark {
-  width: 32px;
-  height: 32px;
 }
 
 .nav-links {
@@ -541,7 +519,7 @@ a {
 .future-health-section {
   width: var(--container);
   margin: 0 auto;
-  padding: 72px 0 88px;
+  padding: 72px 0 clamp(220px, 28svh, 300px);
 }
 
 .future-health-heading {
@@ -1636,103 +1614,6 @@ a {
   line-height: 1;
 }
 
-.process-biomarker-block {
-  min-height: auto;
-  padding: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.process-biomarker-reveal {
-  display: grid;
-  justify-items: start;
-  margin-top: clamp(22px, 3vw, 34px);
-  padding: 0 clamp(8px, 2vw, 18px);
-}
-
-.process-biomarker-toggle {
-  display: inline-flex;
-  min-height: 44px;
-  align-items: center;
-  gap: 8px;
-  border: 0;
-  border-radius: 999px;
-  padding: 0;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.96rem;
-  font-weight: 760;
-  line-height: 1;
-  transition-property: color, transform;
-  transition-duration: 180ms;
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-}
-
-.process-biomarker-toggle:hover,
-.process-biomarker-toggle:focus-visible {
-  color: var(--accent-dark);
-}
-
-.process-biomarker-toggle:active {
-  transform: scale(0.96);
-}
-
-.process-biomarker-toggle:focus-visible {
-  outline: 2px solid rgba(184, 93, 53, 0.28);
-  outline-offset: 4px;
-}
-
-.process-biomarker-toggle svg {
-  flex: 0 0 auto;
-  transition-property: transform;
-  transition-duration: 180ms;
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-}
-
-.process-biomarker-toggle[aria-expanded="true"] svg {
-  transform: rotate(180deg);
-}
-
-.process-biomarker-collapse {
-  display: grid;
-  grid-template-rows: 0fr;
-  width: 100%;
-  margin-top: 0;
-  overflow: hidden;
-  opacity: 0;
-  transform: translateY(-6px);
-  transition-property: grid-template-rows, margin-top, opacity, transform;
-  transition-duration: 520ms, 520ms, 260ms, 520ms;
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
-}
-
-.process-biomarker-collapse.is-open {
-  grid-template-rows: 1fr;
-  margin-top: 18px;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.process-biomarker-collapse-inner {
-  min-height: 0;
-}
-
-.process-biomarker-grid {
-  border-radius: 28px;
-}
-
-.process-biomarker-grid .biomarker-card {
-  min-height: 250px;
-  padding: 34px;
-}
-
-.process-biomarker-grid .biomarker-card h3 {
-  font-size: clamp(1.45rem, 2.4vw, 2.25rem);
-  line-height: 1.02;
-}
-
 .lab-route-card,
 .review-plan-card {
   display: grid;
@@ -1835,6 +1716,30 @@ a {
 
 .section-cta-row {
   margin-top: 40px;
+}
+
+.biomarker-section {
+  padding-top: clamp(42px, 5vw, 72px);
+  padding-bottom: clamp(68px, 7vw, 104px);
+}
+
+.biomarker-section-heading {
+  max-width: 980px;
+  margin-bottom: clamp(36px, 4.6vw, 60px);
+}
+
+.biomarker-section-heading h2 {
+  max-width: 980px;
+  margin: 0 auto;
+  text-wrap: balance;
+}
+
+.biomarker-section-heading h2 em {
+  white-space: nowrap;
+}
+
+.biomarker-list {
+  width: 100%;
 }
 
 .biomarker-grid {
@@ -2263,14 +2168,14 @@ a {
   margin-top: 12px;
   border-radius: 999px;
   padding: 0 12px;
-  background: var(--accent);
-  color: #fff;
+  background: #f1f5f9;
+  color: #111827;
   font-size: 0.78rem;
   font-weight: 760;
   line-height: 1;
   box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.24),
-    0 10px 22px rgba(184, 93, 53, 0.18);
+    inset 0 0 0 1px rgba(15, 23, 42, 0.06),
+    0 8px 18px rgba(15, 23, 42, 0.06);
 }
 
 .launch-step-note {
@@ -2357,10 +2262,10 @@ a {
 }
 
 .doctor-profile-content h3 {
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: clamp(1.24rem, 1.48vw, 1.5rem);
-  font-weight: 700;
-  line-height: 1.08;
+  font-family: inherit;
+  font-size: clamp(1.05rem, 1.2vw, 1.18rem);
+  font-weight: 680;
+  line-height: 1.28;
   white-space: nowrap;
 }
 
@@ -2657,11 +2562,6 @@ a {
     min-height: 38px;
   }
 
-  .site-header-scrolled .brand-mark {
-    width: 30px;
-    height: 30px;
-  }
-
   .site-header .button {
     min-height: 44px;
     padding: 0 14px;
@@ -2682,7 +2582,7 @@ a {
 
   .future-health-section {
     width: min(100% - 28px, 560px);
-    padding: 72px 0 78px;
+    padding: 72px 0 152px;
   }
 
   .future-health-heading h2 {
@@ -2792,6 +2692,14 @@ a {
     padding: 76px 0;
   }
 
+  .biomarker-section {
+    padding: 34px 0 48px;
+  }
+
+  .biomarker-section-heading {
+    margin-bottom: 34px;
+  }
+
   .launch-price-scroll {
     min-height: 186svh;
     padding: 0;
@@ -2840,14 +2748,14 @@ a {
 
   .launch-price-steps {
     grid-template-columns: 1fr;
-    gap: 34px;
+    gap: 28px;
   }
 
   .launch-price-step {
     grid-template-columns: 24px minmax(0, 1fr);
     gap: 18px;
     justify-items: start;
-    min-height: 118px;
+    min-height: 112px;
     text-align: left;
   }
 
@@ -2861,8 +2769,19 @@ a {
     margin-top: -6px;
   }
 
+  .launch-price-step:first-child .launch-step-copy {
+    grid-template-columns: auto auto;
+    align-items: center;
+    column-gap: 10px;
+  }
+
+  .launch-price-step:first-child .launch-step-copy strong,
+  .launch-price-step:first-child .launch-step-note {
+    grid-column: 1 / -1;
+  }
+
   .launch-step-copy strong {
-    font-size: clamp(1.72rem, 8.4vw, 2.35rem);
+    font-size: clamp(1.5rem, 6.9vw, 2rem);
   }
 
   .launch-step-label {
@@ -2878,12 +2797,21 @@ a {
     font-size: 0.74rem;
   }
 
+  .launch-price-step:first-child .launch-step-note {
+    margin-top: 6px;
+  }
+
   .launch-step-note {
     max-width: 300px;
   }
 
+  .launch-price-step:last-child .launch-step-note {
+    max-width: none;
+    white-space: nowrap;
+  }
+
   .launch-price-cta {
-    margin-top: 38px;
+    margin-top: 104px;
   }
 
   .intro-section {
@@ -3046,7 +2974,7 @@ a {
   }
 
   .founding-heading {
-    margin-bottom: 34px;
+    margin-bottom: 46px;
   }
 
   .disease-monitor-section {
@@ -3127,12 +3055,10 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .site-header,
   .brand,
-  .brand-mark,
   .nav-links,
   .button,
   .process-panel,
   .process-rail a,
-  .process-biomarker-collapse,
   .process-visual-card,
   .lab-partner-row a,
   .biomarker-card,

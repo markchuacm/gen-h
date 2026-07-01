@@ -229,7 +229,7 @@ const processSteps = [
     imageAlt: "A woman joining a virtual health consultation from a bright dining table",
   },
   {
-    id: "what-we-test",
+    id: "biomarker-plan",
     number: "Step 2",
     railNumber: "2.",
     railTitle: "Biomarker plan",
@@ -263,14 +263,14 @@ const processSteps = [
   },
 ] as const;
 
-function ProcessBiomarkerGrid({
+function BiomarkerGrid({
   visibleBiomarkerIndexes = [],
 }: {
   visibleBiomarkerIndexes?: number[];
 }) {
   return (
-    <div className="process-biomarker-block">
-      <div className="biomarker-grid process-biomarker-grid">
+    <div className="biomarker-list">
+      <div className="biomarker-grid">
         {biomarkerGroups.map((group, index) => {
           const BiomarkerIcon = group.icon;
 
@@ -547,7 +547,6 @@ function App() {
   const [activeProcessIndex, setActiveProcessIndex] = useState(0);
   const [visibleProcessIndexes, setVisibleProcessIndexes] = useState<number[]>([0]);
   const [visibleBiomarkerIndexes, setVisibleBiomarkerIndexes] = useState<number[]>([]);
-  const [isBiomarkerListOpen, setIsBiomarkerListOpen] = useState(false);
   const [visibleFutureCardIndexes, setVisibleFutureCardIndexes] = useState<number[]>([]);
   const [launchPriceProgress, setLaunchPriceProgress] = useState(0);
 
@@ -962,15 +961,6 @@ function App() {
   }, []);
 
   useEffect(() => {
-    const activeStep = processSteps[activeProcessIndex];
-    if (activeStep?.visual !== "biomarkers") {
-      return;
-    }
-
-    setVisibleBiomarkerIndexes(biomarkerGroups.map((_, index) => index));
-  }, [activeProcessIndex]);
-
-  useEffect(() => {
     const hash = window.location.hash.slice(1);
     if (!hash) {
       return;
@@ -1159,7 +1149,6 @@ function App() {
           aria-label="Main navigation"
         >
           <a className="brand" href="#top" aria-label="Gen-H home">
-            <span className="brand-mark">G</span>
             <span>Gen-H</span>
           </a>
           <nav className="nav-links" aria-label="Page sections">
@@ -1204,8 +1193,12 @@ function App() {
         <div className="section-heading centered">
           <p className="eyebrow">Advanced health intelligence</p>
           <h2>
-            Most check-ups stop at <span className="scroll-underline intro-emphasis-normal">normal</span>. Gen-H looks
-            for what is <span className="scroll-underline intro-emphasis-optimal">optimal</span> for you.
+            Most check-ups stop at{" "}
+            <span className="keep-together">
+              <span className="scroll-underline intro-emphasis-normal">normal</span>.
+            </span>{" "}
+            <span className="keep-together">Gen-H</span> looks for what is{" "}
+            <span className="scroll-underline intro-emphasis-optimal">optimal</span> for you.
           </h2>
           <WhatsAppCta variant="ghost">Find out how</WhatsAppCta>
         </div>
@@ -1234,6 +1227,16 @@ function App() {
             </article>
           ))}
         </div>
+      </section>
+
+      <section className="section biomarker-section" id="what-we-test" aria-label="Biomarkers expert curated for longevity">
+        <div className="section-heading centered biomarker-section-heading">
+          <p className="eyebrow">What we test</p>
+          <h2>
+            100+ biomarkers, expert curated for <em>longevity</em>
+          </h2>
+        </div>
+        <BiomarkerGrid visibleBiomarkerIndexes={visibleBiomarkerIndexes} />
       </section>
 
       <section className="disease-monitor-section" id="early-indicators" aria-label="Long-term disease indicators">
@@ -1323,30 +1326,6 @@ function App() {
                     <p>{step.summary}</p>
                   </div>
                 </div>
-
-                {step.visual === "biomarkers" && (
-                  <div className="process-biomarker-reveal">
-                    <button
-                      className="process-biomarker-toggle"
-                      type="button"
-                      aria-expanded={isBiomarkerListOpen}
-                      aria-controls="biomarker-list"
-                      onClick={() => setIsBiomarkerListOpen((isOpen) => !isOpen)}
-                    >
-                      <span>See list of biomarkers</span>
-                      <ChevronDown aria-hidden="true" size={18} />
-                    </button>
-                    <div
-                      className={`process-biomarker-collapse ${isBiomarkerListOpen ? "is-open" : ""}`}
-                      id="biomarker-list"
-                      aria-hidden={!isBiomarkerListOpen}
-                    >
-                      <div className="process-biomarker-collapse-inner">
-                        <ProcessBiomarkerGrid visibleBiomarkerIndexes={visibleBiomarkerIndexes} />
-                      </div>
-                    </div>
-                  </div>
-                )}
               </article>
             ))}
           </div>
@@ -1450,7 +1429,7 @@ function App() {
           <div className="founding-heading">
             <p className="eyebrow">Launch price</p>
             <h2>
-              Early <em>Gen-H</em> baseline programme
+              Early <em className="keep-together">Gen-H</em> baseline programme
             </h2>
           </div>
 
@@ -1526,7 +1505,6 @@ function App() {
 
       <footer className="footer">
         <a className="brand" href="#top" aria-label="Gen-H home">
-          <span className="brand-mark">G</span>
           <span>Gen-H</span>
         </a>
         <p>Doctor-led longevity check-ups.</p>
