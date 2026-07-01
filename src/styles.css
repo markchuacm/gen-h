@@ -2216,6 +2216,15 @@ a {
 
   .footer {
     grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .footer p {
+    margin-top: 8px;
+  }
+
+  .footer nav {
+    margin-top: 24px;
   }
 
   .launch-price-scroll {
