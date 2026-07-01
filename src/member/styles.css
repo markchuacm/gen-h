@@ -10,14 +10,16 @@
   --member-soft: #82746b;
   --member-accent: #b85d35;
   --member-accent-dark: #964829;
-  --member-copper: #11171b;
-  --member-copper-dark: #11171b;
-  --member-copper-soft: #f3f4f6;
+  --member-copper: var(--member-accent);
+  --member-copper-dark: var(--member-accent-dark);
+  --member-copper-soft: rgba(184, 93, 53, 0.08);
+  --member-ease: cubic-bezier(0.2, 0, 0, 1);
   --member-sage: #eef0f3;
   --member-line: rgba(17, 23, 27, 0.1);
   --sidebar-width: 236px;
   --desktop-gutter: clamp(32px, 3vw, 56px);
-  --desktop-top: 30px;
+  --desktop-top: 40px;
+  --header-row-height: 52px;
   --dashboard-gap: 20px;
   --member-shadow-border:
     0 0 0 1px rgba(0, 0, 0, 0.07),
@@ -153,14 +155,14 @@ ol {
   min-height: 48px;
   align-items: center;
   gap: 16px;
-  border-radius: 9px;
+  border-radius: 14px;
   padding: 0 18px;
   color: var(--member-ink);
   font-size: 1rem;
   font-weight: 500;
   transition-property: background-color, color, box-shadow, transform;
   transition-duration: 160ms;
-  transition-timing-function: ease-out;
+  transition-timing-function: var(--member-ease);
 }
 
 .sidebar-nav-item svg {
@@ -216,7 +218,8 @@ ol {
   z-index: 5;
   display: flex;
   align-items: center;
-  gap: 28px;
+  height: var(--header-row-height);
+  gap: 20px;
 }
 
 .member-icon-button {
@@ -228,7 +231,7 @@ ol {
   border-radius: 999px;
   transition-property: background-color, transform;
   transition-duration: 150ms;
-  transition-timing-function: ease-out;
+  transition-timing-function: var(--member-ease);
 }
 
 .member-icon-button:hover {
@@ -270,7 +273,7 @@ ol {
   font-weight: 560;
   transition-property: background-color, transform;
   transition-duration: 150ms;
-  transition-timing-function: ease-out;
+  transition-timing-function: var(--member-ease);
 }
 
 .profile-menu-button:hover {
@@ -283,7 +286,7 @@ ol {
   height: 40px;
   place-items: center;
   border-radius: 999px;
-  background: #11171b;
+  background: var(--member-accent);
   color: #fff;
   font-size: 1.1rem;
 }
@@ -295,18 +298,22 @@ ol {
 }
 
 .dashboard-heading {
-  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  height: var(--header-row-height);
+  margin-bottom: 28px;
 }
 
 .dashboard-heading h1 {
-  font-size: clamp(2.2rem, 3vw, 2.6rem);
+  font-size: clamp(1.05rem, 1.4vw, 1.22rem);
   font-weight: 500;
-  line-height: 1.08;
+  line-height: 1.2;
   letter-spacing: 0;
+  color: var(--member-muted);
 }
 
 .dashboard-card {
-  border-radius: 12px;
+  border-radius: 24px;
   background: var(--member-surface);
   box-shadow: var(--member-shadow-border);
 }
@@ -318,6 +325,7 @@ ol {
   min-height: 379px;
   grid-template-columns: minmax(440px, 0.95fr) minmax(360px, 1fr);
   overflow: hidden;
+  border-radius: 34px;
   padding: 36px 42px 36px 58px;
   background:
     linear-gradient(135deg, #ffffff, #f8f9fb),
@@ -350,8 +358,13 @@ ol {
 .hero-card h2 {
   margin-top: 22px;
   font-size: clamp(2rem, 2.4vw, 2.34rem);
-  font-weight: 500;
+  font-weight: 400;
   line-height: 1.12;
+}
+
+.hero-card h2 em {
+  color: var(--member-accent);
+  font-style: italic;
 }
 
 .hero-card p {
@@ -374,7 +387,7 @@ ol {
 .consult-action {
   transition-property: background-color, box-shadow, color, transform;
   transition-duration: 160ms;
-  transition-timing-function: ease-out;
+  transition-timing-function: var(--member-ease);
 }
 
 .primary-action {
@@ -388,9 +401,8 @@ ol {
   padding: 0 24px 0 26px;
   background: var(--member-accent);
   color: #fff;
-  box-shadow: var(--member-shadow-border);
   font-size: 1.02rem;
-  font-weight: 700;
+  font-weight: 520;
 }
 
 .primary-action:hover {
@@ -412,17 +424,11 @@ ol {
   color: var(--member-accent);
   box-shadow: inset 0 0 0 1px var(--member-accent);
   font-size: 1.02rem;
-  font-weight: 650;
+  font-weight: 520;
 }
 
 .secondary-action:hover {
   background: #f7f8fa;
-}
-
-.consult-action:hover {
-  background: var(--member-accent-dark);
-  box-shadow: var(--member-shadow-hover);
-  transform: translateY(-1px);
 }
 
 .hero-art {
@@ -430,6 +436,14 @@ ol {
   inset: 0;
   z-index: 0;
   overflow: hidden;
+}
+
+.hero-art::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.82) 0%, rgba(255, 255, 255, 0) 38%);
+  content: "";
+  pointer-events: none;
 }
 
 .hero-art img {
@@ -454,28 +468,14 @@ ol {
 }
 
 .journey-card {
-  position: relative;
   display: grid;
-  min-height: 338px;
-  grid-template-rows: auto minmax(0, 1fr);
-  overflow: hidden;
-}
-
-.journey-card::after {
-  position: absolute;
-  bottom: 0;
-  left: calc(42px + ((100% - 84px) / 10) - 32px);
-  width: 64px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--member-copper);
-  content: "";
+  grid-template-rows: auto auto auto;
 }
 
 .journey-card h2,
 .consult-card h2 {
   font-size: 1.14rem;
-  font-weight: 760;
+  font-weight: 400;
   line-height: 1.2;
 }
 
@@ -538,13 +538,57 @@ ol {
 }
 
 .journey-steps .is-active .journey-marker {
-  background: #11171b;
+  background: var(--member-accent);
   color: #fff;
-  box-shadow: 0 11px 22px rgba(17, 23, 27, 0.12);
+  box-shadow: 0 11px 22px rgba(184, 93, 53, 0.22);
 }
 
 .journey-steps .is-active strong {
   color: var(--member-copper);
+}
+
+.journey-steps .is-completed .journey-marker {
+  background: var(--member-muted);
+  color: #fff;
+}
+
+.journey-steps .is-completed strong {
+  color: var(--member-muted);
+}
+
+.journey-steps .is-completed span:last-child {
+  color: var(--member-muted);
+}
+
+.journey-marker svg {
+  width: 15px;
+  height: 15px;
+}
+
+.before-consult-tip {
+  margin: 0 32px 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--member-line);
+}
+
+.before-consult-tip-inner {
+  padding: 16px 20px;
+  border-radius: 14px;
+  background: rgba(184, 93, 53, 0.05);
+}
+
+.before-consult-tip strong {
+  display: block;
+  font-size: 0.93rem;
+  font-weight: 650;
+  color: var(--member-ink);
+}
+
+.before-consult-tip p {
+  margin-top: 6px;
+  font-size: 0.91rem;
+  line-height: 1.62;
+  color: var(--member-muted);
 }
 
 .consult-card {
@@ -556,20 +600,25 @@ ol {
 
 .doctor-row {
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 60px 1fr;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   margin-top: 22px;
 }
 
-.doctor-row img {
-  width: 72px;
-  height: 72px;
+.doctor-avatar {
+  display: inline-grid;
+  width: 60px;
+  height: 60px;
+  place-items: center;
   border-radius: 999px;
-  object-fit: cover;
-  object-position: center 24%;
-  outline: 1px solid rgba(0, 0, 0, 0.1);
-  outline-offset: -1px;
+  background: #f5f0eb;
+  color: var(--member-accent);
+  font-size: 0.97rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1.5px rgba(184, 93, 53, 0.18);
 }
 
 .doctor-row div {
@@ -619,6 +668,28 @@ ol {
   font-size: 0.99rem;
 }
 
+/* Labeled variant — shows dt inline, used for care plan summary */
+.consult-details--labeled div {
+  grid-template-columns: 23px auto 1fr;
+  gap: 10px 12px;
+}
+
+.consult-details--labeled dt {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+  font-size: 0.9rem;
+  color: var(--member-muted);
+}
+
+.consult-details--labeled dd {
+  font-size: 0.9rem;
+  text-align: right;
+}
+
 .consult-action {
   position: relative;
   display: inline-flex;
@@ -631,10 +702,16 @@ ol {
   margin-top: 22px;
   border-radius: 999px;
   padding: 0 18px;
-  background: var(--member-accent);
-  color: #fff;
-  box-shadow: var(--member-shadow-border);
-  font-weight: 700;
+  background: transparent;
+  color: var(--member-accent);
+  box-shadow: inset 0 0 0 1.5px var(--member-accent);
+  font-weight: 520;
+}
+
+.consult-action:hover {
+  background: rgba(184, 93, 53, 0.05);
+  color: var(--member-accent-dark);
+  box-shadow: inset 0 0 0 1.5px var(--member-accent-dark);
 }
 
 .consult-action svg {
@@ -642,6 +719,40 @@ ol {
   right: 19px;
   width: 19px;
   height: 19px;
+}
+
+.consult-secondary-action {
+  display: block;
+  width: 100%;
+  padding: 10px 8px;
+  margin-top: 6px;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--member-muted);
+  border-radius: 999px;
+  transition: color 150ms var(--member-ease);
+}
+
+.consult-secondary-action:hover {
+  color: var(--member-ink);
+}
+
+
+.builder-toggle {
+  font-family: inherit;
+  font-size: 0.78rem;
+  color: var(--member-muted);
+  background: transparent;
+  border: 1px solid var(--member-line);
+  border-radius: 999px;
+  padding: 5px 12px;
+  cursor: pointer;
+  appearance: auto;
+  transition: border-color 150ms var(--member-ease);
+}
+
+.builder-toggle:hover {
+  border-color: rgba(17, 23, 27, 0.22);
 }
 
 @media (max-width: 1180px) {
@@ -699,22 +810,24 @@ ol {
   }
 
   .dashboard-heading {
-    margin-bottom: 22px;
+    height: auto;
+    margin-bottom: 24px;
   }
 
   .dashboard-heading h1 {
-    font-size: clamp(2.55rem, 7vw, 3.55rem);
-    line-height: 1.03;
+    font-size: clamp(1rem, 3.5vw, 1.18rem);
+    line-height: 1.2;
   }
 
   .dashboard-card {
-    border-radius: 14px;
+    border-radius: 24px;
   }
 
   .hero-card {
     height: auto;
     min-height: 499px;
     grid-template-columns: 1fr;
+    border-radius: 34px;
     padding: 31px 34px;
   }
 
@@ -782,7 +895,7 @@ ol {
 
   .journey-card,
   .consult-card {
-    border-radius: 14px;
+    border-radius: 24px;
   }
 
   .journey-card > h2,
@@ -842,14 +955,15 @@ ol {
   }
 
   .doctor-row {
-    grid-template-columns: 100px 1fr;
+    grid-template-columns: 72px 1fr;
     gap: 24px;
     margin-top: 35px;
   }
 
-  .doctor-row img {
-    width: 100px;
-    height: 100px;
+  .doctor-avatar {
+    width: 72px;
+    height: 72px;
+    font-size: 1.1rem;
   }
 
   .doctor-row strong {
@@ -929,7 +1043,7 @@ ol {
     font-weight: 560;
     transition-property: color, background-color, transform;
     transition-duration: 150ms;
-    transition-timing-function: ease-out;
+    transition-timing-function: var(--member-ease);
   }
 
   .mobile-bottom-nav button svg {
@@ -963,7 +1077,7 @@ ol {
   }
 
   .dashboard-heading h1 {
-    font-size: clamp(2.2rem, 10vw, 2.85rem);
+    font-size: clamp(0.95rem, 4vw, 1.1rem);
   }
 
   .hero-card {
@@ -1081,13 +1195,8 @@ ol {
   }
 
   .doctor-row {
-    grid-template-columns: 76px 1fr;
+    grid-template-columns: 60px 1fr;
     gap: 16px;
-  }
-
-  .doctor-row img {
-    width: 76px;
-    height: 76px;
   }
 
   .mobile-bottom-nav button span {
