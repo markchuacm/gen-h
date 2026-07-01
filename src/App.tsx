@@ -658,36 +658,60 @@ function App() {
 
   useEffect(() => {
     const cards = Array.from(document.querySelectorAll<HTMLElement>(".biomarker-card"));
+    let frame = 0;
 
-    if (!("IntersectionObserver" in window)) {
-      setVisibleBiomarkerIndexes([]);
-      return;
-    }
+    const updateActiveBiomarker = () => {
+      frame = 0;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          const index = Number((entry.target as HTMLElement).dataset.biomarkerIndex);
-          if (Number.isNaN(index)) {
-            return;
-          }
+      const activationTop = window.innerHeight * 0.16;
+      const activationBottom = window.innerHeight * 0.74;
+      const viewportCenter = window.innerHeight * 0.5;
+      let activeIndex: number | null = null;
+      let activeDistance = Number.POSITIVE_INFINITY;
 
-          if (entry.isIntersecting) {
-            setVisibleBiomarkerIndexes((current) => (
-              current.includes(index) ? current : [...current, index]
-            ));
-            return;
-          }
+      cards.forEach((card) => {
+        const rect = card.getBoundingClientRect();
+        const index = Number(card.dataset.biomarkerIndex);
 
-          setVisibleBiomarkerIndexes((current) => current.filter((visibleIndex) => visibleIndex !== index));
-        });
-      },
-      { rootMargin: "-12% 0px -28% 0px", threshold: 0.36 },
-    );
+        if (Number.isNaN(index) || rect.bottom < activationTop || rect.top > activationBottom) {
+          return;
+        }
 
-    cards.forEach((card) => observer.observe(card));
+        const cardCenter = rect.top + rect.height / 2;
+        const distance = Math.abs(cardCenter - viewportCenter);
 
-    return () => observer.disconnect();
+        if (distance < activeDistance) {
+          activeDistance = distance;
+          activeIndex = index;
+        }
+      });
+
+      setVisibleBiomarkerIndexes((current) => {
+        const next = activeIndex === null ? [] : [activeIndex];
+        return current.length === next.length && current[0] === next[0] ? current : next;
+      });
+    };
+
+    const requestActiveBiomarkerUpdate = () => {
+      if (frame) {
+        return;
+      }
+
+      frame = window.requestAnimationFrame(updateActiveBiomarker);
+    };
+
+    updateActiveBiomarker();
+    window.addEventListener("scroll", requestActiveBiomarkerUpdate, { passive: true });
+    window.addEventListener("resize", requestActiveBiomarkerUpdate);
+
+    return () => {
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+      }
+
+      window.removeEventListener("scroll", requestActiveBiomarkerUpdate);
+      window.removeEventListener("resize", requestActiveBiomarkerUpdate);
+    };
   }, []);
 
   useEffect(() => {
