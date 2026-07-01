@@ -7,7 +7,6 @@ import {
   CircleDot,
   Droplets,
   HeartPulse,
-  Plus,
   Shield,
   Sparkles,
   Waves,
@@ -21,6 +20,13 @@ import processPlanImage from "../assets/generated/process-step-plan.png";
 import deannaImage from "../assets/doctors/deanna-abdul-halim.png";
 import ongImage from "../assets/doctors/ong-shiau-ying.png";
 import farheenImage from "../assets/doctors/farheen-nafisa.png";
+import agingStressImage from "../assets/biomarkers/aging-stress.jpg";
+import bloodIronImage from "../assets/biomarkers/blood-iron.jpg";
+import heartMetabolicImage from "../assets/biomarkers/heart-metabolic.jpg";
+import hormonesThyroidImage from "../assets/biomarkers/hormones-thyroid.jpg";
+import inflammationImmunityImage from "../assets/biomarkers/inflammation-immunity.jpg";
+import liverKidneyImage from "../assets/biomarkers/liver-kidney.jpg";
+import nutrientsVitaminsImage from "../assets/biomarkers/nutrients-vitamins.jpg";
 
 const whatsappMessage =
   "Hi, I'm interested in the Gen-H Founding Members program. Could you share availability and next steps?";
@@ -41,27 +47,24 @@ const futureHealthCards = [
   },
   {
     number: "03",
-    title: "Tailored plan",
-    text: "Reviewed with your doctor",
+    title: "Lifestyle impacts",
+    text: "Beyond your blood test.",
     visual: "plan",
   },
 ] as const;
 
 const futurePlanRows = [
   {
-    title: "Foods",
-    detail: "6oz Wild Salmon, Organic Parsley...",
-    icon: "foods",
+    title: "Diet",
+    icon: "diet",
   },
   {
-    title: "Supplements",
-    detail: "750mg Inositol, 100mg CoQ10...",
-    icon: "supplements",
+    title: "Exercise",
+    icon: "exercise",
   },
   {
-    title: "Daily health",
-    detail: "Stretching, muscle growth, sleep...",
-    icon: "daily",
+    title: "Sleep",
+    icon: "sleep",
   },
 ] as const;
 
@@ -97,7 +100,7 @@ function WhatsAppCta({
 }
 
 function PlanActionIcon({ icon }: { icon: (typeof futurePlanRows)[number]["icon"] }) {
-  if (icon === "foods") {
+  if (icon === "diet") {
     return (
       <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
         <path d="M5 12h14l-1.1 5.4A3.2 3.2 0 0 1 14.8 20H9.2a3.2 3.2 0 0 1-3.1-2.6L5 12Z" />
@@ -109,24 +112,23 @@ function PlanActionIcon({ icon }: { icon: (typeof futurePlanRows)[number]["icon"
     );
   }
 
-  if (icon === "supplements") {
+  if (icon === "exercise") {
     return (
       <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-        <path d="M10.2 20.1a4.5 4.5 0 0 1-6.3-6.3l3-3a4.5 4.5 0 1 1 6.3 6.3l-3 3Z" />
-        <path d="m7.2 13.8 3 3" />
-        <path d="M15 6.5h2.8a3.2 3.2 0 0 1 0 6.4H15V6.5Z" />
-        <path d="M15 9.7h4.6" />
+        <path d="M6 8v8" />
+        <path d="M18 8v8" />
+        <path d="M9 5v14" />
+        <path d="M15 5v14" />
+        <path d="M3.5 12h17" />
       </svg>
     );
   }
 
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
-      <path d="M6 8v8" />
-      <path d="M18 8v8" />
-      <path d="M9 5v14" />
-      <path d="M15 5v14" />
-      <path d="M3.5 12h17" />
+      <path d="M20 15.3A7.4 7.4 0 0 1 8.7 4a6.8 6.8 0 1 0 11.3 11.3Z" />
+      <path d="M14.5 6.5h.01" />
+      <path d="M17 9h.01" />
     </svg>
   );
 }
@@ -207,7 +209,6 @@ function FutureHealthVisual({ visual }: { visual: (typeof futureHealthCards)[num
             </span>
             <span className="plan-action-copy">
               <strong>{row.title}</strong>
-              <span>{row.detail}</span>
             </span>
           </div>
         ))}
@@ -222,7 +223,7 @@ const processSteps = [
     number: "Step 1",
     railNumber: "1.",
     railTitle: "Teleconsult",
-    title: "Start with a teleconsult",
+    title: "Teleconsult",
     summary: "Share your history, goals, lifestyle, family history, and previous results so your doctor starts with the right context.",
     visual: "baseline",
     image: processBaselineImage,
@@ -233,7 +234,7 @@ const processSteps = [
     number: "Step 2",
     railNumber: "2.",
     railTitle: "Personalized test",
-    title: "Your doctor personalizes your test to you",
+    title: "Personalized test",
     summary: "Test according to your needs and long-term health priorities.",
     visual: "biomarkers",
     image: processBiomarkersImage,
@@ -243,8 +244,8 @@ const processSteps = [
     id: "blood-draw",
     number: "Step 3",
     railNumber: "3.",
-    railTitle: "Partner lab",
-    title: "Get blood drawn at a partner lab",
+    railTitle: "Blood draw",
+    title: "Blood draw",
     summary: "We coordinate your blood draw and route you to an established BP Healthcare or Innoquest facility.",
     visual: "labs",
     image: processLabsImage,
@@ -255,12 +256,26 @@ const processSteps = [
     number: "Step 4",
     railNumber: "4.",
     railTitle: "Care plan",
-    title: "Review results and next actions",
+    title: "Care plan",
     summary: "Review the markers that matter with your doctor, then turn them into clear next actions and follow-up testing where needed.",
     visual: "review",
     image: processPlanImage,
     imageAlt: "A warm desk scene with abstract health result dashboards and care plan materials",
   },
+] as const;
+
+const introRevealWords = [
+  "Most",
+  "people",
+  "don't",
+  "realise",
+  "their",
+  "health",
+  "is",
+  "changing",
+  "until",
+  "it's",
+  "too late",
 ] as const;
 
 function BiomarkerGrid({
@@ -271,35 +286,43 @@ function BiomarkerGrid({
   return (
     <div className="biomarker-list">
       <div className="biomarker-grid">
-        {biomarkerGroups.map((group, index) => {
-          const BiomarkerIcon = group.icon;
+        {[biomarkerGroups.slice(0, 4), biomarkerGroups.slice(4)].map((rowGroups, rowIndex) => (
+          <div className="biomarker-row" key={`biomarker-row-${rowIndex}`}>
+            {rowGroups.map((group, rowItemIndex) => {
+              const index = rowIndex === 0 ? rowItemIndex : rowItemIndex + 4;
+              const BiomarkerIcon = group.icon;
+              const previewTests = group.tests.slice(0, 4);
 
-          return (
-            <article
-              className={`biomarker-card ${group.isMore ? "biomarker-more" : ""} ${
-                visibleBiomarkerIndexes.includes(index) ? "is-visible" : ""
-              }`}
-              data-biomarker-index={index}
-              key={group.title}
-              style={{ "--stagger": `${Math.min(index, 7) * 130}ms` } as CSSProperties}
-            >
-              <div className="biomarker-card-header">
-                <div>
-                  <h3>{group.title}</h3>
-                  <p className="biomarker-count">{group.count}</p>
-                </div>
-                <span className="biomarker-icon" aria-hidden="true">
-                  <BiomarkerIcon strokeWidth={1.3} />
-                </span>
-              </div>
-              <ul>
-                {group.tests.map((test) => (
-                  <li key={test}>{test}</li>
-                ))}
-              </ul>
-            </article>
-          );
-        })}
+              return (
+                <article
+                  className={`biomarker-card ${visibleBiomarkerIndexes.includes(index) ? "is-visible" : ""}`}
+                  data-biomarker-index={index}
+                  key={group.title}
+                  tabIndex={0}
+                  style={{ "--stagger": `${Math.min(index, 7) * 130}ms` } as CSSProperties}
+                  aria-label={`${group.title}: ${previewTests.join(", ")}`}
+                >
+                  <img src={group.image} alt={group.imageAlt} />
+                  <span className="biomarker-card-scrim" aria-hidden="true" />
+                  <div className="biomarker-card-content">
+                    <span className="biomarker-icon" aria-hidden="true">
+                      <BiomarkerIcon strokeWidth={1.3} />
+                    </span>
+                    <div className="biomarker-card-heading">
+                      <p className="biomarker-count">{group.count}</p>
+                      <h3>{group.title}</h3>
+                    </div>
+                    <ul>
+                      {previewTests.map((test) => (
+                        <li key={test}>{test}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -311,49 +334,56 @@ const biomarkerGroups = [
     count: "18+ biomarkers",
     tests: ["ApoB", "Lipoprotein (a)", "LDL and HDL cholesterol", "Triglycerides", "Fasting insulin", "HbA1c"],
     icon: HeartPulse,
+    image: heartMetabolicImage,
+    imageAlt: "Microscopic organic forms in teal and cream representing metabolic biomarkers",
   },
   {
     title: "Hormones & thyroid",
     count: "16+ biomarkers",
     tests: ["TSH", "Free T4", "Total testosterone", "Estradiol", "SHBG", "DHEA-S"],
     icon: Activity,
+    image: hormonesThyroidImage,
+    imageAlt: "Close-up amber liquid dropper representing hormone testing",
   },
   {
     title: "Inflammation & immunity",
     count: "12+ biomarkers",
     tests: ["High-sensitivity CRP", "ESR", "White cell differential", "Neutrophils", "Lymphocytes"],
     icon: Shield,
+    image: inflammationImmunityImage,
+    imageAlt: "Glowing yellow microscopic form representing immune risk signals",
   },
   {
     title: "Liver & kidney",
     count: "20+ biomarkers",
     tests: ["ALT", "AST", "GGT", "Creatinine", "eGFR", "Cystatin C"],
     icon: Droplets,
+    image: liverKidneyImage,
+    imageAlt: "Blue cellular texture representing detoxification and organ function markers",
   },
   {
     title: "Nutrients & vitamins",
     count: "14+ biomarkers",
     tests: ["Vitamin D", "Vitamin B12", "Folate", "Ferritin", "Magnesium", "Methylmalonic acid"],
     icon: Sparkles,
+    image: nutrientsVitaminsImage,
+    imageAlt: "Red and green microscopic plant cells representing nutrient status",
   },
   {
     title: "Blood & iron",
     count: "18+ biomarkers",
     tests: ["Full blood count", "Iron studies", "Platelets", "Haemoglobin", "Red cell distribution width"],
     icon: CircleDot,
+    image: bloodIronImage,
+    imageAlt: "Microscopic pale strands representing blood and iron biomarkers",
   },
   {
     title: "Aging & stress",
     count: "10+ biomarkers",
     tests: ["Homocysteine", "DHEA-S", "Cortisol", "Uric acid", "Omega balance"],
     icon: Waves,
-  },
-  {
-    title: "+More",
-    count: "Doctor-prescribed add-ons",
-    tests: ["Personalized to your history", "Adjusted for goals", "Reviewed in context"],
-    icon: Plus,
-    isMore: true,
+    image: agingStressImage,
+    imageAlt: "Warm close-up skin texture representing aging and stress markers",
   },
 ];
 
@@ -621,178 +651,105 @@ function App() {
   }, []);
 
   useEffect(() => {
-    type UnderlineConfig = {
-      name: string;
-      start: number;
-      end: number;
-    };
+    const section = document.querySelector<HTMLElement>(".intro-section");
+    const sticky = section?.querySelector<HTMLElement>(".intro-sticky");
+    const words = Array.from(document.querySelectorAll<HTMLElement>(".intro-reveal-word"));
 
-    type UnderlineState = UnderlineConfig & {
-      value: number;
-      target: number;
-      velocity: number;
-    };
-
-    const underlineSources = [
-      {
-        element: document.querySelector<HTMLElement>(".intro-section"),
-        trigger: document.querySelector<HTMLElement>(".intro-section h2"),
-        variables: [
-          { name: "--changing-underline", start: 0.25, end: 0.58 },
-        ],
-      },
-      {
-        element: document.querySelector<HTMLElement>(".doctors-section"),
-        trigger: document.querySelector<HTMLElement>(".doctors-section h2"),
-        variables: [
-          { name: "--root-causes-underline", start: 0.25, end: 0.58 },
-          { name: "--symptoms-underline", start: 0.25, end: 0.58 },
-        ],
-      },
-    ].filter((section): section is {
-      element: HTMLElement;
-      trigger: HTMLElement;
-      variables: UnderlineConfig[];
-    } => Boolean(section.element && section.trigger));
-
-    const underlineSections = underlineSources.map(({ element, trigger, variables }) => ({
-      element,
-      trigger,
-      variables: variables.map((variable): UnderlineState => ({
-        ...variable,
-        value: 0,
-        target: 0,
-        velocity: 0,
-      })),
-    }));
-
-    if (!underlineSections.length) {
+    if (!section || !sticky || !words.length) {
       return;
     }
 
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const mutedColor = [203, 207, 214] as const;
+    const inkColor = [17, 24, 39] as const;
+    const accentColor = [184, 93, 53] as const;
     const clamp = (value: number) => Math.min(Math.max(value, 0), 1);
-    const segment = (value: number, start: number, end: number) => clamp((value - start) / (end - start));
+    const smooth = (value: number) => value * value * (3 - 2 * value);
+    const revealWindow = 0.2;
+    const revealSpread = 0.68;
     let frame = 0;
-    let previousFrameTime = 0;
 
-    const setReducedMotionProgress = () => {
-      underlineSections.forEach(({ element, variables }) => {
-        variables.forEach((variable) => {
-          variable.value = 1;
-          variable.target = 1;
-          variable.velocity = 0;
-          element.style.setProperty(variable.name, "1");
-        });
+    const mixColor = (
+      from: readonly [number, number, number],
+      to: readonly [number, number, number],
+      amount: number,
+    ) => {
+      const channels = from.map((channel, index) => Math.round(channel + (to[index] - channel) * amount));
+      return `rgb(${channels[0]} ${channels[1]} ${channels[2]})`;
+    };
+
+    const resetSticky = () => {
+      sticky.classList.remove("is-fixed", "is-ended");
+      sticky.style.removeProperty("--intro-sticky-left");
+      sticky.style.removeProperty("--intro-sticky-width");
+    };
+
+    const setStickyMode = (mode: "default" | "fixed" | "ended") => {
+      sticky.classList.toggle("is-fixed", mode === "fixed");
+      sticky.classList.toggle("is-ended", mode === "ended");
+    };
+
+    const syncIntroReveal = (sectionProgress: number) => {
+      const totalWords = words.length;
+
+      words.forEach((word, index) => {
+        const start = totalWords <= 1 ? 0 : (index / (totalWords - 1)) * revealSpread;
+        const wordProgress = smooth(clamp((sectionProgress - start) / revealWindow));
+        const finalColor = word.dataset.accent === "true" ? accentColor : inkColor;
+
+        word.style.color = mixColor(mutedColor, finalColor, wordProgress);
       });
     };
 
-    const updateUnderlineTargets = () => {
-      if (reducedMotion.matches) {
-        setReducedMotionProgress();
-        return;
-      }
-
-      const viewportHeight = window.innerHeight || 1;
-
-      underlineSections.forEach(({ trigger, variables }) => {
-        const triggerRect = trigger.getBoundingClientRect();
-        const triggerCenter = triggerRect.top + triggerRect.height / 2;
-        const progress = clamp((viewportHeight - triggerCenter) / viewportHeight);
-
-        variables.forEach((variable) => {
-          variable.target = segment(progress, variable.start, variable.end);
-        });
-      });
-    };
-
-    const syncUnderlineProgress = () => {
-      updateUnderlineTargets();
-
-      underlineSections.forEach(({ element, variables }) => {
-        variables.forEach((variable) => {
-          variable.value = variable.target;
-          variable.velocity = 0;
-          element.style.setProperty(variable.name, variable.value.toFixed(3));
-        });
-      });
-    };
-
-    const animateUnderlineProgress = (time: number) => {
-      if (reducedMotion.matches) {
-        frame = 0;
-        previousFrameTime = 0;
-        setReducedMotionProgress();
-        return;
-      }
-
-      if (!previousFrameTime) {
-        previousFrameTime = time;
-      }
-
-      const deltaSeconds = Math.min((time - previousFrameTime) / 1000, 0.05);
-      previousFrameTime = time;
-      let shouldContinue = false;
-
-      underlineSections.forEach(({ element, variables }) => {
-        variables.forEach((variable) => {
-          const distance = variable.target - variable.value;
-
-          variable.velocity += distance * 24 * deltaSeconds;
-          variable.velocity *= Math.exp(-5.5 * deltaSeconds);
-          variable.value = clamp(variable.value + variable.velocity * deltaSeconds);
-
-          if (
-            (variable.value === 0 && variable.velocity < 0) ||
-            (variable.value === 1 && variable.velocity > 0)
-          ) {
-            variable.velocity = 0;
-          }
-
-          if (Math.abs(variable.target - variable.value) < 0.001 && Math.abs(variable.velocity) < 0.001) {
-            variable.value = variable.target;
-            variable.velocity = 0;
-          } else {
-            shouldContinue = true;
-          }
-
-          element.style.setProperty(variable.name, variable.value.toFixed(3));
-        });
-      });
-
-      if (shouldContinue) {
-        frame = window.requestAnimationFrame(animateUnderlineProgress);
-        return;
-      }
-
+    const updateIntroReveal = () => {
       frame = 0;
-      previousFrameTime = 0;
+
+      if (reducedMotion.matches) {
+        resetSticky();
+        syncIntroReveal(1);
+        return;
+      }
+
+      const scrollY = window.scrollY || window.pageYOffset;
+      const sectionRect = section.getBoundingClientRect();
+      const sectionTop = sectionRect.top + scrollY;
+      const sectionHeight = section.offsetHeight;
+      const stickyHeight = sticky.offsetHeight;
+      const fixedStart = sectionTop;
+      const fixedEnd = sectionTop + sectionHeight - stickyHeight;
+      const fixedRange = Math.max(fixedEnd - fixedStart, 1);
+      const progress = clamp((scrollY - fixedStart) / fixedRange);
+
+      sticky.style.setProperty("--intro-sticky-left", `${sectionRect.left}px`);
+      sticky.style.setProperty("--intro-sticky-width", `${sectionRect.width}px`);
+      syncIntroReveal(progress);
+
+      if (fixedEnd <= fixedStart || scrollY < fixedStart) {
+        setStickyMode("default");
+        return;
+      }
+
+      if (scrollY >= fixedEnd) {
+        setStickyMode("ended");
+        return;
+      }
+
+      setStickyMode("fixed");
     };
 
-    const requestUpdate = () => {
-      updateUnderlineTargets();
-
+    const requestSync = () => {
       if (frame) {
         return;
       }
 
-      previousFrameTime = 0;
-      frame = window.requestAnimationFrame(animateUnderlineProgress);
+      frame = window.requestAnimationFrame(updateIntroReveal);
     };
 
-    const handleMotionPreferenceChange = () => {
-      if (frame) {
-        window.cancelAnimationFrame(frame);
-        frame = 0;
-        previousFrameTime = 0;
-      }
+    const handleMotionPreferenceChange = () => requestSync();
 
-      syncUnderlineProgress();
-    };
-
-    syncUnderlineProgress();
-    window.addEventListener("scroll", requestUpdate, { passive: true });
-    window.addEventListener("resize", requestUpdate);
+    updateIntroReveal();
+    window.addEventListener("scroll", requestSync, { passive: true });
+    window.addEventListener("resize", requestSync);
     reducedMotion.addEventListener("change", handleMotionPreferenceChange);
 
     return () => {
@@ -800,8 +757,9 @@ function App() {
         window.cancelAnimationFrame(frame);
       }
 
-      window.removeEventListener("scroll", requestUpdate);
-      window.removeEventListener("resize", requestUpdate);
+      resetSticky();
+      window.removeEventListener("scroll", requestSync);
+      window.removeEventListener("resize", requestSync);
       reducedMotion.removeEventListener("change", handleMotionPreferenceChange);
     };
   }, []);
@@ -1195,8 +1153,7 @@ function App() {
           <nav className="nav-links" aria-label="Page sections">
             <a href="#how-it-works">How it works</a>
             <a href="#what-we-test">What we test</a>
-            <a href="#compare">Compare</a>
-            <a href="#founding-members">Founding Members</a>
+            <a href="#founding-members">Pricing</a>
           </nav>
           <WhatsAppCta variant="ghost" />
         </header>
@@ -1207,7 +1164,7 @@ function App() {
           </video>
           <div className="hero-overlay" />
           <div className="hero-content" aria-label="Gen-H preventive health introduction">
-            <h1>Stay well for life's best moments.</h1>
+            <h1>Helping you stay well for life's best moments</h1>
             <p className="hero-copy">It starts with understanding your health early.</p>
             <div className="hero-actions">
               <WhatsAppCta />
@@ -1230,21 +1187,34 @@ function App() {
         </div>
       </section>
 
-      <section className="section intro-section">
-        <div className="section-heading centered">
+      <section className="intro-section">
+        <div className="intro-sticky">
+          <div className="section-heading centered">
           <p className="eyebrow">Why it matters</p>
-          <h2>
-            Most people don&apos;t realise their health is{" "}
-            <span className="scroll-underline intro-emphasis-changing">changing</span> until it&apos;s{" "}
-            <em>too late</em>
+          <h2 className="intro-reveal-title" aria-label="Most people don't realise their health is changing until it's too late">
+            {introRevealWords.map((word, index) => {
+              const isAccent = index === introRevealWords.length - 1;
+
+              return (
+                <span
+                  className={`intro-reveal-word ${isAccent ? "intro-reveal-accent keep-together" : ""}`}
+                  data-accent={isAccent ? "true" : undefined}
+                  key={`${word}-${index}`}
+                >
+                  {word}
+                  {index < introRevealWords.length - 1 ? " " : ""}
+                </span>
+              );
+            })}
           </h2>
+          </div>
         </div>
       </section>
 
       <section className="future-health-section" id="future-health" aria-label="Future health preview">
         <div className="future-health-heading">
           <h2>
-            Gen-H <em>looks deeper</em>
+            That&apos;s why <span className="keep-together">Gen-H</span> <em>looks deeper</em>
           </h2>
         </div>
         <div className="future-card-grid">
@@ -1386,15 +1356,8 @@ function App() {
           <p className="eyebrow">Doctors</p>
           <h2>
             Led by doctors who treat{" "}
-            <span className="keep-together">
-              <span className="scroll-underline doctor-emphasis-root">root causes</span>,
-            </span>{" "}
-            not just{" "}
-            <span className="scroll-underline doctor-emphasis-symptoms">symptoms</span>.
+            <em className="keep-together">root causes</em>, not just symptoms.
           </h2>
-          <p>
-            Your results are reviewed in context, then translated into clear next steps for long-term health.
-          </p>
         </div>
 
         <div className="doctor-grid">
