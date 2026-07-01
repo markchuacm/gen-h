@@ -119,7 +119,7 @@ const processSteps = [
     summary: "Share your history, goals, lifestyle, family history, and previous results so your doctor starts with the right context.",
     visual: "baseline",
     image: processBaselineImage,
-    imageAlt: "A woman joining a virtual health consultation from a bright dining table",
+    imageAlt: "A woman joining an online consultation at her laptop with a consult booked card",
   },
   {
     id: "biomarker-plan",
@@ -130,7 +130,7 @@ const processSteps = [
     summary: "Test according to your needs and long-term health priorities.",
     visual: "biomarkers",
     image: processBiomarkersImage,
-    imageAlt: "Two hands holding a red heart against a pale background",
+    imageAlt: "A doctor reviewing a personalized test plan on a laptop",
   },
   {
     id: "blood-draw",
@@ -152,7 +152,7 @@ const processSteps = [
     summary: "Review the markers that matter with your doctor, then turn them into clear next actions and follow-up testing where needed.",
     visual: "review",
     image: processPlanImage,
-    imageAlt: "A warm desk scene with abstract health result dashboards and care plan materials",
+    imageAlt: "A tablet showing a care plan dashboard on a warm desk",
   },
 ] as const;
 
