@@ -157,17 +157,17 @@ const processSteps = [
 ] as const;
 
 const introRevealWords = [
-  "Most",
-  "people",
-  "don't",
-  "realise",
-  "their",
+  "You're",
+  "trying",
+  "to",
+  "take",
+  "your",
   "health",
-  "is",
-  "changing",
-  "until",
-  "it's",
-  "too late",
+  "seriously.",
+  "It",
+  "should",
+  "feel",
+  "less confusing.",
 ] as const;
 
 function BiomarkerGrid({
@@ -1143,7 +1143,7 @@ function App() {
         <div className="intro-sticky">
           <div className="section-heading centered">
           <p className="eyebrow">Why it matters</p>
-          <h2 className="intro-reveal-title" aria-label="Most people don't realise their health is changing until it's too late">
+          <h2 className="intro-reveal-title" aria-label="You're trying to take your health seriously. It should feel less confusing.">
             {introRevealWords.map((word, index) => {
               const isAccent = index === introRevealWords.length - 1;
 
@@ -1166,7 +1166,7 @@ function App() {
       <section className="future-health-section" id="future-health" aria-label="Future health preview">
         <div className="future-health-heading">
           <h2>
-            That&apos;s why <span className="keep-together">Gen-H</span> <em>looks deeper</em>
+            That&apos;s why <span className="keep-together">Gen-H</span> <em>connects the dots</em>
           </h2>
         </div>
         <div className="future-card-grid">
