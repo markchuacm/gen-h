@@ -471,6 +471,11 @@ a {
   font-style: italic;
 }
 
+.comparison-heading h2 em {
+  color: var(--accent);
+  font-style: italic;
+}
+
 .section-heading p:not(.eyebrow),
 .comparison-heading p,
 .founding-heading p,
@@ -2697,6 +2702,14 @@ a {
   .process-step-hero {
     min-height: 520px;
     border-radius: 20px;
+  }
+
+  .process-panel-baseline .process-step-hero > img {
+    object-position: 38% center;
+  }
+
+  .process-panel-biomarkers .process-step-hero > img {
+    object-position: 25% center;
   }
 
   .process-step-title {

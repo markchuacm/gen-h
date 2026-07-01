@@ -222,7 +222,7 @@ const processSteps = [
     number: "Step 1",
     railNumber: "1.",
     railTitle: "Teleconsult",
-    title: "Start with your health baseline",
+    title: "Start with a teleconsult",
     summary: "Share your history, goals, lifestyle, family history, and previous results so your doctor starts with the right context.",
     visual: "baseline",
     image: processBaselineImage,
@@ -234,7 +234,7 @@ const processSteps = [
     railNumber: "2.",
     railTitle: "Biomarker plan",
     title: "Your doctor configures your biomarker panel",
-    summary: "Our doctors recommend the test that fit your needs and long-term health priorities.",
+    summary: "Test according to your needs and long-term health priorities.",
     visual: "biomarkers",
     image: processBiomarkersImage,
     imageAlt: "Two hands holding a red heart against a pale background",
@@ -976,20 +976,30 @@ function App() {
       return;
     }
 
-    let wasInView = false;
+    let hasReachedRevealPoint = false;
+    let isPersistingView = false;
     const observer = new IntersectionObserver(
       ([entry]) => {
-        const isInView = entry.isIntersecting && entry.intersectionRatio >= 0.28;
+        const hasAnyIntersection = entry.isIntersecting;
+        const isAtRevealPoint = hasAnyIntersection && entry.intersectionRatio >= 0.28;
 
-        if (isInView === wasInView) {
+        if (isAtRevealPoint && !hasReachedRevealPoint) {
+          hasReachedRevealPoint = true;
+          isPersistingView = true;
+          setIsFutureHealthInView(true);
+          setFutureHealthAnimationKey((key) => key + 1);
           return;
         }
 
-        wasInView = isInView;
-        setIsFutureHealthInView(isInView);
+        if (!hasAnyIntersection && isPersistingView) {
+          hasReachedRevealPoint = false;
+          isPersistingView = false;
+          setIsFutureHealthInView(false);
+        }
 
-        if (isInView) {
-          setFutureHealthAnimationKey((key) => key + 1);
+        if (hasAnyIntersection && hasReachedRevealPoint && !isPersistingView) {
+          isPersistingView = true;
+          setIsFutureHealthInView(true);
         }
       },
       {
@@ -1211,7 +1221,9 @@ function App() {
       <section className="section comparison-section" id="compare">
         <div className="comparison-heading">
           <div>
-            <h2>A Gen-H check-up vs. a standard screening.</h2>
+            <h2>
+              A <em>Gen-H</em> check-up vs. a standard screening.
+            </h2>
             <p>
               Most screenings tell you whether you're sick today. Gen-H is built to help you stay well for decades.
             </p>
