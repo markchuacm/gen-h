@@ -1,190 +1,190 @@
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowDownRight,
+  ArrowUpRight,
   CalendarDays,
   Check,
-  CheckCircle2,
-  ChevronDown,
   ChevronRight,
-  CircleDot,
-  Link,
+  MessageCircle,
   Sprout,
-  Star,
-  Target,
+  UserRound,
   X,
 } from "lucide-react";
 import {
-  carePlanHeroImage,
-  carePlanSummary,
-  carePlanStats,
-  evidenceItems,
+  alreadyDoing,
   focusAreas,
-  thisWeekActions,
-  type CarePlanAction,
+  planMeta,
+  reviewFooter,
   type FocusArea,
-  type FocusAreaStatus,
+  type FocusAreaPriority,
+  type MarkerChip,
+  type Protocol,
 } from "./carePlanData";
 import "./care-plan.css";
 
-const statusClass: Record<FocusAreaStatus, string> = {
-  Priority: "status-priority",
-  "Quick win": "status-quick-win",
-  Support: "status-support",
+const priorityClass: Record<FocusAreaPriority, string> = {
+  Priority: "priority-priority",
+  "Quick win": "priority-quick-win",
+  Support: "priority-support",
 };
 
-const statIcons = [Target, CheckCircle2, Star, CalendarDays];
-
-function CarePlanHero() {
+function MarkerChipTag({ chip }: { chip: MarkerChip }) {
+  const Arrow = chip.direction === "up" ? ArrowUpRight : ArrowDownRight;
   return (
-    <section className="care-plan-hero" aria-labelledby="care-plan-title">
-      <div className="care-plan-hero-copy">
-        <span className="care-plan-kicker">Doctor-reviewed plan</span>
-        <h2 id="care-plan-title">{carePlanSummary.title}</h2>
-        <p>{carePlanSummary.subtitle}</p>
-      </div>
-      <div className="care-plan-hero-image" aria-hidden="true">
-        <img src={carePlanHeroImage} alt="" />
-      </div>
-      <div className="care-plan-stats" aria-label="Care plan summary">
-        {carePlanStats.map((stat, index) => {
-          const Icon = statIcons[index] ?? CircleDot;
-          return (
-            <div className="care-plan-stat" key={stat.id}>
-              <span className="care-plan-stat-icon">
-                <Icon strokeWidth={1.75} />
-              </span>
-              <span>
-                <strong>{stat.value}</strong>
-                <span>{stat.label}</span>
-                <em>{stat.detail}</em>
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
+    <span className={`marker-chip marker-chip--${chip.status}`}>
+      <span>{chip.label}</span>
+      <strong>{chip.value}</strong>
+      <Arrow strokeWidth={2.2} aria-hidden="true" />
+    </span>
   );
 }
 
-function EvidenceStrip() {
+function PlanHeader() {
   return (
-    <section className="evidence-strip" aria-labelledby="evidence-strip-title">
-      <div className="evidence-strip-heading">
-        <span>Why these priorities</span>
-        <h2 id="evidence-strip-title">Generated from Mark&apos;s latest markers and recovery profile.</h2>
+    <header className="plan-header" aria-labelledby="care-plan-title">
+      <div className="plan-header-copy">
+        <span className="plan-kicker">Doctor-reviewed care plan</span>
+        <h2 id="care-plan-title">
+          {planMeta.titleLead}
+          <em>{planMeta.titleEmphasis}</em>
+          {planMeta.titleTail}
+        </h2>
+        <p>{planMeta.subtitle}</p>
       </div>
-      <div className="evidence-list">
-        {evidenceItems.map((item) => (
-          <div className="evidence-item" key={item.label}>
-            <span>{item.label}</span>
-            <strong>{item.value}</strong>
-            <em>{item.context}</em>
-          </div>
-        ))}
-      </div>
-    </section>
+      <p className="plan-meta">
+        Reviewed by {planMeta.reviewedBy} · Next review {planMeta.nextReviewDate} ·{" "}
+        {planMeta.startThisWeekCount} protocols to start this week
+      </p>
+    </header>
   );
 }
 
-function ThisWeekModule() {
+function ProtocolRow({ protocol, onSelect }: { protocol: Protocol; onSelect: () => void }) {
   return (
-    <section className="this-week-module" aria-labelledby="this-week-title">
-      <div className="this-week-heading">
-        <span>This week</span>
-        <h2 id="this-week-title">Start with these 5 actions</h2>
-      </div>
-      <div className="this-week-list">
-        {thisWeekActions.map((action, index) => (
-          <div className="this-week-action" key={action.id}>
-            <span className="this-week-number">{index + 1}</span>
-            <div>
-              <strong>{action.title}</strong>
-              <p>{action.detail}</p>
-              <em>Linked to: {action.linkedTo}</em>
-            </div>
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
-function FocusAreaCard({
-  area,
-  isSelected,
-  onSelect,
-}: {
-  area: FocusArea;
-  isSelected: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      className={`focus-area-card ${isSelected ? "is-selected" : ""}`}
-      type="button"
-      aria-pressed={isSelected}
-      onClick={onSelect}
-    >
-      <span className="focus-area-image">
-        <img src={area.imageUrl} alt="" />
+    <button className="protocol-row" type="button" onClick={onSelect}>
+      <span className="protocol-thumb" aria-hidden="true">
+        <img src={protocol.imageUrl} alt="" />
       </span>
-      <span className="focus-area-copy">
-        <span className={`focus-area-status ${statusClass[area.status]}`}>{area.status}</span>
-        <strong>{area.title}</strong>
-        <span>{area.description}</span>
-        <span className="focus-area-linked">
-          {area.biomarkers.map((biomarker) => (
-            <em key={biomarker}>{biomarker}</em>
+      <span className="protocol-copy">
+        <strong>{protocol.title}</strong>
+        <span className="protocol-tags">
+          <span className="protocol-category">{protocol.category}</span>
+          {protocol.markerChips.slice(0, 2).map((chip) => (
+            <MarkerChipTag chip={chip} key={chip.label} />
           ))}
-        </span>
-        <span className="focus-area-levers">
-          <span>Next levers</span>
-          {area.levers.map((lever) => (
-            <em key={lever}>{lever}</em>
-          ))}
+          {protocol.startHere && <span className="start-week-tag">Start this week</span>}
         </span>
       </span>
-      <span className="focus-area-footer">
-        <span>{area.actionsLabel}</span>
-        <ChevronRight strokeWidth={1.75} />
-      </span>
+      <ChevronRight className="protocol-chevron" strokeWidth={1.75} aria-hidden="true" />
     </button>
   );
 }
 
-function ActionDetailDrawer({ action, onClose }: { action: CarePlanAction; onClose: () => void }) {
+function FocusAreaSection({
+  area,
+  onSelectProtocol,
+}: {
+  area: FocusArea;
+  onSelectProtocol: (id: string) => void;
+}) {
   return (
-    <aside className="action-detail-drawer" aria-labelledby="action-detail-title" role="dialog" aria-modal="true">
-      <button className="action-detail-close" type="button" aria-label="Close action details" onClick={onClose}>
+    <section className="focus-section" aria-labelledby={`focus-${area.id}`}>
+      <div className="focus-section-heading">
+        <span className={`focus-section-eyebrow ${priorityClass[area.priority]}`}>
+          <span className="focus-section-dot" aria-hidden="true" />
+          {area.priority}
+        </span>
+        <h3 id={`focus-${area.id}`}>{area.title}</h3>
+        <p>{area.summary}</p>
+      </div>
+      <div className="protocol-list">
+        {area.protocols.map((protocol) => (
+          <ProtocolRow key={protocol.id} protocol={protocol} onSelect={() => onSelectProtocol(protocol.id)} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function AlreadyDoingSection() {
+  return (
+    <section className="already-doing" aria-labelledby="already-doing-title">
+      <h3 id="already-doing-title">Already part of your routine</h3>
+      <ul>
+        {alreadyDoing.map((item) => (
+          <li key={item.text}>
+            <Check strokeWidth={2} aria-hidden="true" />
+            <span>
+              {item.text}
+              <em>{item.basedOn}</em>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function ReviewFooter() {
+  return (
+    <section className="review-footer" aria-label={reviewFooter.title}>
+      <span className="review-footer-icon" aria-hidden="true">
+        <CalendarDays strokeWidth={1.75} />
+      </span>
+      <div>
+        <strong>{reviewFooter.title}</strong>
+        <p>{reviewFooter.body}</p>
+        <em>{reviewFooter.note}</em>
+      </div>
+      <button className="review-footer-cta" type="button">
+        <MessageCircle strokeWidth={1.75} aria-hidden="true" />
+        <span>{reviewFooter.cta}</span>
+      </button>
+    </section>
+  );
+}
+
+function ProtocolDetailPanel({ protocol, onClose }: { protocol: Protocol; onClose: () => void }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    closeRef.current?.focus();
+  }, [protocol.id]);
+
+  return (
+    <aside className="action-detail-drawer" aria-labelledby="protocol-detail-title" role="dialog" aria-modal="true">
+      <button
+        className="action-detail-close"
+        type="button"
+        aria-label="Close protocol details"
+        onClick={onClose}
+        ref={closeRef}
+      >
         <X strokeWidth={1.85} />
       </button>
 
       <div className="action-detail-intro">
-        <span className="action-category-pill">{action.category}</span>
-        <img className="action-detail-thumb" src={action.imageUrl} alt="" />
-        <h2 id="action-detail-title">{action.title}</h2>
-        <p>{action.subtitle}</p>
-      </div>
-
-      <div className="linked-biomarker-box">
-        <Link strokeWidth={1.8} aria-hidden="true" />
-        <span>Linked to: {action.linkedBiomarkers.join(", ")}</span>
+        <span className="action-category-pill">{protocol.category}</span>
+        <img className="action-detail-thumb" src={protocol.imageUrl} alt="" />
+        <h2 id="protocol-detail-title">{protocol.title}</h2>
+        <p className="protocol-personal-lead">{protocol.personalLead}</p>
       </div>
 
       <section className="action-detail-section">
         <h3>Why this is in your plan</h3>
-        <p>{action.whyInPlan}</p>
-      </section>
-
-      <section className="action-detail-section action-detail-section--personal">
-        <h3>Your version</h3>
-        <p>{action.yourVersion}</p>
+        <div className="protocol-detail-chips">
+          {protocol.markerChips.map((chip) => (
+            <MarkerChipTag chip={chip} key={chip.label} />
+          ))}
+        </div>
+        <p>{protocol.whyInPlan}</p>
       </section>
 
       <section className="action-detail-section">
         <h3>What to do</h3>
-        <p>{action.whatToDo.intro}</p>
-        <div className="action-option-list" aria-label="Breakfast options">
-          {action.whatToDo.options.map((option) => (
+        <p>{protocol.whatToDo.intro}</p>
+        <div className="action-option-list" aria-label="Options">
+          {protocol.whatToDo.options.map((option) => (
             <span className="action-option-chip" key={option.label}>
               <span className="action-option-visual" aria-hidden="true">
                 <img src={option.imageUrl} alt="" />
@@ -193,35 +193,63 @@ function ActionDetailDrawer({ action, onClose }: { action: CarePlanAction; onClo
             </span>
           ))}
         </div>
+        <div className="guidance-box">
+          <Sprout strokeWidth={1.85} aria-hidden="true" />
+          <span>{protocol.whatToDo.guidance}</span>
+        </div>
+        {protocol.whatToDo.alternatives.length > 0 && (
+          <div className="alternative-note">
+            <span>Other ways to hit this</span>
+            <ul>
+              {protocol.whatToDo.alternatives.map((alternative) => (
+                <li key={alternative}>{alternative}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
-      <div className="guidance-box">
-        <Sprout strokeWidth={1.85} aria-hidden="true" />
-        <span>{action.whatToDo.guidance}</span>
-      </div>
+      <section className="made-for-you" aria-labelledby="made-for-you-title">
+        <div className="made-for-you-heading">
+          <UserRound strokeWidth={1.75} aria-hidden="true" />
+          <h3 id="made-for-you-title">Made for you</h3>
+        </div>
+        {protocol.madeForYou.map((line) => (
+          <div className="made-for-you-line" key={line.text}>
+            <p>{line.text}</p>
+            <em>{line.basedOn}</em>
+          </div>
+        ))}
+      </section>
 
       <section className="action-detail-section">
-        <h3>Other ways to do this</h3>
-        <ul className="alternative-list">
-          {action.alternatives.map((alternative) => (
-            <li key={alternative}>
+        <h3>Key benefits</h3>
+        <ul className="benefit-list">
+          {protocol.benefits.map((benefit) => (
+            <li key={benefit.title}>
               <Check strokeWidth={2} aria-hidden="true" />
-              <span>{alternative}</span>
+              <span>
+                <strong>{benefit.title}</strong> {benefit.detail}
+              </span>
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="watchout-box" aria-label={action.watchOuts.title}>
-        <strong>{action.watchOuts.title}</strong>
-        <p>{action.watchOuts.body}</p>
+      <section className="action-detail-section watchout-section">
+        <h3>Watch-outs</h3>
+        <ul className="watchout-list">
+          {protocol.watchOuts.map((watchOut) => (
+            <li key={watchOut}>{watchOut}</li>
+          ))}
+        </ul>
       </section>
 
       <section className="review-timing-box">
         <CalendarDays strokeWidth={1.8} aria-hidden="true" />
         <div>
           <strong>Retest / review timing</strong>
-          <p>{action.reviewTiming}</p>
+          <p>{protocol.reviewTiming}</p>
         </div>
       </section>
     </aside>
@@ -229,53 +257,41 @@ function ActionDetailDrawer({ action, onClose }: { action: CarePlanAction; onClo
 }
 
 export default function CarePlanDashboard() {
-  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const selectedArea = focusAreas.find((area) => area.id === selectedAreaId) ?? focusAreas[0];
-  const selectedAction = selectedArea.actions[0];
+  const [selectedProtocolId, setSelectedProtocolId] = useState<string | null>(null);
+  const allProtocols = useMemo(() => focusAreas.flatMap((area) => area.protocols), []);
+  const selectedProtocol = allProtocols.find((protocol) => protocol.id === selectedProtocolId) ?? null;
+
+  useEffect(() => {
+    if (!selectedProtocol) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setSelectedProtocolId(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedProtocol]);
 
   return (
     <section className="care-plan-dashboard" aria-label="Care Plan">
       <div className="care-plan-main-panel">
-        <CarePlanHero />
-        <EvidenceStrip />
-        <ThisWeekModule />
+        <PlanHeader />
 
-        <section className="focus-area-section" aria-labelledby="focus-area-title">
-          <div className="focus-area-heading">
-            <div>
-              <span>Priority map</span>
-              <h2 id="focus-area-title">Your focus areas</h2>
-              <p>Each priority connects Mark&apos;s biomarkers to the behavioural levers most likely to move them.</p>
-            </div>
-            <button type="button">View all</button>
-          </div>
+        {focusAreas.map((area) => (
+          <FocusAreaSection area={area} key={area.id} onSelectProtocol={setSelectedProtocolId} />
+        ))}
 
-          <div className="focus-area-grid">
-            {focusAreas.map((area) => (
-              <FocusAreaCard
-                area={area}
-                isSelected={drawerOpen && area.id === selectedAreaId}
-                key={area.id}
-                onSelect={() => {
-                  setSelectedAreaId(area.id);
-                  setDrawerOpen(true);
-                }}
-              />
-            ))}
-          </div>
-        </section>
-
-        <button className="view-all-actions" type="button" aria-label="View all actions">
-          <span>View all actions (12)</span>
-          <ChevronDown strokeWidth={1.8} />
-        </button>
+        <AlreadyDoingSection />
+        <ReviewFooter />
       </div>
 
-      {drawerOpen && selectedAction && (
+      {selectedProtocol && (
         <div className="action-detail-layer" role="presentation">
-          <button className="action-detail-backdrop" type="button" aria-label="Dismiss action details" onClick={() => setDrawerOpen(false)} />
-          <ActionDetailDrawer action={selectedAction} onClose={() => setDrawerOpen(false)} />
+          <button
+            className="action-detail-backdrop"
+            type="button"
+            aria-label="Dismiss protocol details"
+            onClick={() => setSelectedProtocolId(null)}
+          />
+          <ProtocolDetailPanel protocol={selectedProtocol} onClose={() => setSelectedProtocolId(null)} />
         </div>
       )}
     </section>
