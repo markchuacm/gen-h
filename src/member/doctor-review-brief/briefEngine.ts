@@ -14,9 +14,11 @@ import type {
   BriefStatus,
   DoctorHighlight,
   IntakeState,
+  MarkerFinding,
   RenderSection,
   UploadCategory,
 } from "./types";
+import { canonicalKeyFor } from "./questionRules";
 
 const CATEGORY_KEYWORDS: Array<[UploadCategory, string[]]> = [
   ["dna", ["dna", "genetic", "genome", "23andme", "ancestry"]],
@@ -102,8 +104,8 @@ export function detectCategory(
 
 // ─── "Top of mind highlights to doctor" ───────────────────────────────────────
 // Temporary fallback while synthesis is pending: only markers the report itself
-// flags out of range (from structured extraction). Cross-document themes come
-// from the pipeline's compose stage.
+// flags out of range (from structured extraction). Cross-document investigation
+// areas come from the pipeline's compose stage.
 export function computeDoctorHighlights(state: IntakeState): DoctorHighlight[] {
   const insights = state.aiDocumentInsights ?? {};
   const out: DoctorHighlight[] = [];
@@ -125,6 +127,28 @@ export function computeDoctorHighlights(state: IntakeState): DoctorHighlight[] {
   });
 
   return out;
+}
+
+/** Structured findings recoverable from persisted insights. */
+export function findingsFromInsights(state: IntakeState): MarkerFinding[] {
+  const findings: MarkerFinding[] = [];
+  for (const file of state.uploadedFiles) {
+    const insight = state.aiDocumentInsights?.[file.id];
+    if (!insight) continue;
+    (insight.markers ?? []).forEach((marker, index) => {
+      const canonicalKey = canonicalKeyFor(marker.name);
+      findings.push({
+        ...marker,
+        id: `${file.id}:${canonicalKey ?? "m"}:${index}`,
+        canonicalKey,
+        sourceFileId: file.id,
+        sourceLabel:
+          [insight.documentType, insight.provider].filter(Boolean).join(" · ") ||
+          file.name,
+      });
+    });
+  }
+  return findings;
 }
 
 // ─── Attachments (Claude-style file cards) ─────────────────────────────────────
@@ -384,7 +408,7 @@ export function buildBriefSections(state: IntakeState): RenderSection[] {
   if (dynamicAnswerItems.length) {
     sections.push({
       id: "questions",
-      title: "Questions answered by you",
+      title: "Follow-up answers",
       items: dynamicAnswerItems,
     });
   }
@@ -412,7 +436,7 @@ export function computeBriefSummary(state: IntakeState): BriefSummary {
   ].filter(Boolean).length;
 
   const filesUploaded = state.uploadedFiles.length;
-  const reviewAreas = state.briefSynthesis?.themes.length ?? 0;
+  const reviewAreas = state.briefSynthesis?.relationships.length ?? 0;
   const score = captured + (filesUploaded > 0 ? 1 : 0);
 
   const status: BriefStatus =

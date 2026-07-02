@@ -55,8 +55,6 @@ export type BriefSectionId =
   | "reviewAreas"
   | "outOfRange"
   | "relationships"
-  | "lifestyleContext"
-  | "doctorQuestions"
   | "questions";
 
 export type LifestyleSnapshot = {
@@ -97,7 +95,6 @@ export type IntakeState = {
   uploadsConfirmedAt?: string;
   aiDocumentInsights?: Record<string, DocumentInsight>;
   briefSynthesis?: BriefSynthesis;
-  dynamicQuestionQueue?: DynamicQuestion[];
   answeredDynamicQuestions?: AnsweredDynamicQuestion[];
   synthesisStatus?: BriefSynthesis["status"];
   // Deferred from the required v1 path, kept in the model for later:
@@ -203,24 +200,12 @@ export type DocumentInsight = {
   doctorReviewAreas: string[];
   patientFacingSummary: string;
   question: string;
+  contextQuestions?: DynamicQuestion[];
   questionId: string; // stable ID used as FlowStep key + contextAnswers key
   status: DocumentInsightStatus;
 };
 
 // ─── Cross-document synthesis ─────────────────────────────────────────────────
-
-export type EvidenceRef = {
-  label: string;
-  source?: string;
-};
-
-export type BriefTheme = {
-  id: string;
-  title: string;
-  summary: string;
-  evidence: EvidenceRef[];
-  confidence: "high" | "medium" | "low";
-};
 
 export type DynamicQuestion = {
   id: string;
@@ -242,19 +227,16 @@ export type AnsweredDynamicQuestion = {
 export type BriefSynthesis = {
   status: "idle" | "synthesizing" | "ready" | "error";
   narrative: string;
-  themes: BriefTheme[];
   outOfRange: MarkerFinding[];
   relationships: MarkerRelationship[];
-  lifestyleContext: string[];
-  doctorQuestions: string[];
-  nextQuestions: DynamicQuestion[];
+  patientContext: string[];
   degraded?: boolean; // true when built by basic matching instead of full synthesis
   progress: {
     documentsRead: number;
     markersRead: number;
     outOfRangeCount: number;
-    questionsQueued: number;
   };
+  sourceSignature?: string;
   updatedAt?: string;
   error?: string;
 };
@@ -266,7 +248,7 @@ export type BriefSynthesis = {
 export type AgentStepStatus = "pending" | "active" | "done" | "error";
 
 export type AgentStep = {
-  id: string; // "extract" | "classify" | "compose"
+  id: string; // "extract" | "classify" | "prepareQuestions" | "compose"
   label: string;
   detail?: string;
   status: AgentStepStatus;
@@ -300,10 +282,4 @@ export type AttachmentCard = {
   sizeLabel: string; // e.g. "612 KB"
   status: DocumentInsightStatus | "uploaded";
   flaggedCount: number;
-};
-
-export const SOURCE_LABEL: Record<BriefSource, string> = {
-  user_answer: "from your answer",
-  uploaded_report: "uploaded for doctor review",
-  system_generated: "prepared from uploaded document",
 };

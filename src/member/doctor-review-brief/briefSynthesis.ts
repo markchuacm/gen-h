@@ -67,7 +67,6 @@ export function buildProcessRequest(
   mode: ProcessRequest["mode"],
   opts: {
     prepared?: Map<string, DocumentPayload>;
-    askedQuestionIds: string[];
   },
 ): ProcessRequest {
   return {
@@ -75,7 +74,6 @@ export function buildProcessRequest(
     documents: buildProcessDocuments(state, opts.prepared),
     answers: answersPayload(state),
     answeredDynamicQuestions: state.answeredDynamicQuestions ?? [],
-    askedQuestionIds: opts.askedQuestionIds,
   };
 }
 

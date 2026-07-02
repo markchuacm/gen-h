@@ -7,11 +7,15 @@ import type { ReactNode } from "react";
 import {
   ChevronLeft,
   ChevronRight,
-  FolderCheck,
+  File as FileIcon,
+  FileText,
   HelpCircle,
-  Sparkles,
+  Image as ImageIcon,
+  Table as TableIcon,
   TriangleAlert,
+  X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AgentActivityFeed } from "./AgentActivityFeed";
 import type { FeedDoc } from "./AgentActivityFeed";
 import {
@@ -23,39 +27,38 @@ import {
   SupplementsForm,
   TextAnswer,
 } from "./QuestionInputs";
+import { FindingsReveal } from "./FindingsReveal";
+import { GeneratingBrief } from "./GeneratingBrief";
 import { REPORT_FORK_VALUES } from "./questions";
 import type { FlowStep } from "./questions";
+import { ackForAnswer } from "./questionRules";
 import type {
   Question,
   ReportUploadType,
+  AttachmentCard,
+  AttachmentKind,
   UploadCategory,
-  UploadedFile,
 } from "./types";
 import type { IntakeController } from "./useIntakeState";
 
 const UPLOAD_GROUPS: Array<{
   value: ReportUploadType;
   title: string;
-  helper: string;
   category: UploadCategory;
 }> = [
   {
     value: "reports",
     title: "Blood & urine tests",
-    helper: "Upload lab reports, screening PDFs, or blood/urine result files.",
     category: "blood",
   },
   {
     value: "genetic_reports",
     title: "Genetic tests",
-    helper: "Upload DNA, genomics, or genetic risk reports.",
     category: "dna",
   },
   {
     value: "wearable_only",
     title: "Other health data",
-    helper:
-      "Upload wearable exports, fitness data, body composition, or other health files.",
     category: "other",
   },
 ];
@@ -70,27 +73,45 @@ function selectedUploadGroups(selections: ReportUploadType[] = []) {
   return UPLOAD_GROUPS.filter((group) => selections.includes(group.value));
 }
 
-function filesForGroup(
-  files: UploadedFile[],
-  group: (typeof UPLOAD_GROUPS)[number],
-) {
-  return files.filter((file) => {
-    if (group.value === "reports") {
-      return (
-        file.detectedCategory === "blood" ||
-        file.detectedCategory === "urine" ||
-        file.detectedCategory === "screening"
-      );
-    }
-    if (group.value === "genetic_reports")
-      return file.detectedCategory === "dna";
-    return (
-      file.detectedCategory !== "blood" &&
-      file.detectedCategory !== "urine" &&
-      file.detectedCategory !== "screening" &&
-      file.detectedCategory !== "dna"
-    );
-  });
+const PREPARE_KIND_ICON: Record<AttachmentKind, LucideIcon> = {
+  pdf: FileText,
+  image: ImageIcon,
+  sheet: TableIcon,
+  doc: FileIcon,
+};
+
+function PrepareAttachmentTile({
+  card,
+  onRemove,
+}: {
+  card: AttachmentCard;
+  onRemove?: (fileId: string) => void;
+}) {
+  const Icon = PREPARE_KIND_ICON[card.kind];
+  return (
+    <div className={`drb-attachment drb-attachment--prepare drb-attachment--${card.kind}`}>
+      {onRemove && (
+        <button
+          type="button"
+          className="drb-attachment-remove drb-attachment-remove--always"
+          aria-label={`Remove ${card.fileName}`}
+          onClick={() => onRemove(card.fileId)}
+        >
+          <X strokeWidth={1.9} aria-hidden="true" />
+        </button>
+      )}
+      <div className="drb-attachment-thumb">
+        <Icon strokeWidth={1.5} aria-hidden="true" />
+        <span className="drb-attachment-ext">{card.ext}</span>
+      </div>
+      <div className="drb-attachment-meta">
+        <p className="drb-attachment-name" title={card.fileName}>
+          {card.fileName}
+        </p>
+        <p className="drb-attachment-sub">Ready for review</p>
+      </div>
+    </div>
+  );
 }
 
 function WhyWeAsk({ text }: { text: string }) {
@@ -162,22 +183,32 @@ function QuestionBody({
       );
     case "dynamic": {
       const value = c.state.contextAnswers[question.id] ?? "";
+      const dynamicQuestion = c.dynamicQuestionQueue.find(
+        (candidate) => candidate.id === question.dynamicQuestionId,
+      );
       return (
-        <DynamicQuestionInput
-          options={question.options ?? []}
-          value={value}
-          allowFreeText={question.allowFreeText}
-          freeTextLabel={question.freeTextLabel}
-          onChange={(v) => {
-            c.setContextAnswer(question.id, v);
-            if (question.dynamicQuestionId)
-              c.setDynamicAnswer(
-                question.dynamicQuestionId,
-                question.prompt,
-                v,
-              );
-          }}
-        />
+        <>
+          <DynamicQuestionInput
+            options={question.options ?? []}
+            value={value}
+            allowFreeText={question.allowFreeText}
+            freeTextLabel={question.freeTextLabel}
+            onChange={(v) => {
+              c.setContextAnswer(question.id, v);
+              if (question.dynamicQuestionId)
+                c.setDynamicAnswer(
+                  question.dynamicQuestionId,
+                  question.prompt,
+                  v,
+                );
+            }}
+          />
+          {dynamicQuestion && value.trim() && (
+            <p className="drb-ack">
+              {ackForAnswer(dynamicQuestion, value)}
+            </p>
+          )}
+        </>
       );
     }
     case "snapshot":
@@ -242,7 +273,15 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
     const q = step.question;
     content = (
       <>
-        <StepHeader title={q.prompt} helper={q.helper} />
+        <StepHeader
+          eyebrow={
+            c.questionCounter
+              ? `Question ${c.questionCounter.n} of ${c.questionCounter.of}`
+              : undefined
+          }
+          title={q.prompt}
+          helper={q.helper}
+        />
         <QuestionBody question={q} c={c} />
         {q.whyWeAsk && <WhyWeAsk key={q.id} text={q.whyWeAsk} />}
       </>
@@ -254,30 +293,39 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
         <StepHeader
           eyebrow="Your reports"
           title="Upload what you already have"
-          helper="You don't need to know what matters. We'll organise it for your doctor."
         />
-        <div className="drb-upload-groups">
+        <div className="drb-upload-layout">
           {groups.map((group) => (
             <section key={group.value} className="drb-upload-group">
-              <header className="drb-upload-group-head">
-                <h4>{group.title}</h4>
-                <p>{group.helper}</p>
-              </header>
               <FileUpload
-                files={filesForGroup(c.state.uploadedFiles, group)}
                 onAdd={(files) => c.addFiles(files, group.category)}
                 title={`Upload ${group.title.toLowerCase()}`}
-                description={group.helper}
+                description="PDF, JPG, PNG, DOCX"
               />
             </section>
           ))}
+          <section className="drb-upload-files" aria-label="Files uploaded">
+            <h4>Files uploaded</h4>
+            {c.attachments.length > 0 ? (
+              <div className="drb-upload-file-grid">
+                {c.attachments.map((card) => (
+                  <PrepareAttachmentTile
+                    key={card.fileId}
+                    card={card}
+                    onRemove={c.removeFile}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p>No files yet</p>
+            )}
+          </section>
         </div>
       </>
     );
   } else if (step.kind === "preparing") {
     const files = c.state.uploadedFiles;
     const insights = c.state.aiDocumentInsights ?? {};
-    const hasStartedPreparing = !!c.state.uploadsConfirmedAt;
     const isWorking = c.pipelineStatus === "running" || c.aiAnalyzing;
     const hasReviewFallback = Object.values(insights).some(
       (i) => i.status === "error" || i.status === "needs_review",
@@ -285,14 +333,13 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
 
     const feedDocs: FeedDoc[] = files.map((f) => {
       const ins = insights[f.id];
-      const markerCount = ins?.markers?.length ?? 0;
       return {
         fileId: f.id,
         name: f.name,
         status: ins?.status ?? "uploaded",
         detail:
           ins?.status === "done"
-            ? `${ins.documentType}${markerCount > 0 ? ` · ${markerCount} markers` : ""}`
+            ? ins.documentType
             : ins?.status === "needs_review"
               ? "Attached for doctor review"
               : ins?.status === "error"
@@ -306,44 +353,34 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
         <StepHeader
           eyebrow="Preparing your brief"
           title={
-            !hasStartedPreparing && files.length > 0
-              ? "Ready to prepare your brief"
-              : isWorking
-                ? "Building your doctor's brief…"
-                : c.pipelineStatus === "error"
-                  ? "The brief needs another pass"
-                  : "Ready for your doctor"
+            isWorking
+              ? "Building your doctor's brief…"
+              : c.pipelineStatus === "error"
+                ? "The brief needs another pass"
+                : "Ready for your doctor"
           }
           helper={
-            !hasStartedPreparing && files.length > 0
-              ? "We'll only read your uploaded files after you continue. You can watch the brief assemble on the left."
-              : isWorking
-                ? "Follow along — each step below is happening right now."
-                : undefined
+            isWorking
+              ? "Follow along — each step below is happening right now."
+              : undefined
           }
         />
-        {hasStartedPreparing && c.agentSteps.length > 0 ? (
+        {c.agentSteps.length > 0 ? (
           <AgentActivityFeed
             steps={c.agentSteps}
             docs={feedDocs}
-            onRetry={c.retryPipeline}
+            onRetry={c.retryExtraction}
           />
         ) : files.length > 0 ? (
-          <ul className="drb-prepare-cards">
-            {files.map((f) => (
-              <li key={f.id} className="drb-prepare-file">
-                <FolderCheck strokeWidth={1.7} aria-hidden="true" />
-                <div className="drb-prepare-file-info">
-                  <strong>{f.name}</strong>
-                  <span>Ready for review</span>
-                </div>
-              </li>
+          <div className="drb-prepare-attachments" aria-label="Uploaded attachments">
+            {c.attachments.map((card) => (
+              <PrepareAttachmentTile key={card.fileId} card={card} />
             ))}
-          </ul>
+          </div>
         ) : (
           <ul className="drb-prepare-cards">
             <li>
-              <FolderCheck strokeWidth={1.7} aria-hidden="true" />
+              <FileIcon strokeWidth={1.7} aria-hidden="true" />
               <span>
                 No files uploaded — that's okay, we'll continue with your
                 answers
@@ -351,51 +388,67 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
             </li>
           </ul>
         )}
-        {!isWorking && hasStartedPreparing && hasReviewFallback && (
+        {!isWorking && hasReviewFallback && (
           <p className="drb-prepare-note">
             <TriangleAlert strokeWidth={1.7} aria-hidden="true" />
             Some documents need doctor review before details can be summarized.
           </p>
         )}
-        {!isWorking &&
-          hasStartedPreparing &&
-          c.briefSynthesis?.status === "ready" &&
-          c.briefSynthesis.progress && (
-            <p className="drb-prepare-note drb-prepare-note--ready">
-              <Sparkles strokeWidth={1.7} aria-hidden="true" />
-              {[
-                `${c.briefSynthesis.progress.markersRead} markers read`,
-                `${c.briefSynthesis.progress.outOfRangeCount} outside printed ranges`,
-                `${c.briefSynthesis.progress.questionsQueued} questions prepared for you`,
-              ].join(" · ")}
-            </p>
-          )}
       </>
     );
+  } else if (step.kind === "findings") {
+    content = <FindingsReveal c={c} />;
+  } else if (step.kind === "generating") {
+    content = <GeneratingBrief c={c} />;
   }
 
   const isPreparingBrief =
     step.kind === "preparing" &&
     !!c.state.uploadsConfirmedAt &&
     (c.pipelineStatus === "running" ||
-      c.aiAnalyzing ||
-      c.state.synthesisStatus === "synthesizing");
-  const proceed = canContinue(step, c) && !isPreparingBrief;
+      c.aiAnalyzing);
+  const isGenerating =
+    step.kind === "generating" &&
+    c.briefSynthesis?.status !== "ready" &&
+    c.pipelineStatus !== "error";
+  const proceed = canContinue(step, c) && !isPreparingBrief && !isGenerating;
   const showSkip = step.kind === "question" && !step.question.required;
-  const continueLabel =
-    step.kind === "preparing" && isPreparingBrief
-      ? c.aiAnalyzing
-        ? "Reading…"
-        : "Preparing…"
-      : step.kind === "question" && step.question.id === "reportFork"
-        ? "Continue"
-        : c.isLastIntakeStep
-          ? "See my brief"
-          : "Continue";
+  let continueLabel = "Continue";
+  if (step.kind === "preparing" && isPreparingBrief) {
+    continueLabel = c.aiAnalyzing ? "Reading…" : "Preparing…";
+  } else if (step.kind === "preparing" && c.state.uploadsConfirmedAt) {
+    continueLabel = "See what we found";
+  } else if (step.kind === "findings") {
+    continueLabel = "Continue";
+  } else if (step.kind === "generating") {
+    continueLabel =
+      c.briefSynthesis?.status === "ready" ? "See my brief" : "Generating…";
+  } else if (step.kind === "question" && step.question.id === "reportFork") {
+    continueLabel = "Continue";
+  } else if (c.isLastIntakeStep) {
+    continueLabel = "See my brief";
+  }
 
   return (
-    <div className="drb-question">
-      <div className="drb-question-body">{content}</div>
+    <div
+      className="drb-question"
+      onKeyDown={(event) => {
+        const target = event.target as HTMLElement;
+        const tag = target.tagName.toLowerCase();
+        if (
+          event.key === "Enter" &&
+          !event.shiftKey &&
+          (tag === "textarea" || tag === "input") &&
+          proceed
+        ) {
+          event.preventDefault();
+          c.next();
+        }
+      }}
+    >
+      <div key={step.key} className="drb-question-body drb-step-enter">
+        {content}
+      </div>
       <div className="drb-question-footer">
         {c.stepIndex > 0 ? (
           <button type="button" className="drb-back" onClick={c.back}>

@@ -6,9 +6,7 @@
 import type {
   AnsweredDynamicQuestion,
   BriefSynthesis,
-  BriefTheme,
   DocumentInsight,
-  DynamicQuestion,
   MarkerFinding,
   MarkerRelationship,
 } from "./types";
@@ -25,11 +23,10 @@ export type ProcessDocumentPayload = {
 };
 
 export type ProcessRequest = {
-  mode: "full" | "synthesis";
+  mode: "extract" | "final";
   documents: ProcessDocumentPayload[];
   answers: Record<string, unknown>;
   answeredDynamicQuestions: AnsweredDynamicQuestion[];
-  askedQuestionIds: string[];
 };
 
 export type PipelineStageEvent = {
@@ -52,14 +49,21 @@ export type PipelineErrorEvent = {
   recoverable: boolean;
 };
 
+export type PipelineSummaryEvent = {
+  progress: {
+    documentsRead: number;
+    markersRead: number;
+    outOfRangeCount: number;
+  };
+};
+
 export type PipelineHandlers = {
   stage?: (data: PipelineStageEvent) => void;
   doc?: (data: PipelineDocEvent) => void;
   finding?: (data: { finding: MarkerFinding }) => void;
+  summary?: (data: PipelineSummaryEvent) => void;
   relationship?: (data: { relationship: MarkerRelationship }) => void;
   narrative_delta?: (data: { text: string }) => void;
-  theme?: (data: { theme: BriefTheme }) => void;
-  question?: (data: { question: DynamicQuestion }) => void;
   brief?: (data: { synthesis: BriefSynthesis; degraded?: boolean }) => void;
   error?: (data: PipelineErrorEvent) => void;
   done?: (data: { usage: { calls: number; totalTokens: number } }) => void;

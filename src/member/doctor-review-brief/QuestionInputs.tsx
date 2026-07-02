@@ -15,7 +15,6 @@ import type { LucideIcon } from "lucide-react";
 import type {
   LifestyleSnapshot,
   SupplementsAndMeds,
-  UploadedFile,
 } from "./types";
 
 // ─── Single select (report fork) ──────────────────────────────────────────────
@@ -162,21 +161,45 @@ export function DynamicQuestionInput({
   freeTextLabel?: string;
   onChange: (value: string) => void;
 }) {
-  const selectedOption = options.find((option) => option === value);
-  const freeTextValue = selectedOption ? "" : value;
+  const parts = value
+    .split(" · ")
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const selectedOptions = options.filter((option) => parts.includes(option));
+  const freeTextValue = parts
+    .filter((part) => !options.includes(part))
+    .join(" · ");
+  const [showFreeText, setShowFreeText] = useState(Boolean(freeTextValue));
+  const emitValue = (selected: string[], freeText = freeTextValue) => {
+    onChange([...selected, freeText.trim()].filter(Boolean).join(" · "));
+  };
+
   return (
     <div className="drb-dynamic-answer">
       {options.length > 0 && (
         <div className="drb-chip-wrap">
           {options.map((option) => {
-            const active = selectedOption === option;
+            const active = selectedOptions.includes(option);
             return (
               <button
                 key={option}
                 type="button"
                 aria-pressed={active}
                 className={`drb-chip ${active ? "is-selected" : ""}`}
-                onClick={() => onChange(active ? "" : option)}
+                onClick={() => {
+                  if (option === "None of these") {
+                    emitValue(active ? [] : [option], "");
+                    return;
+                  }
+                  const withoutNone = selectedOptions.filter(
+                    (selected) => selected !== "None of these",
+                  );
+                  emitValue(
+                    active
+                      ? withoutNone.filter((selected) => selected !== option)
+                      : [...withoutNone, option],
+                  );
+                }}
               >
                 {active && <Check strokeWidth={2.5} aria-hidden="true" />}
                 <span>{option}</span>
@@ -185,14 +208,24 @@ export function DynamicQuestionInput({
           })}
         </div>
       )}
-      {allowFreeText && (
+      {allowFreeText && !showFreeText && (
+        <button
+          type="button"
+          className="drb-add-detail drb-add-detail--inline"
+          onClick={() => setShowFreeText(true)}
+        >
+          <Plus strokeWidth={2} aria-hidden="true" />
+          Add detail
+        </button>
+      )}
+      {allowFreeText && showFreeText && (
         <label className="drb-field drb-field--free">
           <span>{freeTextLabel ?? "Answer in your own words"}</span>
           <textarea
             rows={3}
             value={freeTextValue}
             placeholder="Add context for your doctor"
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => emitValue(selectedOptions, e.target.value)}
           />
         </label>
       )}
@@ -358,15 +391,13 @@ export function SupplementsForm({
 // ─── File upload ──────────────────────────────────────────────────────────────
 
 const ACCEPT =
-  ".pdf,.png,.jpg,.jpeg,.heic,.csv,application/pdf,image/*,text/csv";
+  ".pdf,.png,.jpg,.jpeg,.heic,.csv,.doc,.docx,application/pdf,image/*,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 export function FileUpload({
-  files,
   onAdd,
   title = "Upload what you already have",
-  description = "PDF, image or CSV. Blood tests, screening reports, DNA, wearable exports — anything.",
+  description = "PDF, JPG, PNG, DOCX",
 }: {
-  files: UploadedFile[];
   onAdd: (files: FileList | File[]) => void;
   title?: string;
   description?: string;
@@ -407,11 +438,6 @@ export function FileUpload({
         }}
       />
 
-      {files.length > 0 && (
-        <p className="drb-upload-handoff">
-          {files.length} uploaded · manage attachments from the brief
-        </p>
-      )}
     </div>
   );
 }

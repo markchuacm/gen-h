@@ -1,37 +1,25 @@
 // ─── Doctor Review Brief · pipeline hook ──────────────────────────────────────
-// Owns all AI orchestration: opens the SSE pipeline stream, maps events to
-// IntakeState patches (which flow through the existing localStorage persist
-// effect, so streamed partials survive a refresh), and drives the agent
-// activity feed. useIntakeState composes this hook.
-//
-// Cost discipline: a full run fires once per upload confirmation; synthesis
-// reruns are commit-based (signature compare + running/debounce guards), never
-// keystroke-based.
+// Owns the two paid pipeline moments: document extraction and final composition.
+// Question transitions are now pure client-side state.
 
 import { useCallback, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { buildProcessRequest, synthesisSignature } from "./briefSynthesis";
 import { prepareDocumentPayload } from "./extraction";
 import type { DocumentPayload } from "./extraction";
-import { matchRules } from "./questionRules";
 import { streamBriefPipeline } from "./sse";
 import type { PipelineHandlers } from "./sse";
 import type {
   AgentStep,
   BriefSynthesis,
   DocumentInsight,
-  DynamicQuestion,
   IntakeState,
-  MarkerFinding,
 } from "./types";
 
 export type PipelineStatus = "idle" | "running" | "done" | "error";
 
-const MAX_QUEUE = 6;
-const RERUN_DEBOUNCE_MS = 1500;
-
-const DEFAULT_STEPS: Record<"full" | "synthesis", AgentStep[]> = {
-  full: [
+const DEFAULT_STEPS: Record<"extract" | "final", AgentStep[]> = {
+  extract: [
     { id: "extract", label: "Reading your documents", status: "pending" },
     {
       id: "classify",
@@ -39,15 +27,15 @@ const DEFAULT_STEPS: Record<"full" | "synthesis", AgentStep[]> = {
       status: "pending",
     },
     {
-      id: "compose",
-      label: "Connecting the dots across your reports",
+      id: "prepareQuestions",
+      label: "Preparing follow-up questions",
       status: "pending",
     },
   ],
-  synthesis: [
+  final: [
     {
       id: "compose",
-      label: "Weaving your answer into the brief",
+      label: "Generating your doctor's brief",
       status: "pending",
     },
   ],
@@ -57,63 +45,21 @@ function questionIdFor(fileId: string): string {
   return `ai_q_${fileId.slice(0, 8)}`;
 }
 
-function emptySynthesis(): BriefSynthesis {
+export function emptySynthesis(
+  status: BriefSynthesis["status"] = "synthesizing",
+): BriefSynthesis {
   return {
-    status: "synthesizing",
+    status,
     narrative: "",
-    themes: [],
     outOfRange: [],
     relationships: [],
-    lifestyleContext: [],
-    doctorQuestions: [],
-    nextQuestions: [],
+    patientContext: [],
     progress: {
       documentsRead: 0,
       markersRead: 0,
       outOfRangeCount: 0,
-      questionsQueued: 0,
     },
   };
-}
-
-function mergeQueue(
-  prev: IntakeState,
-  incoming: DynamicQuestion[],
-  replace = false,
-): DynamicQuestion[] {
-  const answered = new Set(
-    (prev.answeredDynamicQuestions ?? [])
-      .filter((q) => q.answer.trim())
-      .map((q) => q.questionId),
-  );
-  const queue = replace ? [] : [...(prev.dynamicQuestionQueue ?? [])];
-  for (const question of incoming) {
-    if (queue.length >= MAX_QUEUE) break;
-    if (answered.has(question.id)) continue;
-    if (queue.some((q) => q.id === question.id)) continue;
-    queue.push(question);
-  }
-  return queue;
-}
-
-/** Structured findings recoverable from persisted insights (for rules fallback). */
-export function findingsFromInsights(state: IntakeState): MarkerFinding[] {
-  const findings: MarkerFinding[] = [];
-  for (const file of state.uploadedFiles) {
-    const insight = state.aiDocumentInsights?.[file.id];
-    if (!insight) continue;
-    (insight.markers ?? []).forEach((marker, index) => {
-      findings.push({
-        ...marker,
-        id: `${file.id}:m:${index}`,
-        sourceFileId: file.id,
-        sourceLabel:
-          [insight.documentType, insight.provider].filter(Boolean).join(" · ") ||
-          file.name,
-      });
-    });
-  }
-  return findings;
 }
 
 export function useBriefPipeline(args: {
@@ -129,10 +75,9 @@ export function useBriefPipeline(args: {
   const runIdRef = useRef(0);
   const abortRef = useRef<AbortController | null>(null);
   const runningRef = useRef(false);
-  const modeRef = useRef<"full" | "synthesis">("full");
+  const modeRef = useRef<"extract" | "final">("extract");
   const narrativeStartedRef = useRef(false);
-  const lastSignatureRef = useRef<string>("");
-  const lastRunAtRef = useRef(0);
+  const hadErrorRef = useRef(false);
 
   const patchState = useCallback(
     (fn: (prev: IntakeState) => IntakeState) => {
@@ -156,9 +101,9 @@ export function useBriefPipeline(args: {
   );
 
   const buildHandlers = useCallback(
-    (runId: number): PipelineHandlers => {
+    (runId: number, signature?: string): PipelineHandlers => {
       const active = () => runIdRef.current === runId;
-      const partialsEnabled = () => modeRef.current === "full";
+      const finalMode = () => modeRef.current === "final";
 
       return {
         stage: (event) => {
@@ -182,6 +127,7 @@ export function useBriefPipeline(args: {
           const insight: DocumentInsight = {
             ...event.insight,
             markers: event.insight.markers ?? [],
+            contextQuestions: event.insight.contextQuestions ?? [],
             questionId: questionIdFor(event.fileId),
             status: event.status === "done" ? "done" : "needs_review",
           };
@@ -194,16 +140,27 @@ export function useBriefPipeline(args: {
             updatedAt: new Date().toISOString(),
           }));
         },
-        finding: ({ finding }) => {
-          if (!active() || !partialsEnabled()) return;
-          patchSynthesis((s) =>
-            s.outOfRange.some((f) => f.id === finding.id)
-              ? {}
-              : { outOfRange: [...s.outOfRange, finding] },
+        summary: ({ progress }) => {
+          if (!active()) return;
+          setAgentSteps((prev) =>
+            prev.map((step) =>
+              step.id === "prepareQuestions"
+                ? { ...step, status: "active" }
+                : step,
+            ),
           );
+          patchState((prev) => ({
+            ...prev,
+            briefSynthesis: {
+              ...(prev.briefSynthesis ?? emptySynthesis("idle")),
+              status: "idle",
+              progress,
+            },
+            updatedAt: new Date().toISOString(),
+          }));
         },
         relationship: ({ relationship }) => {
-          if (!active() || !partialsEnabled()) return;
+          if (!active() || !finalMode()) return;
           patchSynthesis((s) =>
             s.relationships.some((r) => r.id === relationship.id)
               ? {}
@@ -211,92 +168,74 @@ export function useBriefPipeline(args: {
           );
         },
         narrative_delta: ({ text }) => {
-          if (!active()) return;
+          if (!active() || !finalMode()) return;
           const isFirst = !narrativeStartedRef.current;
           narrativeStartedRef.current = true;
           patchSynthesis((s) => ({
             narrative: isFirst ? text : s.narrative + text,
           }));
         },
-        theme: ({ theme }) => {
-          if (!active() || !partialsEnabled()) return;
-          patchSynthesis((s) =>
-            s.themes.some((t) => t.id === theme.id)
-              ? {}
-              : { themes: [...s.themes, theme] },
-          );
-        },
-        question: ({ question }) => {
-          if (!active() || !partialsEnabled()) return;
-          patchState((prev) => ({
-            ...prev,
-            dynamicQuestionQueue: mergeQueue(prev, [question]),
-            updatedAt: new Date().toISOString(),
-          }));
-        },
         brief: ({ synthesis, degraded }) => {
           if (!active()) return;
           patchState((prev) => ({
             ...prev,
-            briefSynthesis: { ...synthesis, degraded, status: "ready" },
+            briefSynthesis: {
+              ...synthesis,
+              degraded,
+              status: "ready",
+              sourceSignature: signature,
+            },
             synthesisStatus: "ready",
-            dynamicQuestionQueue: mergeQueue(
-              prev,
-              synthesis.nextQuestions ?? [],
-            ),
             updatedAt: new Date().toISOString(),
           }));
         },
         error: (event) => {
           if (!active()) return;
-          if (!event.recoverable) {
-            setAgentSteps((prev) =>
-              prev.map((step) =>
-                step.status === "active" || step.status === "pending"
-                  ? { ...step, status: "error", detail: event.message }
-                  : step,
-              ),
-            );
+          hadErrorRef.current = true;
+          setAgentSteps((prev) =>
+            prev.map((step) =>
+              step.status === "active" || step.status === "pending"
+                ? { ...step, status: "error", detail: event.message }
+                : step,
+            ),
+          );
+          if (!event.recoverable || finalMode()) {
             setPipelineStatus("error");
             patchState((prev) => ({
               ...prev,
-              synthesisStatus: "error",
-              briefSynthesis: {
-                ...(prev.briefSynthesis ?? emptySynthesis()),
-                status: "error",
-                error: event.message,
-              },
+              synthesisStatus: finalMode() ? "error" : prev.synthesisStatus,
+              briefSynthesis: finalMode()
+                ? {
+                    ...(prev.briefSynthesis ?? emptySynthesis()),
+                    status: "error",
+                    error: event.message,
+                    sourceSignature: signature,
+                  }
+                : prev.briefSynthesis,
               updatedAt: new Date().toISOString(),
             }));
-          } else if (!event.fileId) {
-            setAgentSteps((prev) =>
-              prev.map((step) =>
-                step.id === event.stage
-                  ? { ...step, detail: event.message }
-                  : step,
-              ),
-            );
           }
         },
         done: () => {
           if (!active()) return;
-          // Record the completed run's signature against the freshest state so
-          // an unchanged commit never triggers a redundant paid rerun.
-          setState((prev) => {
-            lastSignatureRef.current = synthesisSignature(prev);
-            return prev;
-          });
+          setAgentSteps((prev) =>
+            prev.map((step) =>
+              step.id === "prepareQuestions"
+                ? { ...step, status: "done" }
+                : step,
+            ),
+          );
           setPipelineStatus((status) =>
             status === "error" ? status : "done",
           );
         },
       };
     },
-    [patchState, patchSynthesis, setState],
+    [patchState, patchSynthesis],
   );
 
   const failRun = useCallback(
-    (runId: number, message: string) => {
+    (runId: number, message: string, finalMode: boolean, signature?: string) => {
       if (runIdRef.current !== runId) return;
       setAgentSteps((prev) =>
         prev.map((step) =>
@@ -306,81 +245,75 @@ export function useBriefPipeline(args: {
         ),
       );
       setPipelineStatus("error");
-      patchState((prev) => {
-        // Rules backfill from persisted findings — adaptive questions still
-        // fire even when the pipeline dies mid-flight.
-        const ruleQuestions = matchRules(
-          findingsFromInsights(prev).filter((f) => f.flag),
-        );
-        return {
+      if (finalMode) {
+        patchState((prev) => ({
           ...prev,
           synthesisStatus: "error",
           briefSynthesis: {
             ...(prev.briefSynthesis ?? emptySynthesis()),
             status: "error",
             error: message,
+            sourceSignature: signature,
           },
-          dynamicQuestionQueue: mergeQueue(prev, ruleQuestions),
           updatedAt: new Date().toISOString(),
-        };
-      });
+        }));
+      }
     },
     [patchState],
   );
 
   const startRun = useCallback(
-    async (mode: "full" | "synthesis", prepared?: Map<string, DocumentPayload>) => {
+    async (
+      mode: "extract" | "final",
+      prepared?: Map<string, DocumentPayload>,
+      signature?: string,
+    ) => {
       const runId = runIdRef.current + 1;
       runIdRef.current = runId;
       runningRef.current = true;
       modeRef.current = mode;
       narrativeStartedRef.current = false;
-      lastRunAtRef.current = Date.now();
+      hadErrorRef.current = false;
 
       const controller = new AbortController();
       abortRef.current = controller;
       setPipelineStatus("running");
       setAgentSteps(DEFAULT_STEPS[mode].map((step) => ({ ...step })));
-      lastSignatureRef.current = synthesisSignature(state);
 
-      const askedQuestionIds = [
-        ...(state.dynamicQuestionQueue ?? []).map((q) => q.id),
-        ...(state.answeredDynamicQuestions ?? []).map((q) => q.questionId),
-      ];
-      const request = buildProcessRequest(state, mode, {
-        prepared,
-        askedQuestionIds,
-      });
+      const request = buildProcessRequest(state, mode, { prepared });
 
       try {
-        await streamBriefPipeline(request, buildHandlers(runId), {
+        await streamBriefPipeline(request, buildHandlers(runId, signature), {
           signal: controller.signal,
         });
         runningRef.current = false;
+        return hadErrorRef.current ? "error" : "done";
       } catch (error) {
         runningRef.current = false;
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted) return "aborted";
         failRun(
           runId,
           error instanceof Error
             ? error.message
             : "The brief couldn't be prepared. Your uploads are safe — try again.",
+          mode === "final",
+          signature,
         );
+        return "error";
       }
     },
     [buildHandlers, failRun, state],
   );
 
-  /** Full run: extract pending files, then classify + compose. */
-  const runFullPipeline = useCallback(() => {
+  const runExtraction = useCallback(() => {
     if (runningRef.current) return;
     const now = new Date().toISOString();
 
     const pendingFiles = state.uploadedFiles.filter((meta) => {
       const insight = state.aiDocumentInsights?.[meta.id];
-      const needsExtraction =
-        !insight || insight.status === "error" || insight.status === "analyzing";
-      return needsExtraction;
+      return (
+        !insight || insight.status === "error" || insight.status === "analyzing"
+      );
     });
 
     const placeholders: Record<string, DocumentInsight> = {};
@@ -398,6 +331,7 @@ export function useBriefPipeline(args: {
         doctorReviewAreas: [],
         patientFacingSummary: "",
         question: "",
+        contextQuestions: [],
         questionId: questionIdFor(meta.id),
         status: "analyzing",
       };
@@ -410,9 +344,8 @@ export function useBriefPipeline(args: {
         ...(prev.aiDocumentInsights ?? {}),
         ...placeholders,
       },
-      briefSynthesis: emptySynthesis(),
-      synthesisStatus: "synthesizing",
-      dynamicQuestionQueue: [],
+      briefSynthesis: emptySynthesis("idle"),
+      synthesisStatus: "idle",
       updatedAt: now,
     }));
 
@@ -425,40 +358,33 @@ export function useBriefPipeline(args: {
           prepared.set(meta.id, await prepareDocumentPayload(file));
         }),
       );
-      await startRun("full", prepared);
+      await startRun("extract", prepared);
     })();
   }, [fileObjects, patchState, startRun, state]);
 
-  /** Cheap rerun: reuses prior insights; fires only when answers changed. */
-  const rerunSynthesis = useCallback(() => {
-    if (runningRef.current) return;
-    if (Date.now() - lastRunAtRef.current < RERUN_DEBOUNCE_MS) return;
-
-    const hasInsights = Object.values(state.aiDocumentInsights ?? {}).some(
-      (i) => i.status === "done" || i.status === "needs_review",
-    );
-    const hasAnswers =
-      state.reason.length > 0 ||
-      !!state.reasonFreeText?.trim() ||
-      state.goals.length > 0 ||
-      state.symptoms.length > 0 ||
-      Object.values(state.contextAnswers).some((v) => v.trim()) ||
-      (state.answeredDynamicQuestions ?? []).some((q) => q.answer.trim());
-    if (!hasInsights && !hasAnswers) return;
-
+  const generateBrief = useCallback(async () => {
+    if (runningRef.current) return "running" as const;
     const signature = synthesisSignature(state);
-    if (signature === lastSignatureRef.current) return;
+    if (
+      state.briefSynthesis?.status === "ready" &&
+      state.briefSynthesis.sourceSignature === signature
+    ) {
+      setPipelineStatus("done");
+      return "reused" as const;
+    }
 
     patchState((prev) => ({
       ...prev,
       synthesisStatus: "synthesizing",
       briefSynthesis: {
-        ...(prev.briefSynthesis ?? emptySynthesis()),
-        status: "synthesizing",
+        ...emptySynthesis("synthesizing"),
+        sourceSignature: signature,
       },
       updatedAt: new Date().toISOString(),
     }));
-    void startRun("synthesis");
+
+    const result = await startRun("final", undefined, signature);
+    return result === "done" ? ("generated" as const) : ("error" as const);
   }, [patchState, startRun, state]);
 
   const cancel = useCallback(() => {
@@ -479,5 +405,5 @@ export function useBriefPipeline(args: {
     }));
   }, [patchState]);
 
-  return { agentSteps, pipelineStatus, runFullPipeline, rerunSynthesis, cancel };
+  return { agentSteps, pipelineStatus, runExtraction, generateBrief, cancel };
 }

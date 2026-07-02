@@ -7,7 +7,7 @@ import {
   ChevronRight,
   FileCheck2,
 } from "lucide-react";
-import { LivingBriefPanel, SafetyNote } from "./LivingBriefPanel";
+import { BriefDocument, SafetyNote } from "./BriefDocument";
 import type { IntakeController } from "./useIntakeState";
 
 export function BriefPreview({ c }: { c: IntakeController }) {
@@ -15,17 +15,15 @@ export function BriefPreview({ c }: { c: IntakeController }) {
     <div className="drb-preview">
       <header className="drb-preview-head">
         <span className="drb-step-eyebrow">Draft summary</span>
-        <h2>Your Doctor Review Brief is ready</h2>
+        <h2>Your brief is ready</h2>
         <p>
-          We've organised your context so your Gen-H doctor can review your case
-          before the consult — the call starts with your full picture, not a
-          cold intake.
+          We've organised your reports and context into a clinician-ready
+          summary for your Gen-H doctor.
         </p>
       </header>
 
-      <LivingBriefPanel
-        sections={c.sections}
-        summary={c.summary}
+      <BriefDocument
+        state={c.state}
         attachments={c.attachments}
         synthesis={c.briefSynthesis}
         onEdit={c.goToQuestion}

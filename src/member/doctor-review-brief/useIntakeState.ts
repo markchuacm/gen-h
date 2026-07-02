@@ -3,7 +3,12 @@
 // localStorage so the member can leave and resume, and derives the living brief.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildFlow, REPORT_FORK_VALUES } from "./questions";
+import {
+  BASE_INTAKE_STEP_COUNT,
+  BASE_QUESTION_COUNT,
+  buildFlow,
+  REPORT_FORK_VALUES,
+} from "./questions";
 import type { FlowStep } from "./questions";
 import {
   buildBriefSections,
@@ -12,6 +17,7 @@ import {
   computeDoctorHighlights,
   detectCategory,
 } from "./briefEngine";
+import { buildAdaptiveQueue } from "./questionRules";
 import { useBriefPipeline } from "./useBriefPipeline";
 import type { PipelineStatus } from "./useBriefPipeline";
 import type {
@@ -31,7 +37,8 @@ import type {
   UploadedFile,
 } from "./types";
 
-const STORAGE_KEY = "genh_drb_v2";
+const STORAGE_KEY = "genh_drb_v3";
+const STORAGE_KEY_V2 = "genh_drb_v2";
 const LEGACY_STORAGE_KEY = "genh_drb_v1";
 
 export type Phase = "intake" | "preview" | "booking" | "confirmation";
@@ -49,7 +56,6 @@ function createInitialState(): IntakeState {
     symptoms: [],
     lifestyle: {},
     supplementsAndMeds: {},
-    dynamicQuestionQueue: [],
     answeredDynamicQuestions: [],
     synthesisStatus: "idle",
     createdAt: now,
@@ -69,17 +75,25 @@ function uid(): string {
 
 function loadPersisted(): Persisted | null {
   try {
-    // Best-effort v1 migration: answers, files, and insights carry over; the
-    // synthesis is dropped (its shape changed) and reruns cheaply on hydrate.
+    // Best-effort migration: answers, files, and insights carry over; old
+    // synthesis/queue payloads are dropped because the brief now composes once
+    // at the finale with a v3 shape.
     const raw =
       localStorage.getItem(STORAGE_KEY) ??
+      localStorage.getItem(STORAGE_KEY_V2) ??
       localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Persisted>;
     if (!parsed || !parsed.state) return null;
+    const isLegacy = !localStorage.getItem(STORAGE_KEY);
+    const state = { ...parsed.state };
+    if (isLegacy) {
+      delete state.briefSynthesis;
+      delete state.synthesisStatus;
+    }
     // Merge onto a fresh base so older/partial payloads stay valid.
     return {
-      state: { ...createInitialState(), ...parsed.state },
+      state: { ...createInitialState(), ...state },
       phase: parsed.phase ?? "intake",
       stepIndex: parsed.stepIndex ?? 0,
     };
@@ -102,6 +116,7 @@ function normalizeInsight(insight: DocumentInsight): DocumentInsight {
     doctorReviewAreas: insight.doctorReviewAreas ?? [],
     patientFacingSummary: insight.patientFacingSummary ?? "",
     question: insight.question ?? "",
+    contextQuestions: insight.contextQuestions ?? [],
     questionId: insight.questionId,
     // A persisted 'analyzing' insight means the stream was lost on page close.
     status: insight.status === "analyzing" ? "error" : insight.status,
@@ -115,7 +130,8 @@ function normalizeSynthesis(
   if (!synthesis) return undefined;
   const isCurrentShape =
     Array.isArray(synthesis.outOfRange) &&
-    Array.isArray(synthesis.nextQuestions) &&
+    Array.isArray(synthesis.patientContext) &&
+    typeof synthesis.sourceSignature === "string" &&
     typeof synthesis.progress?.outOfRangeCount === "number";
   if (!isCurrentShape) return undefined;
   return {
@@ -147,9 +163,6 @@ function normalizeState(input: IntakeState): IntakeState {
     reportSelections,
     aiDocumentInsights: uploadsAreUnconfirmed ? {} : fixed,
     briefSynthesis,
-    dynamicQuestionQueue: uploadsAreUnconfirmed
-      ? []
-      : (base.dynamicQuestionQueue ?? []),
     answeredDynamicQuestions: base.answeredDynamicQuestions ?? [],
     synthesisStatus: uploadsAreUnconfirmed
       ? "idle"
@@ -174,10 +187,13 @@ export type IntakeController = {
   briefSynthesis?: BriefSynthesis;
   dynamicQuestionQueue: DynamicQuestion[];
   answeredDynamicQuestions: AnsweredDynamicQuestion[];
+  progress: { current: number; total: number };
+  questionCounter: { n: number; of: number } | null;
   // pipeline (agent activity)
   agentSteps: AgentStep[];
   pipelineStatus: PipelineStatus;
-  retryPipeline: () => void;
+  retryExtraction: () => void;
+  generateBrief: () => Promise<"reused" | "generated" | "running" | "error">;
   // mutations
   setReportFork: (optionIndex: number) => void;
   toggleMulti: (field: "reason" | "goals" | "symptoms", value: string) => void;
@@ -233,6 +249,10 @@ export function useIntakeState(opts?: {
   const fileObjectsRef = useRef<Map<string, File>>(new Map());
 
   const flow = useMemo(() => buildFlow(state), [state]);
+  const dynamicQuestionQueue = useMemo(
+    () => buildAdaptiveQueue(state),
+    [state],
+  );
   const sections = useMemo(() => buildBriefSections(state), [state]);
   const summary = useMemo(() => computeBriefSummary(state), [state]);
   const highlights = useMemo(() => computeDoctorHighlights(state), [state]);
@@ -251,24 +271,62 @@ export function useIntakeState(opts?: {
     fileObjects: fileObjectsRef,
   });
 
-  // Resume after a refresh: extracted insights persist, so a missing/stale
-  // synthesis just needs one cheap compose-only rerun on hydrate.
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    if (hydratedRef.current) return;
-    hydratedRef.current = true;
-    const hasInsights = Object.values(state.aiDocumentInsights ?? {}).some(
-      (i) => i.status === "done" || i.status === "needs_review",
-    );
-    if (hasInsights && state.briefSynthesis?.status !== "ready") {
-      pipeline.rerunSynthesis();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const boundedIndex = Math.min(stepIndex, Math.max(0, flow.length - 1));
   const currentStep = flow[boundedIndex];
   const isLastIntakeStep = boundedIndex >= flow.length - 1;
+  const progressTotal = !state.hasReports
+    ? BASE_INTAKE_STEP_COUNT
+    : Math.max(1, flow.length);
+  const progress = {
+    current: flow.length === 0 ? 0 : boundedIndex + 1,
+    total: progressTotal,
+  };
+  const questionSteps = flow.filter((s) => s.kind === "question");
+  const questionTotal = Math.max(BASE_QUESTION_COUNT, questionSteps.length);
+  const currentQuestionIndex =
+    currentStep?.kind === "question"
+      ? questionSteps.findIndex((s) => s.key === currentStep.key)
+      : -1;
+  const questionCounter =
+    currentQuestionIndex >= 0
+      ? { n: currentQuestionIndex + 1, of: questionTotal }
+      : null;
+
+  const generatingRef = useRef(false);
+  useEffect(() => {
+    if (phase !== "intake" || currentStep?.kind !== "generating") {
+      generatingRef.current = false;
+      return;
+    }
+    if (generatingRef.current) return;
+    generatingRef.current = true;
+    let cancelled = false;
+    void pipeline.generateBrief().then((result) => {
+      if (cancelled || result === "running" || result === "error") return;
+      const delay =
+        typeof window !== "undefined" &&
+        window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+          ? 0
+          : result === "reused"
+            ? 0
+            : 700;
+      window.setTimeout(() => {
+        if (!cancelled) setPhase("preview");
+      }, delay);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentStep?.kind, phase]);
+
+  useEffect(() => {
+    if (phase !== "preview") return;
+    if (state.briefSynthesis?.status === "ready") return;
+    const idx = flow.findIndex((s) => s.kind === "generating");
+    setPhase("intake");
+    setStepIndex(idx >= 0 ? idx : Math.max(0, flow.length - 1));
+  }, [flow, phase, state.briefSynthesis?.status]);
 
   const mutate = useCallback((patch: Partial<IntakeState>) => {
     setState((prev) => ({
@@ -405,7 +463,6 @@ export function useIntakeState(opts?: {
         uploadedFiles: [...prev.uploadedFiles, ...mapped],
         uploadsConfirmedAt: undefined,
         briefSynthesis: undefined,
-        dynamicQuestionQueue: [],
         synthesisStatus: "idle",
         updatedAt: new Date().toISOString(),
       }));
@@ -426,8 +483,6 @@ export function useIntakeState(opts?: {
         aiDocumentInsights: remainingInsights,
         briefSynthesis:
           remainingFiles.length > 0 ? prev.briefSynthesis : undefined,
-        dynamicQuestionQueue:
-          remainingFiles.length > 0 ? prev.dynamicQuestionQueue : [],
         synthesisStatus:
           remainingFiles.length > 0 ? prev.synthesisStatus : "idle",
         updatedAt: new Date().toISOString(),
@@ -438,27 +493,20 @@ export function useIntakeState(opts?: {
   const next = useCallback(() => {
     if (phase === "intake") {
       if (
-        currentStep?.kind === "preparing" &&
+        currentStep?.kind === "upload" &&
         state.uploadedFiles.length > 0 &&
         !state.uploadsConfirmedAt
       ) {
-        pipeline.runFullPipeline();
+        pipeline.runExtraction();
+        setStepIndex((i) => Math.min(i + 1, flow.length));
         return;
       }
-      // Commit-based synthesis: leaving an answered step is the moment to fold
-      // new context into the brief (never per keystroke). The pipeline's
-      // signature guard makes an unchanged commit a no-op. Answer-only intakes
-      // (no documents) synthesize once, at the end.
-      const hasInsights = Object.values(state.aiDocumentInsights ?? {}).some(
-        (i) => i.status === "done" || i.status === "needs_review",
-      );
-      const isLast = stepIndex >= flow.length - 1;
-      if (currentStep?.kind === "question" && (hasInsights || isLast)) {
-        pipeline.rerunSynthesis();
+      if (currentStep?.kind === "generating") {
+        if (state.briefSynthesis?.status === "ready") setPhase("preview");
+        return;
       }
       setStepIndex((i) => {
         if (i < flow.length - 1) return i + 1;
-        setPhase("preview");
         return i;
       });
       return;
@@ -470,8 +518,7 @@ export function useIntakeState(opts?: {
     currentStep?.kind,
     phase,
     flow.length,
-    stepIndex,
-    state.aiDocumentInsights,
+    state.briefSynthesis?.status,
     state.uploadedFiles.length,
     state.uploadsConfirmedAt,
   ]);
@@ -479,9 +526,17 @@ export function useIntakeState(opts?: {
   const back = useCallback(() => {
     if (phase === "confirmation") return setPhase("booking");
     if (phase === "booking") return setPhase("preview");
-    if (phase === "preview") return setPhase("intake");
+    if (phase === "preview") {
+      const lastQuestion = [...flow]
+        .map((step, index) => ({ step, index }))
+        .reverse()
+        .find(({ step }) => step.kind === "question");
+      setPhase("intake");
+      setStepIndex(lastQuestion?.index ?? Math.max(0, flow.length - 2));
+      return;
+    }
     setStepIndex((i) => Math.max(0, i - 1));
-  }, [phase]);
+  }, [flow, phase]);
 
   const goToPhase = useCallback((p: Phase) => setPhase(p), []);
 
@@ -499,6 +554,7 @@ export function useIntakeState(opts?: {
   const reset = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_KEY_V2);
       localStorage.removeItem(LEGACY_STORAGE_KEY);
     } catch {
       /* noop */
@@ -522,11 +578,14 @@ export function useIntakeState(opts?: {
     attachments,
     aiAnalyzing,
     briefSynthesis: state.briefSynthesis,
-    dynamicQuestionQueue: state.dynamicQuestionQueue ?? [],
+    dynamicQuestionQueue,
     answeredDynamicQuestions: state.answeredDynamicQuestions ?? [],
+    progress,
+    questionCounter,
     agentSteps: pipeline.agentSteps,
     pipelineStatus: pipeline.pipelineStatus,
-    retryPipeline: pipeline.runFullPipeline,
+    retryExtraction: pipeline.runExtraction,
+    generateBrief: pipeline.generateBrief,
     setReportFork,
     toggleMulti,
     setFreeText,
@@ -548,6 +607,7 @@ export function useIntakeState(opts?: {
 export function clearSavedProgress(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_KEY_V2);
     localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     /* noop */

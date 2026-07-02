@@ -4,12 +4,11 @@
 // lifestyle snapshot → supplements/meds/allergies → preview.
 
 import type {
-  DocumentInsight,
   DynamicQuestion,
   IntakeState,
   Question,
-  UploadCategory,
 } from "./types";
+import { buildAdaptiveQueue } from "./questionRules";
 
 export const REPORT_FORK: Question = {
   id: "reportFork",
@@ -126,75 +125,8 @@ const CORE_QUESTIONS: Question[] = [
   },
 ];
 
-// Context questions are file-type aware but deliberately do NOT imply any parsing
-// of the file's contents.
-const CONTEXT_QUESTIONS: Record<string, Question> = {
-  dna: {
-    id: "ctx_dna",
-    section: "questions",
-    itemLabel: "From your DNA / genetic report",
-    type: "text",
-    prompt: "What were you hoping to understand from your genetic report?",
-    whyWeAsk:
-      "Genetic reports are most useful when interpreted alongside your actual labs and lifestyle — your doctor will do that with you.",
-    required: false,
-  },
-  wearable: {
-    id: "ctx_wearable",
-    section: "questions",
-    itemLabel: "From your wearable data",
-    type: "text",
-    prompt: "What are you hoping your doctor reviews from your wearable data?",
-    helper: "e.g. sleep, recovery, fitness, heart rate, or consistency.",
-    whyWeAsk:
-      "Wearable data is most useful when paired with how you actually feel.",
-    required: false,
-  },
-};
-
-function insightToQuestion(insight: DocumentInsight): Question {
-  return {
-    id: insight.questionId,
-    section: "questions",
-    itemLabel: `About your ${insight.documentType}`,
-    type: "text",
-    prompt: insight.question,
-    whyWeAsk:
-      "This helps your doctor know exactly what to focus on when they review this document.",
-    required: false,
-  };
-}
-
-function contextQuestionsFor(
-  files: IntakeState["uploadedFiles"],
-  insights?: Record<string, DocumentInsight>,
-): Question[] {
-  const out: Question[] = [];
-  const coveredCategories = new Set<UploadCategory>();
-
-  // AI-generated questions take priority — one per file that completed successfully
-  files.forEach((f) => {
-    const insight = insights?.[f.id];
-    if (
-      (insight?.status === "done" || insight?.status === "needs_review") &&
-      insight.question
-    ) {
-      out.push(insightToQuestion(insight));
-      if (insight.status === "done" && f.detectedCategory)
-        coveredCategories.add(f.detectedCategory);
-    }
-  });
-
-  // Hardcoded fallbacks for recognised categories not already covered by AI
-  const cats = new Set<UploadCategory>();
-  files.forEach((f) => f.detectedCategory && cats.add(f.detectedCategory));
-  if (cats.has("dna") && !coveredCategories.has("dna"))
-    out.push(CONTEXT_QUESTIONS.dna);
-  if (cats.has("wearable") && !coveredCategories.has("wearable"))
-    out.push(CONTEXT_QUESTIONS.wearable);
-
-  return out;
-}
+export const BASE_QUESTION_COUNT = 1 + CORE_QUESTIONS.length;
+export const BASE_INTAKE_STEP_COUNT = BASE_QUESTION_COUNT + 3; // upload, preparing, generating
 
 // Adaptive questions never crowd out the core flow: at most 2 queued questions
 // surface at a time, and at most 4 are asked per session in total.
@@ -215,7 +147,7 @@ function toFlowQuestion(question: DynamicQuestion): Question {
     whyWeAsk: question.whyWeAsk,
     options: question.options,
     allowFreeText: question.allowFreeText,
-    freeTextLabel: "Answer in your own words",
+    freeTextLabel: "Add anything else",
     required: true,
   };
 }
@@ -223,7 +155,7 @@ function toFlowQuestion(question: DynamicQuestion): Question {
 /** Finding-driven questions from the queue: answered ones stay (so Back works),
  *  then unanswered ones fill the remaining visible/session budget. */
 function dynamicQuestionsFor(state: IntakeState): Question[] {
-  const queue = state.dynamicQuestionQueue ?? [];
+  const queue = buildAdaptiveQueue(state);
   if (queue.length === 0) return [];
   const answeredIds = new Set(
     (state.answeredDynamicQuestions ?? [])
@@ -247,7 +179,9 @@ function dynamicQuestionsFor(state: IntakeState): Question[] {
 export type FlowStep =
   | { key: string; kind: "question"; question: Question }
   | { key: "upload"; kind: "upload" }
-  | { key: "preparing"; kind: "preparing" };
+  | { key: "preparing"; kind: "preparing" }
+  | { key: "findings"; kind: "findings" }
+  | { key: "generating"; kind: "generating" };
 
 const hasRoute = (state: IntakeState) =>
   (state.reportSelections?.length ?? 0) > 0 ||
@@ -264,18 +198,23 @@ export function buildFlow(state: IntakeState): FlowStep[] {
 
   if (hasRoute(state)) {
     steps.push({ key: "upload", kind: "upload" });
-    steps.push({ key: "preparing", kind: "preparing" });
+    if (state.uploadsConfirmedAt)
+      steps.push({ key: "preparing", kind: "preparing" });
+    const hasFindings =
+      !!state.uploadsConfirmedAt &&
+      Object.values(state.aiDocumentInsights ?? {}).some(
+        (i) => i.status === "done" || i.status === "needs_review",
+      );
+    if (hasFindings) steps.push({ key: "findings", kind: "findings" });
     dynamicQuestionsFor(state).forEach((q) =>
       steps.push({ key: q.id, kind: "question", question: q }),
-    );
-    contextQuestionsFor(state.uploadedFiles, state.aiDocumentInsights).forEach(
-      (q) => steps.push({ key: q.id, kind: "question", question: q }),
     );
   }
 
   CORE_QUESTIONS.forEach((q) =>
     steps.push({ key: q.id, kind: "question", question: q }),
   );
+  steps.push({ key: "generating", kind: "generating" });
   return steps;
 }
 
@@ -283,5 +222,5 @@ export function questionById(id: string): Question | undefined {
   if (id === REPORT_FORK.id) return REPORT_FORK;
   const core = CORE_QUESTIONS.find((q) => q.id === id);
   if (core) return core;
-  return Object.values(CONTEXT_QUESTIONS).find((q) => q.id === id);
+  return undefined;
 }

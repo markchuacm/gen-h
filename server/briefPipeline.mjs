@@ -3,9 +3,9 @@
 // classify (pure JS, zero LLM cost) → compose (one streaming call). Every stage
 // emits SSE events so the client can show genuine reasoning progress.
 //
-// Cost budget is hard: a full run is N docs × 1 extract call + 1 compose call;
-// a synthesis rerun is exactly 1 call. The only extra call is a single strict
-// JSON repair when compose output can't be parsed.
+// Cost budget is hard: extraction is N docs × 1 extract call; final synthesis is
+// exactly 1 compose call. The only extra call is a single strict JSON repair
+// when compose output can't be parsed.
 //
 // Safety: extraction reports only what is visibly printed (values, units,
 // reference ranges, flags). Compose groups facts for a clinician — it never
@@ -22,8 +22,6 @@ import {
 } from "./openrouterClient.mjs";
 import {
   canonicalKeyFor,
-  matchRules,
-  PANEL_LABELS,
   panelFor,
 } from "./questionRules.mjs";
 
@@ -35,7 +33,7 @@ const COMPOSE_MAX_TOKENS = 4000;
 const COMPOSE_REPAIR_MAX_TOKENS = 4000;
 const EXTRACT_CONCURRENCY = 3;
 const SENTINEL = "===BRIEF_JSON===";
-const MAX_NEXT_QUESTIONS = 6;
+const MAX_CONTEXT_QUESTIONS = 3;
 
 // ─── Input cleaning ───────────────────────────────────────────────────────────
 
@@ -70,7 +68,7 @@ function cleanDocument(doc) {
 function cleanInput(body) {
   const raw = body && typeof body === "object" ? body : {};
   return {
-    mode: raw.mode === "synthesis" ? "synthesis" : "full",
+    mode: raw.mode === "final" ? "final" : "extract",
     documents: (Array.isArray(raw.documents) ? raw.documents : [])
       .map(cleanDocument)
       .filter(Boolean)
@@ -78,11 +76,6 @@ function cleanInput(body) {
     answers: raw.answers && typeof raw.answers === "object" ? raw.answers : {},
     answeredDynamicQuestions: Array.isArray(raw.answeredDynamicQuestions)
       ? raw.answeredDynamicQuestions.slice(0, 20)
-      : [],
-    askedQuestionIds: Array.isArray(raw.askedQuestionIds)
-      ? raw.askedQuestionIds
-          .filter((id) => typeof id === "string")
-          .slice(0, 40)
       : [],
   };
 }
@@ -105,7 +98,7 @@ Allowed:
 - extract each visible marker with its printed value, unit, and reference range
 - set a marker's "flag" ONLY when the report visibly marks it (H, L, High, Low, Abnormal, Out of range) OR the printed value falls outside the printed reference range on the same row; otherwise flag must be null
 - generate review areas for the doctor based only on visible sections or flagged marker names
-- ask one short context question that helps the doctor interpret the report
+- ask up to 3 short context questions tied only to markers flagged in this document, each gathering a NEW lifestyle, diet, supplement, symptom, or history fact that helps the doctor interpret that marker
 
 Not allowed:
 - do not provide diagnosis
@@ -152,7 +145,16 @@ Return JSON only:
   ],
   "doctorReviewAreas": ["<safe review area, e.g. Lipid markers, Kidney markers>"],
   "patientFacingSummary": "<1-2 sentences, factual and safe, saying what was added for doctor review>",
-  "question": "<one question under 18 words that helps the doctor interpret this report>"
+  "question": "<one fallback question under 18 words that helps the doctor interpret this report>",
+  "contextQuestions": [
+    {
+      "prompt": "<one question to the patient, under 18 words>",
+      "options": ["<option>", "<option>", "<option>"],
+      "allowFreeText": true,
+      "whyWeAsk": "<one sentence>",
+      "triggeredBy": ["<marker name that prompted this>"]
+    }
+  ]
 }`;
 }
 
@@ -171,6 +173,7 @@ function genericInsight(doc) {
     patientFacingSummary:
       "This document has been added to your Doctor Review Brief for your doctor to review before the consult.",
     question: "What should your doctor focus on in this document?",
+    contextQuestions: [],
     status: "needs_review",
   };
 }
@@ -189,6 +192,23 @@ function cleanMarker(raw) {
     referenceRange: stringOrNull(String(raw.referenceRange ?? "")) ?? undefined,
     flag,
   };
+}
+
+function cleanContextQuestions(value, doc) {
+  return (Array.isArray(value) ? value : [])
+    .slice(0, MAX_CONTEXT_QUESTIONS)
+    .map((q, i) => ({
+      id: `ai_${doc.fileId.slice(0, 8)}_${i + 1}`,
+      prompt: stringOrNull(q?.prompt) ?? "",
+      options: stringArray(q?.options, 6),
+      allowFreeText: q?.allowFreeText !== false,
+      whyWeAsk:
+        stringOrNull(q?.whyWeAsk) ??
+        "This helps your doctor interpret your results in context.",
+      triggeredBy: stringArray(q?.triggeredBy, 6),
+      origin: "ai",
+    }))
+    .filter((q) => q.prompt);
 }
 
 function parseExtractResponse(raw, doc) {
@@ -217,6 +237,7 @@ function parseExtractResponse(raw, doc) {
     question:
       stringOrNull(parsed.question) ??
       "Is there anything specific in this document you'd like your doctor to focus on?",
+    contextQuestions: cleanContextQuestions(parsed.contextQuestions, doc),
     status: "done",
   };
 
@@ -318,12 +339,14 @@ Use ALL documents together; do not stop after the first one.
 Create cautious doctor-preparation synthesis, not diagnosis, treatment, triage, reassurance, or a care plan.
 
 Allowed:
-- group visible document facts into safe doctor-review themes
 - point out markers whose printed values sit outside their printed reference ranges (factual restatement only)
-- note relationships between markers a clinician would review together (e.g. creatinine and eGFR, ALT and GGT, ferritin and haemoglobin) — restate only the printed directions ("X is above its range while Y is below"); never use words like concern, issue, risk, problem, suggest, indicate, or potential
+- propose Areas of investigation ONLY when they qualify under one of these rules:
+  A) a medically sound possible relationship between an out-of-range or borderline biomarker and patient lifestyle/work context (exercise, sleep, diet, supplements, hydration, alcohol, work pattern, sun/indoor exposure)
+  B) a plausible cause or clinical relationship between biomarkers that a doctor may investigate (for example creatinine/eGFR, ALT/GGT, ferritin/haemoglobin)
+  C) a missing biomarker or follow-up marker that is relevant because of the visible results (for example ApoB and Lp(a) when LDL-C is high)
 - suggest lifestyle or behavioural context worth investigating, phrased as areas to explore, never as causes
 - suggest questions the doctor may want to ask the patient
-- propose short context questions to ask the PATIENT now, each tied to specific out-of-range markers; each must gather a NEW lifestyle, diet, supplement, symptom, or history fact that helps interpret that marker (e.g. for high creatinine: "Do you take creatine or train intensively most weeks?"). Never ask whether the patient "wants to discuss" or "has questions about" a result — ask for the fact itself
+- synthesize patient-reported context from the answers provided, restating facts only and never interpreting them
 
 Not allowed:
 - do not say the patient has a condition
@@ -331,6 +354,7 @@ Not allowed:
 - do not recommend supplements, medication, tests, dosages, or treatment
 - do not tell the patient what to do medically
 - do not invent values, markers, symptoms, or history
+- do not create an Area of investigation that only restates which biomarkers are above or below reference range; those facts are already shown elsewhere
 
 Output protocol — follow it EXACTLY:
 1. First line: NARRATIVE:
@@ -358,6 +382,8 @@ function buildComposeUserPrompt(input, findings) {
     .slice(0, 2);
 
   const composeInput = {
+    patientAnswers: input.answers,
+    answeredContextQuestions: input.answeredDynamicQuestions,
     documents: input.documents.map((doc) => ({
       fileName: doc.fileName,
       documentType: doc.insight?.documentType,
@@ -374,9 +400,6 @@ function buildComposeUserPrompt(input, findings) {
       source: f.sourceLabel,
     })),
     inRangeMarkerNames: inRangeNames,
-    patientAnswers: input.answers,
-    answeredContextQuestions: input.answeredDynamicQuestions,
-    doNotRepeatQuestionIds: input.askedQuestionIds,
     excerpts,
   };
 
@@ -388,35 +411,14 @@ After the ${SENTINEL} line, return this JSON object:
   "relationships": [
     {
       "id": "<stable short id>",
-      "title": "<pattern a clinician reviews together, e.g. Creatinine and eGFR move together>",
-      "markers": ["<marker name>", "<marker name>"],
-      "note": "<1-2 factual sentences, no severity or diagnosis>"
+      "title": "<area of investigation, e.g. Kidney filtration context, Lipid risk refinement, Vitamin D and indoor work>",
+      "markers": ["<marker name or missing marker>", "<marker name>"],
+      "note": "<1-2 sentences explaining the qualifying relationship/context/missing marker; never merely restate high/low ranges>"
     }
   ],
-  "lifestyleContext": ["<lifestyle/behavioural area worth investigating, tied to the data>"],
-  "doctorQuestions": ["<question the doctor may want to ask the patient>"],
-  "themes": [
-    {
-      "id": "<stable short id>",
-      "title": "<doctor-review topic phrased as markers/areas to review, e.g. Kidney markers to review — never words like abnormality, deficiency, disease, or disorder>",
-      "summary": "<1-2 sentences, factual, not diagnostic>",
-      "evidence": [{"label":"<marker/section/answer>", "source":"<document or patient answer>"}],
-      "confidence": "high|medium|low"
-    }
-  ],
-  "nextQuestions": [
-    {
-      "id": "<stable short id>",
-      "prompt": "<one question to the patient, under 18 words>",
-      "options": ["<option>", "<option>", "<option>"],
-      "allowFreeText": true,
-      "whyWeAsk": "<one sentence>",
-      "triggeredBy": ["<marker name that prompted this>"]
-    }
-  ]
+  "patientContext": ["<3-6 factual bullets of patient-reported context, restated from answers, never interpreted>"]
 }
-Do not repeat any question whose id is in doNotRepeatQuestionIds or whose topic the patient already answered.
-Limit: up to 4 relationships, 5 lifestyleContext items, 5 doctorQuestions, 6 themes, 3 nextQuestions.`;
+Limit: up to 4 relationships and 6 patientContext items.`;
 }
 
 function buildComposeRepairPrompt(raw, input, findings) {
@@ -429,32 +431,6 @@ ${String(raw ?? "").slice(0, 4000)}
 ${buildComposeUserPrompt(input, findings).slice(0, 24_000)}`;
 }
 
-function cleanEvidence(value) {
-  return Array.isArray(value)
-    ? value
-        .slice(0, 5)
-        .map((e) => ({
-          label: typeof e?.label === "string" ? e.label.trim() : "",
-          source: stringOrNull(e?.source) ?? undefined,
-        }))
-        .filter((e) => e.label)
-    : [];
-}
-
-function cleanThemes(value) {
-  return (Array.isArray(value) ? value : []).slice(0, 6).map((theme, i) => ({
-    id: stringOrNull(theme?.id) ?? `theme-${i + 1}`,
-    title: stringOrNull(theme?.title) ?? "Topic for doctor review",
-    summary:
-      stringOrNull(theme?.summary) ??
-      "Prepared as a topic for your doctor to review.",
-    evidence: cleanEvidence(theme?.evidence),
-    confidence: ["high", "medium", "low"].includes(theme?.confidence)
-      ? theme.confidence
-      : "medium",
-  }));
-}
-
 function cleanRelationships(value) {
   return (Array.isArray(value) ? value : [])
     .slice(0, 4)
@@ -464,111 +440,34 @@ function cleanRelationships(value) {
       markers: stringArray(rel?.markers, 6),
       note: stringOrNull(rel?.note) ?? "",
     }))
-    .filter((rel) => rel.title && rel.markers.length > 0);
+    .filter(
+      (rel) =>
+        rel.title &&
+        rel.markers.length > 0 &&
+        isInvestigationArea(rel.title, rel.note),
+    );
 }
 
-function cleanNextQuestions(value, askedIds) {
-  return (Array.isArray(value) ? value : [])
-    .slice(0, 4)
-    .map((q, i) => ({
-      id: stringOrNull(q?.id) ?? `ai_q_${i + 1}`,
-      prompt: stringOrNull(q?.prompt) ?? "",
-      options: stringArray(q?.options, 6),
-      allowFreeText: q?.allowFreeText !== false,
-      whyWeAsk:
-        stringOrNull(q?.whyWeAsk) ??
-        "This helps your doctor interpret your results in context.",
-      triggeredBy: stringArray(q?.triggeredBy, 6),
-      origin: "ai",
-    }))
-    .filter((q) => q.prompt && !askedIds.includes(q.id));
-}
-
-function normalizePrompt(prompt) {
-  return prompt.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
-}
-
-/** Curated rule questions take precedence (they encode the product's clinical
- *  examples verbatim); AI questions backfill markers the rule bank doesn't
- *  cover. Dedupe by id, normalized prompt, and trigger overlap. */
-function mergeQuestions(ruleQuestions, aiQuestions, askedIds) {
-  const merged = [];
-  const seenPrompts = new Set();
-  const coveredTriggers = new Set();
-
-  for (const q of [...ruleQuestions, ...aiQuestions]) {
-    if (merged.length >= MAX_NEXT_QUESTIONS) break;
-    if (askedIds.includes(q.id)) continue;
-    const promptKey = normalizePrompt(q.prompt);
-    if (!promptKey || seenPrompts.has(promptKey)) continue;
-    const triggers = (q.triggeredBy ?? []).map((t) => t.toLowerCase());
-    if (triggers.length > 0 && triggers.every((t) => coveredTriggers.has(t)))
-      continue;
-    seenPrompts.add(promptKey);
-    triggers.forEach((t) => coveredTriggers.add(t));
-    merged.push(q);
-  }
-  return merged;
+function isInvestigationArea(title, note) {
+  const text = `${title ?? ""} ${note ?? ""}`.toLowerCase();
+  const qualifying =
+    /\b(could|may|possible|context|cause|contribut|driven|related|investigat|follow up|missing|apob|apo b|lp\(a\)|lipoprotein|hydration|creatine|training|exercise|sleep|diet|supplement|work|indoor|sun|alcohol|medication|kidney|renal|thyroid|iron|inflammation|absorption|family history)\b/.test(
+      text,
+    );
+  const rangeRestatement =
+    /\b(above|below|outside|within)\b/.test(text) &&
+    /\b(reference range|printed range|range)\b/.test(text);
+  return qualifying && !(rangeRestatement && !/\b(could|may|possible|context|cause|contribut|driven|related|missing|follow up|apob|apo b|lp\(a\)|lipoprotein)\b/.test(text));
 }
 
 // ─── Deterministic fallback (no LLM) ──────────────────────────────────────────
 
-function fallbackThemes(findings, documents, insightsById) {
-  const themes = [];
+function buildFallbackSynthesis(input, findings) {
   const outOfRange = findings.filter((f) => f.flag);
-
-  if (outOfRange.length > 0) {
-    const byPanel = new Map();
-    for (const f of outOfRange) {
-      const panel = f.panel ?? "other";
-      if (!byPanel.has(panel)) byPanel.set(panel, []);
-      byPanel.get(panel).push(f);
-    }
-    for (const [panel, group] of byPanel) {
-      if (themes.length >= 6) break;
-      const label = PANEL_LABELS[panel] ?? "Markers";
-      themes.push({
-        id: `fb-${panel}`,
-        title: `${label} outside printed ranges`,
-        summary: `The report shows ${group
-          .slice(0, 5)
-          .map((f) => f.name)
-          .join(", ")} outside the printed reference range, prepared for your doctor to review in context.`,
-        evidence: group.slice(0, 5).map((f) => ({
-          label: f.name,
-          source: f.sourceLabel,
-        })),
-        confidence: "high",
-      });
-    }
-  }
-
-  if (themes.length === 0) {
-    for (const doc of documents) {
-      const insight = insightsById.get(doc.fileId);
-      const areas = stringArray(insight?.doctorReviewAreas, 5);
-      if (areas.length === 0) continue;
-      themes.push({
-        id: `fb-areas-${doc.fileId.slice(0, 6)}`,
-        title: "Report areas prepared for doctor review",
-        summary: `The upload includes ${areas.join(", ")} as areas for clinician review.`,
-        evidence: areas.map((a) => ({
-          label: a,
-          source: insight ? sourceLabelFor(insight, doc) : doc.fileName,
-        })),
-        confidence: "medium",
-      });
-      if (themes.length >= 6) break;
-    }
-  }
-  return themes;
-}
-
-function buildFallbackSynthesis(input, findings, insightsById) {
-  const outOfRange = findings.filter((f) => f.flag);
-  const themes = fallbackThemes(findings, input.documents, insightsById);
-  const ruleQuestions = matchRules(outOfRange);
-  const nextQuestions = mergeQuestions(ruleQuestions, [], input.askedQuestionIds);
+  const patientContext = (input.answeredDynamicQuestions ?? [])
+    .filter((answer) => answer?.answer && answer?.prompt)
+    .slice(0, 6)
+    .map((answer) => `${answer.prompt} — patient reports: ${answer.answer}`);
 
   return {
     status: "ready",
@@ -576,17 +475,13 @@ function buildFallbackSynthesis(input, findings, insightsById) {
       findings.length > 0
         ? `Your ${input.documents.length > 1 ? "reports have" : "report has"} been read into the Doctor Review Brief — ${findings.length} markers captured, ${outOfRange.length} outside their printed ranges. The sections below group what your doctor will review in context.`
         : "Your documents have been added to the Doctor Review Brief. Add what you want your doctor to focus on so the consult starts with useful context.",
-    themes,
     outOfRange,
     relationships: [],
-    lifestyleContext: [],
-    doctorQuestions: [],
-    nextQuestions,
+    patientContext,
     progress: {
       documentsRead: input.documents.length,
       markersRead: findings.length,
       outOfRangeCount: outOfRange.length,
-      questionsQueued: nextQuestions.length,
     },
     updatedAt: new Date().toISOString(),
   };
@@ -613,15 +508,13 @@ export async function runBriefPipeline(body, emit, options = {}) {
   }
 
   const insightsById = new Map();
-  // Synthesis mode reuses prior insights so extraction never re-runs when only
-  // answers changed.
   for (const doc of input.documents) {
     if (doc.insight) insightsById.set(doc.fileId, doc.insight);
   }
 
   try {
     // ── Stage 1: extract ──────────────────────────────────────────────────────
-    if (input.mode === "full") {
+    if (input.mode === "extract") {
       const pending = input.documents.filter(
         (doc) => !insightsById.has(doc.fileId),
       );
@@ -682,7 +575,6 @@ export async function runBriefPipeline(body, emit, options = {}) {
           stage: "extract",
           status: "done",
           label: "Documents read",
-          detail: `${markerTotal} ${markerTotal === 1 ? "marker" : "markers"} found`,
         });
       }
     }
@@ -700,11 +592,21 @@ export async function runBriefPipeline(body, emit, options = {}) {
       stage: "classify",
       status: "done",
       label: "Reference ranges checked",
-      detail:
-        findings.length > 0
-          ? `${outOfRange.length} of ${findings.length} markers outside printed ranges`
-          : "No structured markers found",
     });
+
+    const summary = {
+      progress: {
+        documentsRead: input.documents.length,
+        markersRead: findings.length,
+        outOfRangeCount: outOfRange.length,
+      },
+    };
+
+    if (input.mode === "extract") {
+      emit("summary", summary);
+      emit("done", { usage });
+      return;
+    }
 
     // ── Stage 3: compose ──────────────────────────────────────────────────────
     emit("stage", {
@@ -735,7 +637,7 @@ export async function runBriefPipeline(body, emit, options = {}) {
 
     if (!hasDocSignal && !hasAnswerSignal) {
       // Nothing to synthesize — deterministic minimal brief, zero LLM cost.
-      synthesis = buildFallbackSynthesis(input, findings, insightsById);
+      synthesis = buildFallbackSynthesis(input, findings);
     } else {
       // Attach fresh insights so compose sees extraction output from this run.
       const composeDocs = input.documents.map((doc) => ({
@@ -760,7 +662,7 @@ export async function runBriefPipeline(body, emit, options = {}) {
             "The full synthesis pass didn't complete — the brief below was prepared with basic matching instead.",
           recoverable: true,
         });
-        synthesis = buildFallbackSynthesis(input, findings, insightsById);
+        synthesis = buildFallbackSynthesis(input, findings);
         degraded = true;
       }
     }
@@ -772,7 +674,6 @@ export async function runBriefPipeline(body, emit, options = {}) {
       detail: [
         `${synthesis.progress.markersRead} markers read`,
         `${synthesis.progress.outOfRangeCount} outside ranges`,
-        `${synthesis.progress.questionsQueued} ${synthesis.progress.questionsQueued === 1 ? "question" : "questions"} for you`,
       ].join(" · "),
     });
     emit("brief", { synthesis, degraded });
@@ -918,41 +819,23 @@ async function composeBrief(input, findings, emit, env, signal, usage) {
   }
 
   const outOfRange = findings.filter((f) => f.flag);
-  const themes = cleanThemes(parsed.themes);
   const relationships = cleanRelationships(parsed.relationships);
-  const lifestyleContext = stringArray(parsed.lifestyleContext, 5);
-  const doctorQuestions = stringArray(parsed.doctorQuestions, 5);
-  const aiQuestions = cleanNextQuestions(
-    parsed.nextQuestions,
-    input.askedQuestionIds,
-  );
-  const ruleQuestions = matchRules(outOfRange);
-  const nextQuestions = mergeQuestions(
-    ruleQuestions,
-    aiQuestions,
-    input.askedQuestionIds,
-  );
+  const patientContext = stringArray(parsed.patientContext, 6);
 
   for (const relationship of relationships) emit("relationship", { relationship });
-  for (const theme of themes) emit("theme", { theme });
-  for (const question of nextQuestions) emit("question", { question });
 
   return {
     status: "ready",
     narrative:
       narrative ||
       "Your uploads and answers have been read into the Doctor Review Brief for your doctor to review in context.",
-    themes,
     outOfRange,
     relationships,
-    lifestyleContext,
-    doctorQuestions,
-    nextQuestions,
+    patientContext,
     progress: {
       documentsRead: input.documents.length,
       markersRead: findings.length,
       outOfRangeCount: outOfRange.length,
-      questionsQueued: nextQuestions.length,
     },
     updatedAt: new Date().toISOString(),
   };
