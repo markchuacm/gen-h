@@ -30,9 +30,9 @@ import {
 const MAX_DOCUMENTS = 8;
 const MAX_TEXT_CHARS = 40_000;
 const MAX_IMAGES_PER_DOC = 4;
-const EXTRACT_MAX_TOKENS = 3000;
-const COMPOSE_MAX_TOKENS = 2600;
-const COMPOSE_REPAIR_MAX_TOKENS = 2600;
+const EXTRACT_MAX_TOKENS = 5000;
+const COMPOSE_MAX_TOKENS = 4000;
+const COMPOSE_REPAIR_MAX_TOKENS = 4000;
 const EXTRACT_CONCURRENCY = 3;
 const SENTINEL = "===BRIEF_JSON===";
 const MAX_NEXT_QUESTIONS = 6;
@@ -89,7 +89,7 @@ function cleanInput(body) {
 
 // ─── Extraction stage ─────────────────────────────────────────────────────────
 
-function buildExtractSystemPrompt() {
+export function buildExtractSystemPrompt() {
   return `You are a health intake assistant for Gen-H.
 Your job is to prepare a Doctor Review Brief for a licensed clinician.
 You may extract and summarize factual information that is visibly present in the uploaded health document (text and/or page images).
@@ -121,7 +121,7 @@ If the document is not readable or appears decorative/non-health-related, return
 Output valid JSON only.`;
 }
 
-function buildExtractUserPrompt(doc) {
+export function buildExtractUserPrompt(doc) {
   const catLabel = doc.category
     ? `${doc.category.replace("_", " ")} report`
     : "health document";
@@ -398,7 +398,7 @@ After the ${SENTINEL} line, return this JSON object:
   "themes": [
     {
       "id": "<stable short id>",
-      "title": "<doctor-review topic>",
+      "title": "<doctor-review topic phrased as markers/areas to review, e.g. Kidney markers to review — never words like abnormality, deficiency, disease, or disorder>",
       "summary": "<1-2 sentences, factual, not diagnostic>",
       "evidence": [{"label":"<marker/section/answer>", "source":"<document or patient answer>"}],
       "confidence": "high|medium|low"
@@ -802,7 +802,8 @@ async function composeBrief(input, findings, emit, env, signal, usage) {
   let sentinelIndex = -1;
   let emittedChars = 0;
 
-  const { content, usage: callUsage } = await chatCompletionStream(
+  const streamOnce = () =>
+    chatCompletionStream(
     {
       messages,
       maxTokens: COMPOSE_MAX_TOKENS,
@@ -833,7 +834,35 @@ async function composeBrief(input, findings, emit, env, signal, usage) {
     },
     env,
     signal,
-  );
+    );
+
+  let content = "";
+  let callUsage;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const result = await streamOnce();
+      content = result.content;
+      callUsage = result.usage;
+      break;
+    } catch (error) {
+      if (isAuthError(error) || signal?.aborted) throw error;
+      if (attempt === 0 && emittedChars === 0) {
+        // Nothing reached the client yet — wait out a rate-limit window and
+        // retry once (an errored stream bills nothing).
+        acc = "";
+        narrativeStart = -1;
+        sentinelIndex = -1;
+        await new Promise((r) =>
+          setTimeout(r, error?.httpStatus === 429 ? 2500 : 800),
+        );
+        continue;
+      }
+      // Mid-stream failure after content arrived — salvage what streamed; the
+      // parse → repair chain below recovers the JSON from the partial output.
+      content = acc;
+      break;
+    }
+  }
   usage.calls += 1;
   usage.totalTokens += callUsage?.total_tokens ?? 0;
 

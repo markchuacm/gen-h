@@ -6,6 +6,35 @@ import "./results.css";
 
 type FilterId = "all" | BiomarkerStatus;
 
+type PatientRangeContext = {
+  sex: "male" | "female";
+  age: number;
+  cyclePhase?: "follicular" | "ovulation" | "luteal" | "postmenopause";
+  sampleTiming?: "am" | "pm";
+};
+
+type ParsedRangeBranch = {
+  label: string;
+  lower: number | null;
+  upper: number | null;
+  comparator: "range" | "lower" | "upper" | "qualitative";
+};
+
+type ResolvedRangeContext = {
+  unit: string;
+  directionality: Biomarker["directionality"];
+  lowerOptimal: number | null;
+  upperOptimal: number | null;
+  lowerReference: number | null;
+  upperReference: number | null;
+  optimalLabel: string;
+  suboptimalLabel: string;
+  outOfRangeLabel: string;
+  contextLabel: string;
+  status: BiomarkerStatus;
+  isQualitative: boolean;
+};
+
 type StatusMeta = {
   label: string;
   shortLabel: string;
@@ -33,6 +62,13 @@ const FILTERS: Array<{ id: FilterId; label: string }> = [
 
 const biomarkerById = new Map(BIOMARKERS.map((biomarker) => [biomarker.id, biomarker]));
 
+const DEMO_RANGE_CONTEXT: PatientRangeContext = {
+  sex: "male",
+  age: 36,
+  sampleTiming: "am",
+  cyclePhase: "follicular",
+};
+
 function formatDate(value: string | null) {
   if (!value) return "Not available";
   return new Intl.DateTimeFormat("en", { month: "short", year: "numeric" }).format(new Date(`${value}T00:00:00`));
@@ -51,10 +87,59 @@ function formatValue(biomarker: Biomarker) {
   return biomarker.latestValue;
 }
 
+function formatUnit(unit: string) {
+  const superscripts: Record<string, string> = {
+    "-": "⁻",
+    "0": "⁰",
+    "1": "¹",
+    "2": "²",
+    "3": "³",
+    "4": "⁴",
+    "5": "⁵",
+    "6": "⁶",
+    "7": "⁷",
+    "8": "⁸",
+    "9": "⁹",
+  };
+
+  return unit.replace(/x10\^(-?\d+)/g, (_, exponent: string) => {
+    const superscript = exponent
+      .split("")
+      .map((character) => superscripts[character] ?? character)
+      .join("");
+    return `×10${superscript}`;
+  });
+}
+
 function formatValueWithUnit(biomarker: Biomarker) {
   const value = formatValue(biomarker);
   if (value === "Not available" || !biomarker.unit) return value;
-  return `${value} ${biomarker.unit}`;
+  return `${value} ${formatUnit(biomarker.unit)}`;
+}
+
+function formatRangeLabel(label: string, unit: string) {
+  if (!label) return "";
+  if (label.toLowerCase().startsWith("outside ")) return label;
+  return unit ? `${label} ${formatUnit(unit)}` : label;
+}
+
+function formatContextLabel(context: PatientRangeContext, ruleType = "") {
+  const sex = context.sex === "male" ? "male" : "female";
+  const parts: string[] = [];
+  const needsSex = ruleType.includes("SEX");
+  const needsAge = ruleType.includes("AGE");
+  const needsTime = ruleType.includes("TIME");
+  const needsCycle = ruleType.includes("CYCLE");
+
+  if (needsAge && needsSex) parts.push(`${context.age}-year-old ${sex}`);
+  else if (needsAge) parts.push(`${context.age} years old`);
+  else if (needsSex) parts.push(sex);
+  else parts.push(`${context.age}-year-old ${sex}`);
+
+  if (needsCycle && context.cyclePhase) parts.push(context.cyclePhase);
+  if (needsTime && context.sampleTiming) parts.push(`${context.sampleTiming.toUpperCase()} sample`);
+
+  return parts.join(", ");
 }
 
 function matchesSearch(biomarker: Biomarker, query: string) {
@@ -72,12 +157,189 @@ function panelEntries() {
 function statusCounts() {
   return panelEntries().reduce<Record<BiomarkerStatus, number>>(
     (acc, entry) => {
-      const status = biomarkerById.get(entry.biomarkerId)?.status ?? "not_available";
+      const biomarker = biomarkerById.get(entry.biomarkerId);
+      const status = biomarker ? resolveRangeContext(biomarker, DEMO_RANGE_CONTEXT).status : "not_available";
       acc[status] += 1;
       return acc;
     },
     { optimal: 0, at_risk: 0, needs_attention: 0, not_available: 0 },
   );
+}
+
+function splitRangeExpression(label: string) {
+  return label
+    .split(";")
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function parseRangeBranch(label: string): ParsedRangeBranch {
+  const compact = label.replace(/\s/g, "");
+  if (!compact) return { label, lower: null, upper: null, comparator: "qualitative" };
+
+  if (compact.startsWith("<=") || compact.startsWith("<")) {
+    const value = Number(compact.match(/\d+(?:\.\d+)?/)?.[0]);
+    return { label, lower: null, upper: Number.isFinite(value) ? value : null, comparator: "upper" };
+  }
+
+  if (compact.startsWith(">=") || compact.startsWith(">")) {
+    const value = Number(compact.match(/\d+(?:\.\d+)?/)?.[0]);
+    return { label, lower: Number.isFinite(value) ? value : null, upper: null, comparator: "lower" };
+  }
+
+  const rangeMatch = compact.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);
+  if (rangeMatch) {
+    return {
+      label,
+      lower: Number(rangeMatch[1]),
+      upper: Number(rangeMatch[2]),
+      comparator: "range",
+    };
+  }
+
+  return { label, lower: null, upper: null, comparator: "qualitative" };
+}
+
+function branchMatchesContext(branchKey: string, context: PatientRangeContext) {
+  const key = branchKey.trim().toLowerCase();
+  if (!key) return true;
+
+  if (key === "m") return context.sex === "male";
+  if (key === "f") return context.sex === "female";
+  if (key === "am") return context.sampleTiming === "am";
+  if (key === "pm") return context.sampleTiming === "pm";
+  if (key === "follicular" || key === "ovulation" || key === "luteal" || key === "postmenopause") {
+    return context.cyclePhase === key;
+  }
+
+  const sexAge = key.match(/^([mf])(\d+)(?:-(\d+)|\+)$/);
+  if (sexAge) {
+    const [, sexKey, minAge, maxAge] = sexAge;
+    const sexMatches = sexKey === "m" ? context.sex === "male" : context.sex === "female";
+    const min = Number(minAge);
+    const max = maxAge ? Number(maxAge) : Infinity;
+    return sexMatches && context.age >= min && context.age <= max;
+  }
+
+  return false;
+}
+
+function pickContextualBranch(label: string, context: PatientRangeContext) {
+  const branches = splitRangeExpression(label);
+  if (branches.length === 0) return "";
+
+  const keyedBranches = branches
+    .map((branch) => {
+      const [key, ...rest] = branch.split(":");
+      return rest.length > 0 ? { key: key.trim(), value: rest.join(":").trim(), raw: branch } : null;
+    })
+    .filter((branch): branch is { key: string; value: string; raw: string } => Boolean(branch));
+
+  if (keyedBranches.length === 0) return branches[0];
+
+  const matches = keyedBranches.filter((branch) => branchMatchesContext(branch.key, context));
+  if (matches.length === 0) return keyedBranches[0]?.value ?? branches[0];
+  return matches.map((branch) => branch.value).join("; ");
+}
+
+function resolveBranch(label: string, context: PatientRangeContext) {
+  const picked = pickContextualBranch(label, context);
+  return picked ? parseRangeBranch(picked) : null;
+}
+
+function resolveDirection(optimal: ParsedRangeBranch | null, fallback: Biomarker["directionality"]) {
+  if (!optimal) return fallback;
+  if (optimal.comparator === "upper") return "lower_is_better";
+  if (optimal.comparator === "lower") return "higher_is_better";
+  if (optimal.comparator === "range") return "range_based";
+  return fallback;
+}
+
+function statusFromResolvedRange(
+  value: Biomarker["latestValue"],
+  optimal: ParsedRangeBranch | null,
+  outOfRange: ParsedRangeBranch | null,
+  directionality: Biomarker["directionality"],
+  fallback: BiomarkerStatus,
+) {
+  if (value === null || value === "") return "not_available";
+
+  if (typeof value !== "number") {
+    const normalizedValue = value.toLowerCase().replace(/\s+/g, "_");
+    const normalizedOptimal = optimal?.label.toLowerCase().replace(/\s+/g, "_") ?? "";
+    const normalizedOut = outOfRange?.label.toLowerCase().replace(/\s+/g, "_") ?? "";
+    if (normalizedOptimal && normalizedOptimal.includes(normalizedValue)) return "optimal";
+    if (normalizedOut && normalizedOut.includes(normalizedValue)) return "needs_attention";
+    return fallback;
+  }
+
+  if (optimal?.comparator === "range" && optimal.lower !== null && optimal.upper !== null) {
+    if (value >= optimal.lower && value <= optimal.upper) return "optimal";
+  }
+  if (optimal?.comparator === "upper" && optimal.upper !== null && value < optimal.upper) return "optimal";
+  if (optimal?.comparator === "lower" && optimal.lower !== null && value >= optimal.lower) return "optimal";
+
+  if (outOfRange?.comparator === "range" && outOfRange.lower !== null && outOfRange.upper !== null) {
+    if (value >= outOfRange.lower && value <= outOfRange.upper) return "needs_attention";
+  }
+  if (outOfRange?.comparator === "upper" && outOfRange.upper !== null && value < outOfRange.upper) {
+    return "needs_attention";
+  }
+  if (outOfRange?.comparator === "lower" && outOfRange.lower !== null && value >= outOfRange.lower) {
+    return "needs_attention";
+  }
+
+  return directionality === "qualitative" ? fallback : "at_risk";
+}
+
+function resolveRangeContext(biomarker: Biomarker, context: PatientRangeContext): ResolvedRangeContext {
+  const optimal = resolveBranch(biomarker.optimalRangeLabel, context);
+  const suboptimal = resolveBranch(biomarker.suboptimalRangeLabel, context);
+  const outOfRange = resolveBranch(biomarker.outOfRangeLabel, context);
+  const directionality = resolveDirection(optimal, biomarker.directionality);
+
+  const lowerOptimal = optimal?.lower ?? biomarker.lowerOptimal;
+  const upperOptimal = optimal?.upper ?? biomarker.upperOptimal;
+  let lowerReference = biomarker.lowerReference;
+  let upperReference = biomarker.upperReference;
+
+  if (directionality === "range_based") {
+    lowerReference = outOfRange?.comparator === "upper" ? outOfRange.upper : (outOfRange?.lower ?? lowerOptimal);
+    upperReference = outOfRange?.comparator === "lower" ? outOfRange.lower : (outOfRange?.upper ?? upperOptimal);
+  } else if (directionality === "lower_is_better") {
+    lowerReference = null;
+    upperReference = outOfRange?.lower ?? suboptimal?.upper ?? biomarker.upperReference;
+  } else if (directionality === "higher_is_better") {
+    lowerReference = outOfRange?.upper ?? suboptimal?.lower ?? biomarker.lowerReference;
+    upperReference = null;
+  }
+
+  const status = statusFromResolvedRange(
+    biomarker.latestValue,
+    optimal,
+    outOfRange,
+    directionality,
+    biomarker.status,
+  );
+
+  return {
+    unit: biomarker.unit,
+    directionality,
+    lowerOptimal,
+    upperOptimal,
+    lowerReference,
+    upperReference,
+    optimalLabel: optimal?.label ?? biomarker.optimalRangeLabel,
+    suboptimalLabel: suboptimal?.label ?? biomarker.suboptimalRangeLabel,
+    outOfRangeLabel:
+      outOfRange?.label ??
+      (biomarker.outOfRangeLabel.includes("OUTSIDE_")
+        ? `Outside ${formatContextLabel(context, biomarker.ruleType)} range`
+        : biomarker.outOfRangeLabel),
+    contextLabel: formatContextLabel(context, biomarker.ruleType),
+    status,
+    isQualitative: directionality === "qualitative",
+  };
 }
 
 function Sparkline({ values, status }: { values: HistoricalValue[]; status: BiomarkerStatus }) {
@@ -102,37 +364,45 @@ function Sparkline({ values, status }: { values: HistoricalValue[]; status: Biom
   );
 }
 
-function rangePosition(biomarker: Biomarker) {
+function rangePosition(biomarker: Biomarker, rangeContext: ResolvedRangeContext) {
   const value = typeof biomarker.latestValue === "number" ? biomarker.latestValue : null;
-  if (value === null || biomarker.directionality === "qualitative") return null;
+  if (value === null || rangeContext.isQualitative) return null;
 
   let min =
-    biomarker.lowerReference ??
-    biomarker.lowerOptimal ??
-    (biomarker.upperReference ?? biomarker.upperOptimal ?? value) * 0.2;
+    rangeContext.lowerReference ??
+    rangeContext.lowerOptimal ??
+    (rangeContext.upperReference ?? rangeContext.upperOptimal ?? value) * 0.2;
   let max =
-    biomarker.upperReference ??
-    biomarker.upperOptimal ??
-    (biomarker.lowerReference ?? biomarker.lowerOptimal ?? value) * 1.8;
+    rangeContext.upperReference ??
+    rangeContext.upperOptimal ??
+    (rangeContext.lowerReference ?? rangeContext.lowerOptimal ?? value) * 1.8;
 
-  if (biomarker.directionality === "lower_is_better") {
-    min = biomarker.lowerReference ?? 0;
-    max = biomarker.upperReference ?? (biomarker.upperOptimal ?? value) * 1.6;
+  if (rangeContext.directionality === "lower_is_better") {
+    min = rangeContext.lowerReference ?? 0;
+    max = rangeContext.upperReference ?? (rangeContext.upperOptimal ?? value) * 1.6;
   }
 
-  if (biomarker.directionality === "higher_is_better") {
-    min = biomarker.lowerReference ?? (biomarker.lowerOptimal ?? value) * 0.6;
-    max = biomarker.upperReference ?? (biomarker.lowerOptimal ?? value) * 1.8;
+  if (rangeContext.directionality === "higher_is_better") {
+    min = rangeContext.lowerReference ?? (rangeContext.lowerOptimal ?? value) * 0.6;
+    max = rangeContext.upperReference ?? (rangeContext.lowerOptimal ?? value) * 1.8;
   }
 
   const bounded = Math.min(100, Math.max(0, ((value - min) / (max - min || 1)) * 100));
   return bounded;
 }
 
-function RangeIndicator({ biomarker, size = "compact" }: { biomarker: Biomarker; size?: "compact" | "large" }) {
-  const position = rangePosition(biomarker);
-  const directionClass = `range--${biomarker.directionality.replace(/_/g, "-")}`;
-  const qualitative = biomarker.directionality === "qualitative";
+function RangeIndicator({
+  biomarker,
+  rangeContext,
+  size = "compact",
+}: {
+  biomarker: Biomarker;
+  rangeContext: ResolvedRangeContext;
+  size?: "compact" | "large";
+}) {
+  const position = rangePosition(biomarker, rangeContext);
+  const directionClass = `range--${rangeContext.directionality.replace(/_/g, "-")}`;
+  const qualitative = rangeContext.isQualitative;
 
   return (
     <div className={`range-indicator range-indicator--${size} ${directionClass}`} aria-hidden="true">
@@ -141,9 +411,9 @@ function RangeIndicator({ biomarker, size = "compact" }: { biomarker: Biomarker;
       </span>
       {size === "large" && (
         <div className="range-labels">
-          <span>{biomarker.lowerReference ?? biomarker.lowerOptimal ?? "Low"}</span>
-          <span>{qualitative ? "Qualitative" : biomarker.unit || "Result"}</span>
-          <span>{biomarker.upperReference ?? biomarker.upperOptimal ?? "High"}</span>
+          <span>{rangeContext.lowerReference ?? rangeContext.lowerOptimal ?? "Low"}</span>
+          <span>{qualitative ? "Qualitative" : formatUnit(rangeContext.unit) || "Result"}</span>
+          <span>{rangeContext.upperReference ?? rangeContext.upperOptimal ?? "High"}</span>
         </div>
       )}
     </div>
@@ -193,8 +463,9 @@ function TrendChart({ biomarker }: { biomarker: Biomarker }) {
 }
 
 function BiomarkerDrawer({ biomarker, onClose }: { biomarker: Biomarker; onClose: () => void }) {
-  const statusMeta = STATUS_META[biomarker.status];
-  const showDiscussion = biomarker.status === "at_risk" || biomarker.status === "needs_attention";
+  const rangeContext = resolveRangeContext(biomarker, DEMO_RANGE_CONTEXT);
+  const statusMeta = STATUS_META[rangeContext.status];
+  const showDiscussion = rangeContext.status === "at_risk" || rangeContext.status === "needs_attention";
 
   return (
     <div className="biomarker-drawer-layer" role="presentation">
@@ -211,7 +482,7 @@ function BiomarkerDrawer({ biomarker, onClose }: { biomarker: Biomarker; onClose
         </header>
 
         <div className="drawer-result-card">
-          <StatusPill status={biomarker.status} />
+          <StatusPill status={rangeContext.status} />
           <strong>{formatValueWithUnit(biomarker)}</strong>
           <span>{formatFullDate(biomarker.latestDate)}</span>
         </div>
@@ -223,7 +494,33 @@ function BiomarkerDrawer({ biomarker, onClose }: { biomarker: Biomarker; onClose
             <h3>Current result context</h3>
             <span>{statusMeta.label}</span>
           </div>
-          <RangeIndicator biomarker={biomarker} size="large" />
+          <RangeIndicator biomarker={biomarker} rangeContext={rangeContext} size="large" />
+          <p className="range-context-note">Range shown for {rangeContext.contextLabel}.</p>
+          {(rangeContext.optimalLabel || rangeContext.suboptimalLabel || rangeContext.outOfRangeLabel) && (
+            <div className="range-reference-grid">
+              {rangeContext.optimalLabel && (
+                <div className="status--optimal">
+                  <i aria-hidden="true" />
+                  <span>Optimal</span>
+                  <strong>{formatRangeLabel(rangeContext.optimalLabel, rangeContext.unit)}</strong>
+                </div>
+              )}
+              {rangeContext.suboptimalLabel && (
+                <div className="status--at-risk">
+                  <i aria-hidden="true" />
+                  <span>At risk</span>
+                  <strong>{formatRangeLabel(rangeContext.suboptimalLabel, rangeContext.unit)}</strong>
+                </div>
+              )}
+              {rangeContext.outOfRangeLabel && (
+                <div className="status--needs-attention">
+                  <i aria-hidden="true" />
+                  <span>Out of range</span>
+                  <strong>{formatRangeLabel(rangeContext.outOfRangeLabel, rangeContext.unit)}</strong>
+                </div>
+              )}
+            </div>
+          )}
         </section>
 
         {biomarker.whatItMeasures && (
@@ -255,6 +552,8 @@ function BiomarkerDrawer({ biomarker, onClose }: { biomarker: Biomarker; onClose
 }
 
 function BiomarkerRow({ biomarker, onOpen }: { biomarker: Biomarker; onOpen: (biomarker: Biomarker) => void }) {
+  const rangeContext = resolveRangeContext(biomarker, DEMO_RANGE_CONTEXT);
+
   return (
     <button className="biomarker-result-row" type="button" onClick={() => onOpen(biomarker)}>
       <span className="biomarker-result-name">
@@ -263,12 +562,12 @@ function BiomarkerRow({ biomarker, onOpen }: { biomarker: Biomarker; onOpen: (bi
       </span>
       <span className="biomarker-result-value">
         <strong>{formatValue(biomarker)}</strong>
-        {biomarker.unit && <span>{biomarker.unit}</span>}
+        {biomarker.unit && <span>{formatUnit(biomarker.unit)}</span>}
       </span>
       <span className="biomarker-result-date">{formatDate(biomarker.latestDate)}</span>
-      <Sparkline values={biomarker.historicalValues} status={biomarker.status} />
-      <RangeIndicator biomarker={biomarker} />
-      <StatusPill status={biomarker.status} />
+      <Sparkline values={biomarker.historicalValues} status={rangeContext.status} />
+      <RangeIndicator biomarker={biomarker} rangeContext={rangeContext} />
+      <StatusPill status={rangeContext.status} />
       <ChevronRight className="row-chevron" strokeWidth={1.7} />
     </button>
   );
@@ -306,7 +605,10 @@ export default function ResultsDashboard() {
         biomarkers: category.biomarkerIds
           .map((biomarkerId) => biomarkerById.get(biomarkerId))
           .filter((biomarker): biomarker is Biomarker => Boolean(biomarker))
-          .filter((biomarker) => activeFilter === "all" || biomarker.status === activeFilter)
+          .filter(
+            (biomarker) =>
+              activeFilter === "all" || resolveRangeContext(biomarker, DEMO_RANGE_CONTEXT).status === activeFilter,
+          )
           .filter((biomarker) => matchesSearch(biomarker, query.trim())),
       })).filter((category) => category.biomarkers.length > 0),
     [activeFilter, query],

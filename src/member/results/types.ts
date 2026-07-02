@@ -20,6 +20,10 @@ export type Biomarker = {
   whatItMeasures: string;
   whyItMatters: string;
   unit: string;
+  ruleType: string;
+  optimalRangeLabel: string;
+  suboptimalRangeLabel: string;
+  outOfRangeLabel: string;
   lowerOptimal: number | null;
   upperOptimal: number | null;
   lowerReference: number | null;

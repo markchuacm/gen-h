@@ -18,10 +18,17 @@ const ALLOWED_MODELS = new Set([
   "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
 ]);
 
-// allow_fallbacks stays off so an allowlisted model can never silently swap to
-// another provider/price. require_parameters is intentionally NOT set — it
-// excludes providers that don't advertise every param (streaming, image parts).
-const PROVIDER_GUARD = { allow_fallbacks: false };
+// Fallbacks are allowed BETWEEN PROVIDERS of the same model (the model itself
+// is pinned by the allowlist) so one provider's rate limit doesn't stall the
+// brief; OpenRouter's default routing load-balances across healthy providers.
+// Cost stays bounded by an explicit max_price ceiling ($/M tokens, comfortably
+// above flash-lite's ~$0.10/$0.40 but blocking anything pricey).
+// require_parameters is intentionally NOT set — it excludes providers that
+// don't advertise every param (streaming, images).
+const PROVIDER_GUARD = {
+  allow_fallbacks: true,
+  max_price: { prompt: 1, completion: 2 },
+};
 
 export function resolveModel(env = process.env) {
   const apiKey = env.OPENROUTER_API_KEY;
@@ -65,6 +72,7 @@ function logUsage(tag, data) {
       tag,
       id: data?.id,
       model: data?.model,
+      finish_reason: data?.choices?.[0]?.finish_reason ?? data?.finish_reason,
       prompt_tokens: data?.usage?.prompt_tokens,
       completion_tokens: data?.usage?.completion_tokens,
       total_tokens: data?.usage?.total_tokens,
@@ -90,13 +98,9 @@ export function isAuthError(error) {
   return error?.httpStatus === 401 || error?.httpStatus === 403;
 }
 
-/**
- * Non-streaming chat completion. Returns { content, usage }.
- * `responseFormat: "json"` forces a JSON object response.
- */
-export async function chatCompletion(
+async function chatCompletionOnce(
   { messages, maxTokens, temperature = 0.2, responseFormat, tag = "call" },
-  env = process.env,
+  env,
   signal,
 ) {
   const { apiKey, model } = resolveModel(env);
@@ -119,10 +123,59 @@ export async function chatCompletion(
 
   const data = await res.json();
   logUsage(tag, data);
+
+  // Upstream failures (rate limits, provider errors) arrive inside a 200 as
+  // `choices[0].error` with finish_reason "error" and zero billed tokens.
+  const choiceError = data?.choices?.[0]?.error ?? data?.error;
+  if (choiceError) {
+    const err = new Error(
+      choiceError.metadata?.error_type === "rate_limit_exceeded"
+        ? `OpenRouter ${tag}: provider rate limit hit.`
+        : choiceError.message || `OpenRouter ${tag} provider error.`,
+    );
+    err.httpStatus = choiceError.code;
+    throw err;
+  }
+
   return {
     content: data?.choices?.[0]?.message?.content ?? "",
     usage: data?.usage,
+    finishReason: data?.choices?.[0]?.finish_reason,
   };
+}
+
+/**
+ * Non-streaming chat completion. Returns { content, usage }.
+ * `responseFormat: "json"` forces a JSON object response.
+ *
+ * Retries: rate limits (429) and empty/error responses bill zero tokens and
+ * get up to two retries with backoff (longer for 429). Auth failures and
+ * client aborts never retry.
+ */
+export async function chatCompletion(options, env = process.env, signal) {
+  let lastError;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      const is429 = lastError?.httpStatus === 429;
+      await new Promise((r) => setTimeout(r, is429 ? 2500 * attempt : 800));
+      if (signal?.aborted) throw lastError;
+    }
+    try {
+      const result = await chatCompletionOnce(options, env, signal);
+      if (result.content.trim() && result.finishReason !== "error") {
+        return result;
+      }
+      lastError = new Error(
+        `OpenRouter ${options.tag ?? "call"} returned ${
+          result.content.trim() ? 'finish_reason "error"' : "no content"
+        }.`,
+      );
+    } catch (error) {
+      if (isAuthError(error) || signal?.aborted) throw error;
+      lastError = error;
+    }
+  }
+  throw lastError;
 }
 
 /**
@@ -155,6 +208,7 @@ export async function chatCompletionStream(
   let buffer = "";
   let content = "";
   let usage;
+  let finishReason;
 
   for await (const chunk of res.body) {
     buffer += decoder.decode(chunk, { stream: true });
@@ -171,7 +225,17 @@ export async function chatCompletionStream(
       } catch {
         continue; // partial keep-alive noise — never fatal
       }
+      if (parsed.error) {
+        // Mid-stream provider errors must surface, not yield silent emptiness.
+        const err = new Error(
+          parsed.error.message || `OpenRouter ${tag} stream error.`,
+        );
+        err.httpStatus = parsed.error.code;
+        throw err;
+      }
       if (parsed.usage) usage = parsed.usage;
+      if (parsed.choices?.[0]?.finish_reason)
+        finishReason = parsed.choices[0].finish_reason;
       const delta = parsed.choices?.[0]?.delta?.content;
       if (typeof delta === "string" && delta) {
         content += delta;
@@ -184,21 +248,78 @@ export async function chatCompletionStream(
     }
   }
 
-  logUsage(tag, { id: undefined, model, usage });
+  logUsage(tag, { id: undefined, model, usage, finish_reason: finishReason });
+  if (!content.trim()) {
+    throw new Error(`OpenRouter ${tag} stream returned no content.`);
+  }
   return { content, usage };
 }
 
 // ─── Response parsing helpers ─────────────────────────────────────────────────
 
-/** Strips <think> blocks and markdown fences, then parses the JSON object. */
+/** Strips <think> blocks and markdown fences, then parses the JSON object.
+ *  Falls back to truncation repair so a response cut off by a token limit
+ *  still yields every complete element instead of failing wholesale. */
 export function parseJsonObject(raw) {
   let text = String(raw ?? "");
   text = text.replace(/<think>[\s\S]*?<\/think>/gi, "");
   text = text.replace(/<think>[\s\S]*$/gi, "");
   text = text.replace(/```(?:json)?/gi, "").trim();
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("No JSON object in model response.");
-  return JSON.parse(jsonMatch[0]);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[0]);
+    } catch {
+      /* fall through to truncation repair */
+    }
+  }
+  return repairTruncatedJson(text);
+}
+
+/** Best-effort parse of a truncated JSON object: trims back to the last
+ *  complete element boundary and closes any open strings/brackets. */
+function repairTruncatedJson(raw) {
+  const start = raw.indexOf("{");
+  if (start < 0) throw new Error("No JSON object in model response.");
+  let text = raw.slice(start);
+
+  for (let attempt = 0; attempt < 60 && text.length > 1; attempt++) {
+    const stack = [];
+    let inString = false;
+    let escaped = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (inString) {
+        if (escaped) escaped = false;
+        else if (ch === "\\") escaped = true;
+        else if (ch === '"') inString = false;
+        continue;
+      }
+      if (ch === '"') inString = true;
+      else if (ch === "{" || ch === "[") stack.push(ch);
+      else if (ch === "}" || ch === "]") stack.pop();
+    }
+    let candidate = text;
+    if (inString) candidate += '"';
+    candidate = candidate.replace(/,\s*$/, "");
+    candidate += stack
+      .reverse()
+      .map((open) => (open === "{" ? "}" : "]"))
+      .join("");
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      // Trim back to the previous element boundary and try again.
+      const cut = Math.max(
+        text.lastIndexOf(","),
+        text.lastIndexOf("{", text.length - 2),
+        text.lastIndexOf("[", text.length - 2),
+      );
+      if (cut <= 0) break;
+      text = text.slice(0, cut);
+    }
+  }
+  throw new Error("No JSON object in model response.");
 }
 
 export function stringOrNull(value) {
