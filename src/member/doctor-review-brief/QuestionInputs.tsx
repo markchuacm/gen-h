@@ -3,41 +3,75 @@
 // supplements grid, and a file uploader. No chat bubbles, no dense forms.
 
 import { useRef, useState } from "react";
-import { Check, Loader2, Paperclip, Plus, Sparkles, X } from "lucide-react";
-import { CATEGORY_LABEL } from "./briefEngine";
-import type { DocumentInsight, LifestyleSnapshot, SupplementsAndMeds, UploadedFile } from "./types";
+import {
+  Activity,
+  Check,
+  Dna,
+  FlaskConical,
+  Paperclip,
+  Plus,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type {
+  LifestyleSnapshot,
+  SupplementsAndMeds,
+  UploadedFile,
+} from "./types";
 
 // ─── Single select (report fork) ──────────────────────────────────────────────
 
 export function QuickReplyGroup({
   options,
-  selectedIndex,
+  selectedIndices = [],
   onSelect,
 }: {
   options: string[];
-  selectedIndex?: number;
+  selectedIndices?: number[];
   onSelect: (index: number) => void;
 }) {
+  const tileIcons: LucideIcon[] = [FlaskConical, Dna, Activity];
+  const tileOptions = options.slice(0, 3);
+  const textOption = options[3];
+
   return (
     <div className="drb-choice-list" role="radiogroup">
-      {options.map((option, i) => {
-        const active = selectedIndex === i;
-        return (
-          <button
-            key={option}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            className={`drb-choice ${active ? "is-selected" : ""}`}
-            onClick={() => onSelect(i)}
-          >
-            <span>{option}</span>
-            <span className="drb-choice-mark" aria-hidden="true">
-              {active && <Check strokeWidth={2.5} />}
-            </span>
-          </button>
-        );
-      })}
+      <div className="drb-report-tile-grid">
+        {tileOptions.map((option, i) => {
+          const active = selectedIndices.includes(i);
+          const Icon = tileIcons[i];
+          return (
+            <button
+              key={option}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              className={`drb-report-tile ${active ? "is-selected" : ""}`}
+              onClick={() => onSelect(i)}
+            >
+              <span className="drb-report-tile-label">{option}</span>
+              <span className="drb-report-tile-icon" aria-hidden="true">
+                <Icon strokeWidth={1.8} />
+              </span>
+              {active && (
+                <span className="drb-report-tile-check" aria-hidden="true">
+                  <Check strokeWidth={2.4} />
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {textOption && (
+        <button
+          type="button"
+          role="radio"
+          aria-checked={false}
+          className="drb-report-none"
+          onClick={() => onSelect(3)}
+        >
+          {textOption}
+        </button>
+      )}
     </div>
   );
 }
@@ -115,6 +149,57 @@ export function TextAnswer({
   );
 }
 
+export function DynamicQuestionInput({
+  options,
+  value,
+  allowFreeText,
+  freeTextLabel,
+  onChange,
+}: {
+  options: string[];
+  value: string;
+  allowFreeText?: boolean;
+  freeTextLabel?: string;
+  onChange: (value: string) => void;
+}) {
+  const selectedOption = options.find((option) => option === value);
+  const freeTextValue = selectedOption ? "" : value;
+  return (
+    <div className="drb-dynamic-answer">
+      {options.length > 0 && (
+        <div className="drb-chip-wrap">
+          {options.map((option) => {
+            const active = selectedOption === option;
+            return (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={active}
+                className={`drb-chip ${active ? "is-selected" : ""}`}
+                onClick={() => onChange(active ? "" : option)}
+              >
+                {active && <Check strokeWidth={2.5} aria-hidden="true" />}
+                <span>{option}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {allowFreeText && (
+        <label className="drb-field drb-field--free">
+          <span>{freeTextLabel ?? "Answer in your own words"}</span>
+          <textarea
+            rows={3}
+            value={freeTextValue}
+            placeholder="Add context for your doctor"
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+
 // ─── Lifestyle snapshot ───────────────────────────────────────────────────────
 
 function Field({
@@ -131,7 +216,12 @@ function Field({
   return (
     <label className="drb-field">
       <span>{label}</span>
-      <input type="text" value={value ?? ""} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      <input
+        type="text"
+        value={value ?? ""}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </label>
   );
 }
@@ -147,7 +237,12 @@ export function LifestyleSnapshotInput({
   return (
     <div className="drb-snapshot">
       <div className="drb-field-grid">
-        <Field label="Sleep" value={value.sleepHours} placeholder="e.g. ~6.5 hrs" onChange={(v) => onChange({ sleepHours: v })} />
+        <Field
+          label="Sleep"
+          value={value.sleepHours}
+          placeholder="e.g. ~6.5 hrs"
+          onChange={(v) => onChange({ sleepHours: v })}
+        />
         <Field
           label="Sleep quality"
           value={value.sleepQuality}
@@ -169,14 +264,28 @@ export function LifestyleSnapshotInput({
       </div>
 
       {!expanded ? (
-        <button type="button" className="drb-add-detail" onClick={() => setExpanded(true)}>
+        <button
+          type="button"
+          className="drb-add-detail"
+          onClick={() => setExpanded(true)}
+        >
           <Plus strokeWidth={2} aria-hidden="true" />
           Add more detail
         </button>
       ) : (
         <div className="drb-field-grid drb-field-grid--detail">
-          <Field label="Bedtime" value={value.bedtime} placeholder="e.g. 12:30 am" onChange={(v) => onChange({ bedtime: v })} />
-          <Field label="Wake time" value={value.wakeTime} placeholder="e.g. 7:00 am" onChange={(v) => onChange({ wakeTime: v })} />
+          <Field
+            label="Bedtime"
+            value={value.bedtime}
+            placeholder="e.g. 12:30 am"
+            onChange={(v) => onChange({ bedtime: v })}
+          />
+          <Field
+            label="Wake time"
+            value={value.wakeTime}
+            placeholder="e.g. 7:00 am"
+            onChange={(v) => onChange({ wakeTime: v })}
+          />
           <Field
             label="Caffeine / alcohol"
             value={value.caffeineAlcohol}
@@ -230,7 +339,12 @@ export function SupplementsForm({
         placeholder="e.g. none, or name them"
         onChange={(v) => onChange({ medications: v })}
       />
-      <Field label="Allergies" value={value.allergies} placeholder="e.g. penicillin" onChange={(v) => onChange({ allergies: v })} />
+      <Field
+        label="Allergies"
+        value={value.allergies}
+        placeholder="e.g. penicillin"
+        onChange={(v) => onChange({ allergies: v })}
+      />
       <Field
         label="Known conditions"
         value={value.knownConditions}
@@ -243,24 +357,19 @@ export function SupplementsForm({
 
 // ─── File upload ──────────────────────────────────────────────────────────────
 
-const ACCEPT = ".pdf,.png,.jpg,.jpeg,.heic,.csv,application/pdf,image/*,text/csv";
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+const ACCEPT =
+  ".pdf,.png,.jpg,.jpeg,.heic,.csv,application/pdf,image/*,text/csv";
 
 export function FileUpload({
   files,
-  insights,
   onAdd,
-  onRemove,
+  title = "Upload what you already have",
+  description = "PDF, image or CSV. Blood tests, screening reports, DNA, wearable exports — anything.",
 }: {
   files: UploadedFile[];
-  insights?: Record<string, DocumentInsight>;
   onAdd: (files: FileList | File[]) => void;
-  onRemove: (id: string) => void;
+  title?: string;
+  description?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -283,8 +392,8 @@ export function FileUpload({
         }}
       >
         <Paperclip strokeWidth={1.6} aria-hidden="true" />
-        <strong>Upload what you already have</strong>
-        <span>PDF, image or CSV. Blood tests, screening reports, DNA, wearable exports — anything.</span>
+        <strong>{title}</strong>
+        <span>{description}</span>
       </button>
       <input
         ref={inputRef}
@@ -299,60 +408,9 @@ export function FileUpload({
       />
 
       {files.length > 0 && (
-        <ul className="drb-file-list">
-	          {files.map((f) => {
-	            const ins = insights?.[f.id];
-	            const isAnalyzing = ins?.status === "analyzing";
-	            const isDone = ins?.status === "done";
-	            const needsReview = ins?.status === "needs_review" || ins?.status === "error";
-	            const summaryBits = [
-	              ins?.reportDate ? `Collected: ${ins.reportDate}` : undefined,
-	              ins?.provider ? `Provider: ${ins.provider}` : undefined,
-	            ].filter(Boolean);
-	            return (
-	              <li key={f.id} className="drb-file-card">
-	                <div className="drb-file-meta">
-	                  <strong>{f.name}</strong>
-	                  <span>
-                    {f.detectedCategory ? CATEGORY_LABEL[f.detectedCategory] : "Document"} · {formatBytes(f.size)}
-                  </span>
-                  {isAnalyzing && (
-                    <span className="drb-file-status drb-file-status--analyzing">
-                      <Loader2 strokeWidth={2} className="drb-spin" aria-hidden="true" />
-                      Reviewing document…
-                    </span>
-                  )}
-	                  {isDone && ins.documentType && (
-	                    <span className="drb-file-status drb-file-status--done">
-	                      <Sparkles strokeWidth={2} aria-hidden="true" />
-	                      {ins.documentType} · added to brief
-	                    </span>
-	                  )}
-	                  {isDone && (
-	                    <div className="drb-file-intel">
-	                      {summaryBits.map((bit) => (
-	                        <span key={bit}>{bit}</span>
-	                      ))}
-	                      {ins.sections.length > 0 && <span>Visible sections: {ins.sections.slice(0, 6).join(", ")}</span>}
-	                      {ins.flaggedMarkers.length > 0 && (
-	                        <span>Marked in report: {ins.flaggedMarkers.slice(0, 6).join(", ")}</span>
-	                      )}
-	                    </div>
-	                  )}
-	                  {needsReview && (
-	                    <span className="drb-file-status">Needs doctor review</span>
-	                  )}
-	                  {!isAnalyzing && !isDone && !needsReview && (
-	                    <span className="drb-file-status">Uploaded for doctor review</span>
-	                  )}
-                </div>
-                <button type="button" className="drb-file-remove" aria-label={`Remove ${f.name}`} onClick={() => onRemove(f.id)}>
-                  <X strokeWidth={2} />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
+        <p className="drb-upload-handoff">
+          {files.length} uploaded · manage attachments from the brief
+        </p>
       )}
     </div>
   );

@@ -1,7 +1,10 @@
 import { createServer } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import { analyzeDocumentWithOpenRouter } from "./openrouterDocumentAnalysis.mjs";
+import {
+  analyzeDocumentWithOpenRouter,
+  synthesizeBriefWithOpenRouter,
+} from "./openrouterDocumentAnalysis.mjs";
 
 const PORT = Number(process.env.API_PORT || 8787);
 const MAX_BODY_BYTES = 6 * 1024 * 1024;
@@ -47,7 +50,9 @@ async function readJsonBody(req) {
   for await (const chunk of req) {
     size += chunk.length;
     if (size > MAX_BODY_BYTES) {
-      throw Object.assign(new Error("Request body too large."), { status: 413 });
+      throw Object.assign(new Error("Request body too large."), {
+        status: 413,
+      });
     }
     chunks.push(chunk);
   }
@@ -62,7 +67,11 @@ function send(res, response) {
 }
 
 const server = createServer(async (req, res) => {
-  if (req.url !== "/api/doctor-review-brief/analyze-document") {
+  const route = req.url?.split("?")[0];
+  if (
+    route !== "/api/doctor-review-brief/analyze-document" &&
+    route !== "/api/doctor-review-brief/synthesize"
+  ) {
     send(res, {
       status: 404,
       headers: { "Content-Type": "application/json" },
@@ -82,7 +91,11 @@ const server = createServer(async (req, res) => {
 
   try {
     const body = await readJsonBody(req);
-    send(res, await analyzeDocumentWithOpenRouter(body));
+    const response =
+      route === "/api/doctor-review-brief/synthesize"
+        ? await synthesizeBriefWithOpenRouter(body)
+        : await analyzeDocumentWithOpenRouter(body);
+    send(res, response);
   } catch (error) {
     send(res, {
       status: error.status || 400,
@@ -97,6 +110,10 @@ const server = createServer(async (req, res) => {
 
 server.listen(PORT, "127.0.0.1", () => {
   console.log(`Gen-H API server listening on http://127.0.0.1:${PORT}`);
-  console.log(`OpenRouter key loaded: ${redactedKey(process.env.OPENROUTER_API_KEY)}`);
-  console.log(`OpenRouter model loaded: ${process.env.OPENROUTER_MODEL || "openrouter/free"}`);
+  console.log(
+    `OpenRouter key loaded: ${redactedKey(process.env.OPENROUTER_API_KEY)}`,
+  );
+  console.log(
+    `OpenRouter model loaded: ${process.env.OPENROUTER_MODEL || "openrouter/free"}`,
+  );
 });

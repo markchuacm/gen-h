@@ -3,7 +3,13 @@
 // report availability → upload (if applicable) → reason → goals → symptoms →
 // lifestyle snapshot → supplements/meds/allergies → preview.
 
-import type { DocumentInsight, IntakeState, Question, UploadCategory } from "./types";
+import type {
+  DocumentInsight,
+  DynamicQuestion,
+  IntakeState,
+  Question,
+  UploadCategory,
+} from "./types";
 
 export const REPORT_FORK: Question = {
   id: "reportFork",
@@ -13,15 +19,20 @@ export const REPORT_FORK: Question = {
   helper: "This just tailors what we ask next — there's no wrong answer.",
   required: true,
   options: [
-    "Yes — blood tests or health screening reports",
-    "Yes — but only wearable / fitness / body composition data",
-    "No — I don't have recent reports",
-    "I'm not sure",
+    "Blood & urine tests",
+    "Genetic tests",
+    "Other health data",
+    "I don't have recent reports",
   ],
 };
 
 // Maps a report-fork option index → the stored availability value.
-export const REPORT_FORK_VALUES = ["reports", "wearable_only", "no_reports", "not_sure"] as const;
+export const REPORT_FORK_VALUES = [
+  "reports",
+  "genetic_reports",
+  "wearable_only",
+  "no_reports",
+] as const;
 
 const CORE_QUESTIONS: Question[] = [
   {
@@ -30,7 +41,8 @@ const CORE_QUESTIONS: Question[] = [
     itemLabel: "Why I'm here",
     type: "multi",
     prompt: "What brings you here?",
-    whyWeAsk: "This helps your doctor understand what you most want from the consult.",
+    whyWeAsk:
+      "This helps your doctor understand what you most want from the consult.",
     required: true,
     allowFreeText: true,
     freeTextLabel: "Anything else in your own words",
@@ -48,7 +60,8 @@ const CORE_QUESTIONS: Question[] = [
     itemLabel: "Main goals",
     type: "multi",
     prompt: "What would you most like to improve over the next 12 months?",
-    whyWeAsk: "Your goals help your doctor focus the consult on what matters to you.",
+    whyWeAsk:
+      "Your goals help your doctor focus the consult on what matters to you.",
     required: false,
     allowFreeText: true,
     freeTextLabel: "Anything else",
@@ -71,7 +84,8 @@ const CORE_QUESTIONS: Question[] = [
     itemLabel: "What feels off",
     type: "multi",
     prompt: "In the last 3 months, what has felt most off?",
-    whyWeAsk: "Naming what feels off gives your doctor useful context alongside any results.",
+    whyWeAsk:
+      "Naming what feels off gives your doctor useful context alongside any results.",
     required: false,
     allowFreeText: true,
     freeTextLabel: "Anything else",
@@ -94,8 +108,10 @@ const CORE_QUESTIONS: Question[] = [
     itemLabel: "Lifestyle context",
     type: "snapshot",
     prompt: "A quick snapshot of your daily rhythm",
-    helper: "Just the essentials for now — you can add more detail if you like.",
-    whyWeAsk: "Sleep, movement and diet shape almost everything your doctor will look at.",
+    helper:
+      "Just the essentials for now — you can add more detail if you like.",
+    whyWeAsk:
+      "Sleep, movement and diet shape almost everything your doctor will look at.",
     required: false,
   },
   {
@@ -104,7 +120,8 @@ const CORE_QUESTIONS: Question[] = [
     itemLabel: "Supplements / medications",
     type: "supplements",
     prompt: "Anything you're currently taking?",
-    whyWeAsk: "Supplements, medications and allergies help your doctor interpret everything else safely.",
+    whyWeAsk:
+      "Supplements, medications and allergies help your doctor interpret everything else safely.",
     required: false,
   },
 ];
@@ -129,7 +146,8 @@ const CONTEXT_QUESTIONS: Record<string, Question> = {
     type: "text",
     prompt: "What are you hoping your doctor reviews from your wearable data?",
     helper: "e.g. sleep, recovery, fitness, heart rate, or consistency.",
-    whyWeAsk: "Wearable data is most useful when paired with how you actually feel.",
+    whyWeAsk:
+      "Wearable data is most useful when paired with how you actually feel.",
     required: false,
   },
 };
@@ -141,7 +159,8 @@ function insightToQuestion(insight: DocumentInsight): Question {
     itemLabel: `About your ${insight.documentType}`,
     type: "text",
     prompt: insight.question,
-    whyWeAsk: "This helps your doctor know exactly what to focus on when they review this document.",
+    whyWeAsk:
+      "This helps your doctor know exactly what to focus on when they review this document.",
     required: false,
   };
 }
@@ -156,19 +175,49 @@ function contextQuestionsFor(
   // AI-generated questions take priority — one per file that completed successfully
   files.forEach((f) => {
     const insight = insights?.[f.id];
-    if ((insight?.status === "done" || insight?.status === "needs_review") && insight.question) {
+    if (
+      (insight?.status === "done" || insight?.status === "needs_review") &&
+      insight.question
+    ) {
       out.push(insightToQuestion(insight));
-      if (insight.status === "done" && f.detectedCategory) coveredCategories.add(f.detectedCategory);
+      if (insight.status === "done" && f.detectedCategory)
+        coveredCategories.add(f.detectedCategory);
     }
   });
 
   // Hardcoded fallbacks for recognised categories not already covered by AI
   const cats = new Set<UploadCategory>();
   files.forEach((f) => f.detectedCategory && cats.add(f.detectedCategory));
-  if (cats.has("dna") && !coveredCategories.has("dna")) out.push(CONTEXT_QUESTIONS.dna);
-  if (cats.has("wearable") && !coveredCategories.has("wearable")) out.push(CONTEXT_QUESTIONS.wearable);
+  if (cats.has("dna") && !coveredCategories.has("dna"))
+    out.push(CONTEXT_QUESTIONS.dna);
+  if (cats.has("wearable") && !coveredCategories.has("wearable"))
+    out.push(CONTEXT_QUESTIONS.wearable);
 
   return out;
+}
+
+function dynamicQuestionFor(
+  question: DynamicQuestion | undefined,
+  state: IntakeState,
+): Question | undefined {
+  if (!question) return undefined;
+  const alreadyAnswered = (state.answeredDynamicQuestions ?? []).some(
+    (answered) => answered.questionId === question.id && answered.answer.trim(),
+  );
+  if (alreadyAnswered) return undefined;
+  return {
+    id: `dyn_${question.id}`,
+    dynamicQuestionId: question.id,
+    section: "questions",
+    itemLabel: "Context from you",
+    type: "dynamic",
+    prompt: question.prompt,
+    whyWeAsk: question.whyWeAsk,
+    options: question.options,
+    allowFreeText: question.allowFreeText,
+    freeTextLabel: "Answer in your own words",
+    required: true,
+  };
 }
 
 // ─── Flow assembly ────────────────────────────────────────────────────────────
@@ -176,27 +225,38 @@ function contextQuestionsFor(
 export type FlowStep =
   | { key: string; kind: "question"; question: Question }
   | { key: "upload"; kind: "upload" }
-  | { key: "preparing"; kind: "preparing" }
-  | { key: "reassurance"; kind: "reassurance" };
+  | { key: "preparing"; kind: "preparing" };
 
-const hasRoute = (v: IntakeState["hasReports"]) => v === "reports" || v === "wearable_only";
+const hasRoute = (state: IntakeState) =>
+  (state.reportSelections?.length ?? 0) > 0 ||
+  state.hasReports === "reports" ||
+  state.hasReports === "genetic_reports" ||
+  state.hasReports === "wearable_only";
 
 /** Ordered intake steps (up to, but not including, the preview). */
 export function buildFlow(state: IntakeState): FlowStep[] {
-  const steps: FlowStep[] = [{ key: REPORT_FORK.id, kind: "question", question: REPORT_FORK }];
+  const steps: FlowStep[] = [
+    { key: REPORT_FORK.id, kind: "question", question: REPORT_FORK },
+  ];
   if (!state.hasReports) return steps;
 
-  if (hasRoute(state.hasReports)) {
+  if (hasRoute(state)) {
     steps.push({ key: "upload", kind: "upload" });
     steps.push({ key: "preparing", kind: "preparing" });
-    contextQuestionsFor(state.uploadedFiles, state.aiDocumentInsights).forEach((q) =>
-      steps.push({ key: q.id, kind: "question", question: q }),
+    const dynamic = dynamicQuestionFor(
+      state.briefSynthesis?.nextQuestion ?? state.dynamicQuestionQueue?.[0],
+      state,
     );
-  } else {
-    steps.push({ key: "reassurance", kind: "reassurance" });
+    if (dynamic)
+      steps.push({ key: dynamic.id, kind: "question", question: dynamic });
+    contextQuestionsFor(state.uploadedFiles, state.aiDocumentInsights).forEach(
+      (q) => steps.push({ key: q.id, kind: "question", question: q }),
+    );
   }
 
-  CORE_QUESTIONS.forEach((q) => steps.push({ key: q.id, kind: "question", question: q }));
+  CORE_QUESTIONS.forEach((q) =>
+    steps.push({ key: q.id, kind: "question", question: q }),
+  );
   return steps;
 }
 
