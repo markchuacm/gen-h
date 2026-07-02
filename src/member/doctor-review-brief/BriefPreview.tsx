@@ -1,6 +1,12 @@
 // ─── Doctor Review Brief · preview, booking & confirmation ────────────────────
 
-import { CalendarClock, Check, ChevronLeft, ChevronRight, FileCheck2 } from "lucide-react";
+import {
+  CalendarClock,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  FileCheck2,
+} from "lucide-react";
 import { LivingBriefPanel, SafetyNote } from "./LivingBriefPanel";
 import type { IntakeController } from "./useIntakeState";
 
@@ -11,26 +17,43 @@ export function BriefPreview({ c }: { c: IntakeController }) {
         <span className="drb-step-eyebrow">Draft summary</span>
         <h2>Your Doctor Review Brief is ready</h2>
         <p>
-          We've organised your context so your Gen-H doctor can review your case before the consult — the call starts
-          with your full picture, not a cold intake.
+          We've organised your context so your Gen-H doctor can review your case
+          before the consult — the call starts with your full picture, not a
+          cold intake.
         </p>
       </header>
 
-      <LivingBriefPanel sections={c.sections} summary={c.summary} onEdit={c.goToQuestion} />
+      <LivingBriefPanel
+        sections={c.sections}
+        summary={c.summary}
+        attachments={c.attachments}
+        synthesis={c.briefSynthesis}
+        onEdit={c.goToQuestion}
+        onRemoveAttachment={c.removeFile}
+      />
 
       <div className="drb-booking-cta">
         <h3>Book your doctor review</h3>
         <p>
-          <strong>RM99</strong> to book your Gen-H doctor review. Fully refundable if you don't feel the consult was
-          useful. Your doctor receives your brief before the call.
+          <strong>RM99</strong> to book your Gen-H doctor review. Fully
+          refundable if you don't feel the consult was useful. Your doctor
+          receives your brief before the call.
         </p>
-        <button type="button" className="drb-continue drb-continue--block" onClick={c.next}>
+        <button
+          type="button"
+          className="drb-continue drb-continue--block"
+          onClick={c.next}
+        >
           Book for RM99
           <ChevronRight strokeWidth={2} aria-hidden="true" />
         </button>
       </div>
 
-      <button type="button" className="drb-back drb-back--center" onClick={c.back}>
+      <button
+        type="button"
+        className="drb-back drb-back--center"
+        onClick={c.back}
+      >
         <ChevronLeft strokeWidth={2} aria-hidden="true" />
         Back to questions
       </button>
@@ -44,7 +67,10 @@ export function BookingView({ c }: { c: IntakeController }) {
       <header className="drb-preview-head">
         <span className="drb-step-eyebrow">Doctor review</span>
         <h2>Confirm your Gen-H doctor review</h2>
-        <p>A focused teleconsult with a Gen-H doctor who has already read your brief.</p>
+        <p>
+          A focused teleconsult with a Gen-H doctor who has already read your
+          brief.
+        </p>
       </header>
 
       <div className="drb-booking-card">
@@ -66,17 +92,29 @@ export function BookingView({ c }: { c: IntakeController }) {
           <span>Doctor review</span>
           <strong>RM99</strong>
         </div>
-        <p className="drb-refund">Fully refundable if you don't feel the consult was useful.</p>
-        <button type="button" className="drb-continue drb-continue--block" onClick={c.next}>
+        <p className="drb-refund">
+          Fully refundable if you don't feel the consult was useful.
+        </p>
+        <button
+          type="button"
+          className="drb-continue drb-continue--block"
+          onClick={c.next}
+        >
           Book for RM99
           <ChevronRight strokeWidth={2} aria-hidden="true" />
         </button>
-        <p className="drb-placeholder-note">Placeholder booking — no payment is taken in this version.</p>
+        <p className="drb-placeholder-note">
+          Placeholder booking — no payment is taken in this version.
+        </p>
       </div>
 
       <SafetyNote />
 
-      <button type="button" className="drb-back drb-back--center" onClick={c.back}>
+      <button
+        type="button"
+        className="drb-back drb-back--center"
+        onClick={c.back}
+      >
         <ChevronLeft strokeWidth={2} aria-hidden="true" />
         Back to brief
       </button>
@@ -84,7 +122,13 @@ export function BookingView({ c }: { c: IntakeController }) {
   );
 }
 
-export function BookingConfirmation({ c, onExit }: { c: IntakeController; onExit: () => void }) {
+export function BookingConfirmation({
+  c,
+  onExit,
+}: {
+  c: IntakeController;
+  onExit: () => void;
+}) {
   return (
     <div className="drb-confirm">
       <div className="drb-confirm-badge" aria-hidden="true">
@@ -92,8 +136,9 @@ export function BookingConfirmation({ c, onExit }: { c: IntakeController; onExit
       </div>
       <h2>Your doctor review is booked</h2>
       <p>
-        Your Doctor Review Brief will be shared with your Gen-H doctor before the consult. During the call, your doctor
-        will validate the priorities, identify any missing tests, and confirm your next steps.
+        Your Doctor Review Brief will be shared with your Gen-H doctor before
+        the consult. During the call, your doctor will validate the priorities,
+        identify any missing tests, and confirm your next steps.
       </p>
 
       <ul className="drb-confirm-list">
@@ -101,19 +146,28 @@ export function BookingConfirmation({ c, onExit }: { c: IntakeController; onExit
           <CalendarClock strokeWidth={1.7} aria-hidden="true" />
           <div>
             <strong>Appointment</strong>
-            <span>We'll confirm your teleconsult time by WhatsApp shortly.</span>
+            <span>
+              We'll confirm your teleconsult time by WhatsApp shortly.
+            </span>
           </div>
         </li>
         <li>
           <FileCheck2 strokeWidth={1.7} aria-hidden="true" />
           <div>
             <strong>Your brief</strong>
-            <span>{c.summary.areasCaptured} areas captured · {c.summary.filesUploaded} uploaded · shared with your doctor</span>
+            <span>
+              {c.summary.areasCaptured} areas captured ·{" "}
+              {c.summary.filesUploaded} uploaded · shared with your doctor
+            </span>
           </div>
         </li>
       </ul>
 
-      <button type="button" className="drb-continue drb-continue--block" onClick={onExit}>
+      <button
+        type="button"
+        className="drb-continue drb-continue--block"
+        onClick={onExit}
+      >
         Back to my profile
       </button>
     </div>

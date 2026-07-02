@@ -7,9 +7,12 @@
 // anything about the file's contents. No medical findings are ever inferred.
 
 import type {
+  AttachmentCard,
+  AttachmentKind,
   BriefItem,
   BriefSource,
   BriefStatus,
+  DoctorHighlight,
   IntakeState,
   RenderSection,
   UploadCategory,
@@ -17,11 +20,59 @@ import type {
 
 const CATEGORY_KEYWORDS: Array<[UploadCategory, string[]]> = [
   ["dna", ["dna", "genetic", "genome", "23andme", "ancestry"]],
+  [
+    "gut_microbiome",
+    [
+      "microbiome",
+      "gut-health",
+      "guthealth",
+      "stool",
+      "faecal",
+      "fecal",
+      "viome",
+      "zoe",
+    ],
+  ],
   ["urine", ["urine", "urinalysis"]],
-  ["body_composition", ["dexa", "inbody", "bodycomp", "body-composition", "bodyfat"]],
-  ["wearable", ["wearable", "oura", "whoop", "garmin", "fitbit", "watch", "apple-health"]],
-  ["blood", ["blood", "cbc", "lipid", "panel", "serum", "haemo", "hemo", "labs", "lab-"]],
-  ["screening", ["screening", "screen", "checkup", "check-up", "medical-report"]],
+  [
+    "body_composition",
+    ["dexa", "inbody", "bodycomp", "body-composition", "bodyfat"],
+  ],
+  [
+    "physical_assessment",
+    [
+      "physical-exam",
+      "physicalexam",
+      "vo2",
+      "fitness-assessment",
+      "functional-movement",
+      "posture",
+      "gait",
+      "physio",
+    ],
+  ],
+  [
+    "wearable",
+    ["wearable", "oura", "whoop", "garmin", "fitbit", "watch", "apple-health"],
+  ],
+  [
+    "blood",
+    [
+      "blood",
+      "cbc",
+      "lipid",
+      "panel",
+      "serum",
+      "haemo",
+      "hemo",
+      "labs",
+      "lab-",
+    ],
+  ],
+  [
+    "screening",
+    ["screening", "screen", "checkup", "check-up", "medical-report"],
+  ],
   ["specialist", ["specialist", "referral", "cardio", "endo", "consult"]],
 ];
 
@@ -31,12 +82,17 @@ export const CATEGORY_LABEL: Record<UploadCategory, string> = {
   dna: "DNA / genetic report",
   wearable: "Wearable data",
   body_composition: "Body composition",
+  gut_microbiome: "Gut microbiome test",
+  physical_assessment: "Physical assessment",
   specialist: "Specialist report",
   screening: "Health screening",
   other: "Health document",
 };
 
-export function detectCategory(fileName: string, mimeType = ""): UploadCategory {
+export function detectCategory(
+  fileName: string,
+  mimeType = "",
+): UploadCategory {
   const haystack = `${fileName} ${mimeType}`.toLowerCase();
   for (const [category, keywords] of CATEGORY_KEYWORDS) {
     if (keywords.some((kw) => haystack.includes(kw))) return category;
@@ -44,9 +100,106 @@ export function detectCategory(fileName: string, mimeType = ""): UploadCategory 
   return "other";
 }
 
+// ─── "Top of mind highlights to doctor" ───────────────────────────────────────
+// Temporary fallback while synthesis is pending: only markers the report itself
+// flags out of range (from structured extraction). Cross-document themes come
+// from the pipeline's compose stage.
+export function computeDoctorHighlights(state: IntakeState): DoctorHighlight[] {
+  const insights = state.aiDocumentInsights ?? {};
+  const out: DoctorHighlight[] = [];
+
+  state.uploadedFiles.forEach((file) => {
+    const insight = insights[file.id];
+    if (insight?.status !== "done") return;
+    const flagged = (insight.markers ?? []).filter((m) => m.flag);
+    if (flagged.length === 0) return;
+    out.push({
+      id: `hl-flag-${file.id}`,
+      kind: "flagged",
+      title: "Flagged out of range",
+      detail: flagged.map((m) => m.name).join(" · "),
+      sourceLabel:
+        [insight.documentType, insight.provider].filter(Boolean).join(" · ") ||
+        file.name,
+    });
+  });
+
+  return out;
+}
+
+// ─── Attachments (Claude-style file cards) ─────────────────────────────────────
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function extensionOf(fileName: string, mimeType: string): string {
+  const dot = fileName.lastIndexOf(".");
+  if (dot >= 0 && dot < fileName.length - 1)
+    return fileName.slice(dot + 1).toLowerCase();
+  if (mimeType.includes("pdf")) return "pdf";
+  if (mimeType.startsWith("image/")) return mimeType.slice(6);
+  if (mimeType.includes("csv")) return "csv";
+  return "file";
+}
+
+function attachmentKind(mimeType: string, ext: string): AttachmentKind {
+  if (mimeType === "application/pdf" || ext === "pdf") return "pdf";
+  if (
+    mimeType.startsWith("image/") ||
+    ["png", "jpg", "jpeg", "heic", "webp", "gif"].includes(ext)
+  )
+    return "image";
+  if (
+    mimeType.includes("csv") ||
+    mimeType.includes("sheet") ||
+    ["csv", "tsv", "xls", "xlsx"].includes(ext)
+  )
+    return "sheet";
+  return "doc";
+}
+
+export function computeAttachments(state: IntakeState): AttachmentCard[] {
+  const insights = state.aiDocumentInsights ?? {};
+  return state.uploadedFiles.map((file) => {
+    const insight = insights[file.id];
+    const ext = extensionOf(file.name, file.type);
+    const typeLabel =
+      insight?.status === "done" && insight.documentType
+        ? insight.documentType
+        : insight?.status === "analyzing"
+          ? "Reading…"
+          : insight?.status === "needs_review"
+            ? "Needs doctor review"
+            : insight?.status === "error"
+              ? "Re-add this file to analyze it"
+              : file.detectedCategory
+                ? CATEGORY_LABEL[file.detectedCategory]
+                : "Document";
+    return {
+      fileId: file.id,
+      fileName: file.name,
+      kind: attachmentKind(file.type, ext),
+      ext: ext.toUpperCase().slice(0, 4),
+      typeLabel,
+      sizeLabel: formatBytes(file.size),
+      status: insight?.status ?? "uploaded",
+      flaggedCount:
+        insight?.status === "done" ? insight.flaggedMarkers.length : 0,
+    };
+  });
+}
+
 // ─── Brief section builders ───────────────────────────────────────────────────
 
-function item(id: string, value: string, source: BriefSource, label?: string): BriefItem {
+function item(
+  id: string,
+  value: string,
+  source: BriefSource,
+  label?: string,
+): BriefItem {
   return { id, value, source, label };
 }
 
@@ -57,7 +210,8 @@ function listItems(
   source: BriefSource,
 ): BriefItem[] {
   const items = values.map((v, i) => item(`${prefix}-${i}`, v, source));
-  if (freeText && freeText.trim()) items.push(item(`${prefix}-free`, freeText.trim(), source));
+  if (freeText && freeText.trim())
+    items.push(item(`${prefix}-free`, freeText.trim(), source));
   return items;
 }
 
@@ -74,7 +228,9 @@ const LIFESTYLE_FIELDS: Array<[keyof IntakeState["lifestyle"], string]> = [
   ["sweetTooth", "Sweet tooth"],
 ];
 
-const SUPPLEMENT_FIELDS: Array<[keyof IntakeState["supplementsAndMeds"], string]> = [
+const SUPPLEMENT_FIELDS: Array<
+  [keyof IntakeState["supplementsAndMeds"], string]
+> = [
   ["supplements", "Supplements"],
   ["medications", "Medications"],
   ["allergies", "Allergies"],
@@ -84,8 +240,23 @@ const SUPPLEMENT_FIELDS: Array<[keyof IntakeState["supplementsAndMeds"], string]
 /** Generic "topics for your doctor" — never derived from file contents. */
 export function computeReviewAreas(state: IntakeState): BriefItem[] {
   const out: BriefItem[] = [];
+  const insights = state.aiDocumentInsights ?? {};
+
+  state.uploadedFiles.forEach((file) => {
+    const insight = insights[file.id];
+    if (insight?.status === "done") {
+      insight.doctorReviewAreas.forEach((area, index) => {
+        out.push(item(`ra-${file.id}-${index}`, area, "system_generated"));
+      });
+    }
+  });
+
+  if (out.length > 0) return out;
+
   const cats = new Set<UploadCategory>();
-  state.uploadedFiles.forEach((f) => f.detectedCategory && cats.add(f.detectedCategory));
+  state.uploadedFiles.forEach((f) => {
+    if (!insights[f.id] && f.detectedCategory) cats.add(f.detectedCategory);
+  });
 
   cats.forEach((c) =>
     out.push(
@@ -103,7 +274,9 @@ export function computeReviewAreas(state: IntakeState): BriefItem[] {
       "Reviewing your lifestyle and history",
       "Deciding which tests are actually worth doing",
       "Avoiding unnecessary testing",
-    ].forEach((v, i) => out.push(item(`ra-baseline-${i}`, v, "system_generated")));
+    ].forEach((v, i) =>
+      out.push(item(`ra-baseline-${i}`, v, "system_generated")),
+    );
   }
   return out;
 }
@@ -112,43 +285,67 @@ export function computeReviewAreas(state: IntakeState): BriefItem[] {
 export function buildBriefSections(state: IntakeState): RenderSection[] {
   const sections: RenderSection[] = [];
 
-  const reason = listItems("reason", state.reason, state.reasonFreeText, "user_answer");
-  if (reason.length) sections.push({ id: "reason", title: "Why I'm here", items: reason, editQuestionId: "reason" });
-
-  if (state.uploadedFiles.length) {
+  const reason = listItems(
+    "reason",
+    state.reason,
+    state.reasonFreeText,
+    "user_answer",
+  );
+  if (reason.length)
     sections.push({
-      id: "uploads",
-      title: "Uploaded context",
-      editQuestionId: "upload",
-      items: state.uploadedFiles.map((f) =>
-        item(
-          `file-${f.id}`,
-          f.detectedCategory && f.detectedCategory !== "other"
-            ? `${f.name} · ${CATEGORY_LABEL[f.detectedCategory]}`
-            : f.name,
-          "uploaded_report",
-        ),
-      ),
+      id: "reason",
+      title: "Why I'm here",
+      items: reason,
+      editQuestionId: "reason",
     });
-  }
 
-  const goals = listItems("goals", state.goals, state.goalsFreeText, "user_answer");
-  if (goals.length) sections.push({ id: "goals", title: "Main goals", items: goals, editQuestionId: "goals" });
+  const goals = listItems(
+    "goals",
+    state.goals,
+    state.goalsFreeText,
+    "user_answer",
+  );
+  if (goals.length)
+    sections.push({
+      id: "goals",
+      title: "Main goals",
+      items: goals,
+      editQuestionId: "goals",
+    });
 
-  const symptoms = listItems("symptoms", state.symptoms, state.symptomsFreeText, "user_answer");
+  const symptoms = listItems(
+    "symptoms",
+    state.symptoms,
+    state.symptomsFreeText,
+    "user_answer",
+  );
   if (symptoms.length)
-    sections.push({ id: "symptoms", title: "What feels off", items: symptoms, editQuestionId: "symptoms" });
+    sections.push({
+      id: "symptoms",
+      title: "What feels off",
+      items: symptoms,
+      editQuestionId: "symptoms",
+    });
 
   const lifestyle = LIFESTYLE_FIELDS.flatMap(([key, label]) => {
     const v = state.lifestyle[key];
-    return v && v.trim() ? [item(`ls-${key}`, v.trim(), "user_answer", label)] : [];
+    return v && v.trim()
+      ? [item(`ls-${key}`, v.trim(), "user_answer", label)]
+      : [];
   });
   if (lifestyle.length)
-    sections.push({ id: "lifestyle", title: "Lifestyle context", items: lifestyle, editQuestionId: "lifestyle" });
+    sections.push({
+      id: "lifestyle",
+      title: "Lifestyle context",
+      items: lifestyle,
+      editQuestionId: "lifestyle",
+    });
 
   const supplements = SUPPLEMENT_FIELDS.flatMap(([key, label]) => {
     const v = state.supplementsAndMeds[key];
-    return v && v.trim() ? [item(`sm-${key}`, v.trim(), "user_answer", label)] : [];
+    return v && v.trim()
+      ? [item(`sm-${key}`, v.trim(), "user_answer", label)]
+      : [];
   });
   if (supplements.length)
     sections.push({
@@ -158,15 +355,39 @@ export function buildBriefSections(state: IntakeState): RenderSection[] {
       editQuestionId: "supplements",
     });
 
-  const contextItems = Object.entries(state.contextAnswers).flatMap(([qid, value]) =>
-    value && value.trim() ? [item(`ctx-${qid}`, value.trim(), "user_answer")] : [],
+  const contextItems = Object.entries(state.contextAnswers).flatMap(
+    ([qid, value]) =>
+      value && value.trim() && !qid.startsWith("dyn_")
+        ? [item(`ctx-${qid}`, value.trim(), "user_answer")]
+        : [],
   );
   if (contextItems.length)
-    sections.push({ id: "questions", title: "Notes for your doctor", items: contextItems });
+    sections.push({
+      id: "questions",
+      title: "Notes for your doctor",
+      items: contextItems,
+    });
 
-  const reviewAreas = computeReviewAreas(state);
-  if (reviewAreas.length)
-    sections.push({ id: "reviewAreas", title: "Review areas for doctor", items: reviewAreas });
+  const dynamicAnswerItems = (state.answeredDynamicQuestions ?? []).flatMap(
+    (answer) =>
+      answer.answer.trim()
+        ? [
+            item(
+              `dyn-${answer.questionId}`,
+              answer.answer.trim(),
+              "user_answer",
+              answer.prompt,
+            ),
+          ]
+        : [],
+  );
+  if (dynamicAnswerItems.length) {
+    sections.push({
+      id: "questions",
+      title: "Questions answered by you",
+      items: dynamicAnswerItems,
+    });
+  }
 
   return sections;
 }
@@ -187,13 +408,15 @@ export function computeBriefSummary(state: IntakeState): BriefSummary {
     state.symptoms.length > 0 || !!state.symptomsFreeText?.trim(),
     Object.values(state.lifestyle).some((v) => v && v.trim()),
     Object.values(state.supplementsAndMeds).some((v) => v && v.trim()),
+    (state.answeredDynamicQuestions ?? []).some((q) => q.answer.trim()),
   ].filter(Boolean).length;
 
   const filesUploaded = state.uploadedFiles.length;
-  const reviewAreas = computeReviewAreas(state).length;
+  const reviewAreas = state.briefSynthesis?.themes.length ?? 0;
   const score = captured + (filesUploaded > 0 ? 1 : 0);
 
-  const status: BriefStatus = score >= 4 ? "doctor_ready" : score >= 2 ? "useful" : "getting_started";
+  const status: BriefStatus =
+    score >= 4 ? "doctor_ready" : score >= 2 ? "useful" : "getting_started";
   return { status, areasCaptured: captured, filesUploaded, reviewAreas };
 }
 
