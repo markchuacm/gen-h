@@ -102,25 +102,26 @@ export function detectCategory(
 
 // ─── "Top of mind highlights to doctor" ───────────────────────────────────────
 // Temporary fallback while synthesis is pending: only markers the report itself
-// flags out of range. Cross-document themes come from the synthesis endpoint.
+// flags out of range (from structured extraction). Cross-document themes come
+// from the pipeline's compose stage.
 export function computeDoctorHighlights(state: IntakeState): DoctorHighlight[] {
   const insights = state.aiDocumentInsights ?? {};
   const out: DoctorHighlight[] = [];
 
   state.uploadedFiles.forEach((file) => {
     const insight = insights[file.id];
-    if (insight?.status === "done" && insight.flaggedMarkers.length > 0) {
-      out.push({
-        id: `hl-flag-${file.id}`,
-        kind: "flagged",
-        title: "Flagged out of range",
-        detail: insight.flaggedMarkers.join(" · "),
-        sourceLabel:
-          [insight.documentType, insight.provider]
-            .filter(Boolean)
-            .join(" · ") || file.name,
-      });
-    }
+    if (insight?.status !== "done") return;
+    const flagged = (insight.markers ?? []).filter((m) => m.flag);
+    if (flagged.length === 0) return;
+    out.push({
+      id: `hl-flag-${file.id}`,
+      kind: "flagged",
+      title: "Flagged out of range",
+      detail: flagged.map((m) => m.name).join(" · "),
+      sourceLabel:
+        [insight.documentType, insight.provider].filter(Boolean).join(" · ") ||
+        file.name,
+    });
   });
 
   return out;
@@ -169,12 +170,14 @@ export function computeAttachments(state: IntakeState): AttachmentCard[] {
       insight?.status === "done" && insight.documentType
         ? insight.documentType
         : insight?.status === "analyzing"
-          ? "Reviewing…"
+          ? "Reading…"
           : insight?.status === "needs_review"
             ? "Needs doctor review"
-            : file.detectedCategory
-              ? CATEGORY_LABEL[file.detectedCategory]
-              : "Document";
+            : insight?.status === "error"
+              ? "Re-add this file to analyze it"
+              : file.detectedCategory
+                ? CATEGORY_LABEL[file.detectedCategory]
+                : "Document";
     return {
       fileId: file.id,
       fileName: file.name,
@@ -409,7 +412,7 @@ export function computeBriefSummary(state: IntakeState): BriefSummary {
   ].filter(Boolean).length;
 
   const filesUploaded = state.uploadedFiles.length;
-  const reviewAreas = state.briefSynthesis?.progress.themesPrepared ?? 0;
+  const reviewAreas = state.briefSynthesis?.themes.length ?? 0;
   const score = captured + (filesUploaded > 0 ? 1 : 0);
 
   const status: BriefStatus =

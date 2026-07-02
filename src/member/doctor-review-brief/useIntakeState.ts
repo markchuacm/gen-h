@@ -12,9 +12,10 @@ import {
   computeDoctorHighlights,
   detectCategory,
 } from "./briefEngine";
-import { analyzeDocument } from "./documentAnalysis";
-import { synthesizeBrief, synthesisSignature } from "./briefSynthesis";
+import { useBriefPipeline } from "./useBriefPipeline";
+import type { PipelineStatus } from "./useBriefPipeline";
 import type {
+  AgentStep,
   AnsweredDynamicQuestion,
   AttachmentCard,
   BriefSynthesis,
@@ -30,7 +31,8 @@ import type {
   UploadedFile,
 } from "./types";
 
-const STORAGE_KEY = "genh_drb_v1";
+const STORAGE_KEY = "genh_drb_v2";
+const LEGACY_STORAGE_KEY = "genh_drb_v1";
 
 export type Phase = "intake" | "preview" | "booking" | "confirmation";
 
@@ -47,7 +49,6 @@ function createInitialState(): IntakeState {
     symptoms: [],
     lifestyle: {},
     supplementsAndMeds: {},
-    documentExtractions: {},
     dynamicQuestionQueue: [],
     answeredDynamicQuestions: [],
     synthesisStatus: "idle",
@@ -68,7 +69,11 @@ function uid(): string {
 
 function loadPersisted(): Persisted | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    // Best-effort v1 migration: answers, files, and insights carry over; the
+    // synthesis is dropped (its shape changed) and reruns cheaply on hydrate.
+    const raw =
+      localStorage.getItem(STORAGE_KEY) ??
+      localStorage.getItem(LEGACY_STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<Persisted>;
     if (!parsed || !parsed.state) return null;
@@ -91,31 +96,31 @@ function normalizeInsight(insight: DocumentInsight): DocumentInsight {
     reportDate: insight.reportDate ?? null,
     textExcerpt: insight.textExcerpt ?? "",
     sections: insight.sections ?? [],
+    markers: insight.markers ?? [],
     visibleMarkers: insight.visibleMarkers ?? [],
     flaggedMarkers: insight.flaggedMarkers ?? [],
     doctorReviewAreas: insight.doctorReviewAreas ?? [],
     patientFacingSummary: insight.patientFacingSummary ?? "",
     question: insight.question ?? "",
     questionId: insight.questionId,
+    // A persisted 'analyzing' insight means the stream was lost on page close.
     status: insight.status === "analyzing" ? "error" : insight.status,
   };
 }
 
-function createPendingInsight(fileId: string): DocumentInsight {
+/** Drops persisted synthesis payloads that predate the structured-brief shape. */
+function normalizeSynthesis(
+  synthesis: BriefSynthesis | undefined,
+): BriefSynthesis | undefined {
+  if (!synthesis) return undefined;
+  const isCurrentShape =
+    Array.isArray(synthesis.outOfRange) &&
+    Array.isArray(synthesis.nextQuestions) &&
+    typeof synthesis.progress?.outOfRangeCount === "number";
+  if (!isCurrentShape) return undefined;
   return {
-    fileId,
-    documentType: "",
-    provider: null,
-    reportDate: null,
-    textExcerpt: "",
-    sections: [],
-    visibleMarkers: [],
-    flaggedMarkers: [],
-    doctorReviewAreas: [],
-    patientFacingSummary: "",
-    question: "",
-    questionId: `ai_q_${fileId.slice(0, 8)}`,
-    status: "analyzing",
+    ...synthesis,
+    status: synthesis.status === "synthesizing" ? "idle" : synthesis.status,
   };
 }
 
@@ -129,28 +134,18 @@ function normalizeState(input: IntakeState): IntakeState {
       ? ([base.hasReports] as ReportUploadType[])
       : []);
   const fixed: Record<string, DocumentInsight> = {};
-  const sourceInsights =
-    base.aiDocumentInsights ?? base.documentExtractions ?? {};
-  for (const [id, ins] of Object.entries(sourceInsights)) {
+  for (const [id, ins] of Object.entries(base.aiDocumentInsights ?? {})) {
     fixed[id] = normalizeInsight(ins);
   }
   const uploadsAreUnconfirmed =
     base.uploadedFiles.length > 0 && !base.uploadsConfirmedAt;
-  const briefSynthesis =
-    uploadsAreUnconfirmed || !base.briefSynthesis
-      ? undefined
-      : {
-          ...base.briefSynthesis,
-          status:
-            base.briefSynthesis.status === "synthesizing"
-              ? "idle"
-              : base.briefSynthesis.status,
-        };
+  const briefSynthesis = uploadsAreUnconfirmed
+    ? undefined
+    : normalizeSynthesis(base.briefSynthesis);
   return {
     ...base,
     reportSelections,
     aiDocumentInsights: uploadsAreUnconfirmed ? {} : fixed,
-    documentExtractions: uploadsAreUnconfirmed ? {} : fixed,
     briefSynthesis,
     dynamicQuestionQueue: uploadsAreUnconfirmed
       ? []
@@ -179,6 +174,10 @@ export type IntakeController = {
   briefSynthesis?: BriefSynthesis;
   dynamicQuestionQueue: DynamicQuestion[];
   answeredDynamicQuestions: AnsweredDynamicQuestion[];
+  // pipeline (agent activity)
+  agentSteps: AgentStep[];
+  pipelineStatus: PipelineStatus;
+  retryPipeline: () => void;
   // mutations
   setReportFork: (optionIndex: number) => void;
   toggleMulti: (field: "reason" | "goals" | "symptoms", value: string) => void;
@@ -245,9 +244,27 @@ export function useIntakeState(opts?: {
       ),
     [state.aiDocumentInsights],
   );
-  const synthSignature = useMemo(() => synthesisSignature(state), [state]);
-  const lastSynthesisSignatureRef = useRef<string>("");
-  const synthesisRunIdRef = useRef(0);
+
+  const pipeline = useBriefPipeline({
+    state,
+    setState,
+    fileObjects: fileObjectsRef,
+  });
+
+  // Resume after a refresh: extracted insights persist, so a missing/stale
+  // synthesis just needs one cheap compose-only rerun on hydrate.
+  const hydratedRef = useRef(false);
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    hydratedRef.current = true;
+    const hasInsights = Object.values(state.aiDocumentInsights ?? {}).some(
+      (i) => i.status === "done" || i.status === "needs_review",
+    );
+    if (hasInsights && state.briefSynthesis?.status !== "ready") {
+      pipeline.rerunSynthesis();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const boundedIndex = Math.min(stepIndex, Math.max(0, flow.length - 1));
   const currentStep = flow[boundedIndex];
@@ -363,88 +380,6 @@ export function useIntakeState(opts?: {
     [],
   );
 
-  useEffect(() => {
-    const hasUploadedDocs = state.uploadedFiles.length > 0;
-    const uploadsConfirmed = !hasUploadedDocs || !!state.uploadsConfirmedAt;
-    if (!uploadsConfirmed) return;
-
-    const hasCompletedExtraction = Object.values(
-      state.aiDocumentInsights ?? {},
-    ).some(
-      (i) =>
-        i.status === "done" ||
-        i.status === "needs_review" ||
-        i.status === "error",
-    );
-    const hasUsefulAnswer =
-      state.reason.length > 0 ||
-      !!state.reasonFreeText?.trim() ||
-      state.goals.length > 0 ||
-      !!state.goalsFreeText?.trim() ||
-      state.symptoms.length > 0 ||
-      !!state.symptomsFreeText?.trim() ||
-      Object.values(state.contextAnswers).some((v) => v.trim()) ||
-      (state.answeredDynamicQuestions ?? []).some((q) => q.answer.trim());
-
-    if (aiAnalyzing || (!hasCompletedExtraction && !hasUsefulAnswer)) return;
-    if (lastSynthesisSignatureRef.current === synthSignature) return;
-
-    lastSynthesisSignatureRef.current = synthSignature;
-    const runId = synthesisRunIdRef.current + 1;
-    synthesisRunIdRef.current = runId;
-    const snapshot = state;
-
-    setState((prev) => ({
-      ...prev,
-      synthesisStatus: "synthesizing",
-      briefSynthesis: {
-        ...(prev.briefSynthesis ?? {
-          narrative: "",
-          themes: [],
-          progress: { themesPrepared: 0, markersRead: 0, questionsQueued: 0 },
-        }),
-        status: "synthesizing",
-      },
-      updatedAt: new Date().toISOString(),
-    }));
-
-    synthesizeBrief(snapshot, snapshot.answeredDynamicQuestions ?? [])
-      .then((result) => {
-        if (synthesisRunIdRef.current !== runId) return;
-        const queue = result.nextQuestion ? [result.nextQuestion] : [];
-        setState((prev) => ({
-          ...prev,
-          briefSynthesis: result,
-          dynamicQuestionQueue: queue,
-          synthesisStatus: result.status,
-          updatedAt: new Date().toISOString(),
-        }));
-      })
-      .catch((error: unknown) => {
-        if (synthesisRunIdRef.current !== runId) return;
-        const message =
-          error instanceof Error ? error.message : "Brief synthesis failed.";
-        setState((prev) => ({
-          ...prev,
-          synthesisStatus: "error",
-          briefSynthesis: {
-            ...(prev.briefSynthesis ?? {
-              narrative: "",
-              themes: [],
-              progress: {
-                themesPrepared: 0,
-                markersRead: 0,
-                questionsQueued: 0,
-              },
-            }),
-            status: "error",
-            error: message,
-          },
-          updatedAt: new Date().toISOString(),
-        }));
-      });
-  }, [aiAnalyzing, synthSignature]);
-
   const addFiles = useCallback(
     (files: FileList | File[], category?: UploadCategory) => {
       const incoming = Array.from(files);
@@ -478,169 +413,17 @@ export function useIntakeState(opts?: {
     [],
   );
 
-  const confirmUploadsForAnalysis = useCallback(() => {
-    const now = new Date().toISOString();
-    const filesToAnalyze = state.uploadedFiles.filter((meta) => {
-      const existing = state.aiDocumentInsights?.[meta.id];
-      if (existing?.status === "done" || existing?.status === "analyzing") {
-        return false;
-      }
-      return fileObjectsRef.current.has(meta.id);
-    });
-
-    if (state.uploadedFiles.length === 0) {
-      setState((prev) => ({
-        ...prev,
-        uploadsConfirmedAt: now,
-        updatedAt: now,
-      }));
-      return;
-    }
-
-    const initialInsights: Record<string, DocumentInsight> = {};
-    filesToAnalyze.forEach((meta) => {
-      initialInsights[meta.id] = createPendingInsight(meta.id);
-    });
-
-    setState((prev) => ({
-      ...prev,
-      uploadsConfirmedAt: now,
-      aiDocumentInsights: {
-        ...(prev.aiDocumentInsights ?? {}),
-        ...initialInsights,
-      },
-      documentExtractions: {
-        ...(prev.documentExtractions ?? {}),
-        ...initialInsights,
-      },
-      briefSynthesis:
-        filesToAnalyze.length > 0 ? undefined : prev.briefSynthesis,
-      dynamicQuestionQueue:
-        filesToAnalyze.length > 0 ? [] : prev.dynamicQuestionQueue,
-      synthesisStatus:
-        filesToAnalyze.length > 0 ? "idle" : prev.synthesisStatus,
-      updatedAt: now,
-    }));
-
-    // Fire analysis calls through our backend endpoint only after user confirmation.
-    filesToAnalyze.forEach((meta) => {
-      const file = fileObjectsRef.current.get(meta.id);
-      if (!file) return;
-
-      analyzeDocument(file, meta.detectedCategory)
-        .then((result) => {
-          fileObjectsRef.current.delete(meta.id);
-          setState((prev) => ({
-            ...prev,
-            aiDocumentInsights: {
-              ...(prev.aiDocumentInsights ?? {}),
-              [meta.id]: {
-                fileId: meta.id,
-                documentType: result.documentType,
-                provider: result.provider,
-                reportDate: result.reportDate,
-                textExcerpt: result.textExcerpt,
-                sections: result.sections,
-                visibleMarkers: result.visibleMarkers,
-                flaggedMarkers: result.flaggedMarkers,
-                doctorReviewAreas: result.doctorReviewAreas,
-                patientFacingSummary: result.patientFacingSummary,
-                question: result.question,
-                questionId: `ai_q_${meta.id.slice(0, 8)}`,
-                status:
-                  result.extractionStatus === "extracted"
-                    ? "done"
-                    : "needs_review",
-              },
-            },
-            documentExtractions: {
-              ...(prev.documentExtractions ?? {}),
-              [meta.id]: {
-                fileId: meta.id,
-                documentType: result.documentType,
-                provider: result.provider,
-                reportDate: result.reportDate,
-                textExcerpt: result.textExcerpt,
-                sections: result.sections,
-                visibleMarkers: result.visibleMarkers,
-                flaggedMarkers: result.flaggedMarkers,
-                doctorReviewAreas: result.doctorReviewAreas,
-                patientFacingSummary: result.patientFacingSummary,
-                question: result.question,
-                questionId: `ai_q_${meta.id.slice(0, 8)}`,
-                status:
-                  result.extractionStatus === "extracted"
-                    ? "done"
-                    : "needs_review",
-              },
-            },
-            updatedAt: new Date().toISOString(),
-          }));
-        })
-        .catch(() => {
-          fileObjectsRef.current.delete(meta.id);
-          setState((prev) => ({
-            ...prev,
-            aiDocumentInsights: {
-              ...(prev.aiDocumentInsights ?? {}),
-              [meta.id]: {
-                ...(prev.aiDocumentInsights?.[meta.id] ?? {
-                  fileId: meta.id,
-                  documentType: "",
-                  provider: null,
-                  reportDate: null,
-                  textExcerpt: "",
-                  sections: [],
-                  visibleMarkers: [],
-                  flaggedMarkers: [],
-                  doctorReviewAreas: [],
-                  patientFacingSummary: "",
-                  question: "",
-                  questionId: `ai_q_${meta.id.slice(0, 8)}`,
-                }),
-                status: "error",
-              },
-            },
-            documentExtractions: {
-              ...(prev.documentExtractions ?? {}),
-              [meta.id]: {
-                ...(prev.aiDocumentInsights?.[meta.id] ?? {
-                  fileId: meta.id,
-                  documentType: "",
-                  provider: null,
-                  reportDate: null,
-                  sections: [],
-                  visibleMarkers: [],
-                  flaggedMarkers: [],
-                  doctorReviewAreas: [],
-                  patientFacingSummary: "",
-                  question: "",
-                  questionId: `ai_q_${meta.id.slice(0, 8)}`,
-                }),
-                status: "error",
-              },
-            },
-            updatedAt: new Date().toISOString(),
-          }));
-        });
-    });
-  }, [state.aiDocumentInsights, state.uploadedFiles]);
-
   const removeFile = useCallback((id: string) => {
     fileObjectsRef.current.delete(id);
     setState((prev) => {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { [id]: _removed, ...remainingInsights } =
         prev.aiDocumentInsights ?? {};
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { [id]: _removedExtraction, ...remainingExtractions } =
-        prev.documentExtractions ?? {};
       const remainingFiles = prev.uploadedFiles.filter((f) => f.id !== id);
       return {
         ...prev,
         uploadedFiles: remainingFiles,
         aiDocumentInsights: remainingInsights,
-        documentExtractions: remainingExtractions,
         briefSynthesis:
           remainingFiles.length > 0 ? prev.briefSynthesis : undefined,
         dynamicQuestionQueue:
@@ -659,8 +442,19 @@ export function useIntakeState(opts?: {
         state.uploadedFiles.length > 0 &&
         !state.uploadsConfirmedAt
       ) {
-        confirmUploadsForAnalysis();
+        pipeline.runFullPipeline();
         return;
+      }
+      // Commit-based synthesis: leaving an answered step is the moment to fold
+      // new context into the brief (never per keystroke). The pipeline's
+      // signature guard makes an unchanged commit a no-op. Answer-only intakes
+      // (no documents) synthesize once, at the end.
+      const hasInsights = Object.values(state.aiDocumentInsights ?? {}).some(
+        (i) => i.status === "done" || i.status === "needs_review",
+      );
+      const isLast = stepIndex >= flow.length - 1;
+      if (currentStep?.kind === "question" && (hasInsights || isLast)) {
+        pipeline.rerunSynthesis();
       }
       setStepIndex((i) => {
         if (i < flow.length - 1) return i + 1;
@@ -672,10 +466,12 @@ export function useIntakeState(opts?: {
     if (phase === "preview") setPhase("booking");
     else if (phase === "booking") setPhase("confirmation");
   }, [
-    confirmUploadsForAnalysis,
+    pipeline,
     currentStep?.kind,
     phase,
     flow.length,
+    stepIndex,
+    state.aiDocumentInsights,
     state.uploadedFiles.length,
     state.uploadsConfirmedAt,
   ]);
@@ -703,13 +499,15 @@ export function useIntakeState(opts?: {
   const reset = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
     } catch {
       /* noop */
     }
+    pipeline.cancel();
     setState(createInitialState());
     setPhase("intake");
     setStepIndex(0);
-  }, []);
+  }, [pipeline]);
 
   return {
     state,
@@ -726,6 +524,9 @@ export function useIntakeState(opts?: {
     briefSynthesis: state.briefSynthesis,
     dynamicQuestionQueue: state.dynamicQuestionQueue ?? [],
     answeredDynamicQuestions: state.answeredDynamicQuestions ?? [],
+    agentSteps: pipeline.agentSteps,
+    pipelineStatus: pipeline.pipelineStatus,
+    retryPipeline: pipeline.runFullPipeline,
     setReportFork,
     toggleMulti,
     setFreeText,
@@ -747,6 +548,7 @@ export function useIntakeState(opts?: {
 export function clearSavedProgress(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
     /* noop */
   }

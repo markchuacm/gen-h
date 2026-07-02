@@ -1,15 +1,20 @@
 // ─── Doctor Review Brief · living brief panel ─────────────────────────────────
-// The warm "document" that fills in as the member shares context. Reveals only
-// the sections that hold content, tags each item's source, and offers an edit
-// affordance that jumps back to the relevant question.
+// The doctor-facing brief that assembles live while the member shares context.
+// Reveals only sections that hold content, in clinician-priority order:
+// narrative · out-of-range markers · marker patterns · lifestyle context ·
+// doctor questions · key themes · the member's own answers · attachments.
 //
-// Layout, top → bottom: status head · "Top of mind highlights to doctor" hero ·
-// derived answer sections · Attachments (Claude-style file cards) · safety note.
+// Streaming: the narrative grows token-by-token from SSE deltas (terracotta
+// caret while live); cards cascade in with staggered reveals. All motion is
+// gated behind prefers-reduced-motion.
 
 import {
+  ArrowDown,
+  ArrowUp,
   File as FileIcon,
   FileText,
   Image as ImageIcon,
+  Minus,
   Pencil,
   ShieldCheck,
   Table as TableIcon,
@@ -17,15 +22,21 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { AgentActivityFeed } from "./AgentActivityFeed";
+import { RevealText } from "./RevealText";
 import { STATUS_LABEL } from "./briefEngine";
 import type { BriefSummary } from "./briefEngine";
 import { SOURCE_LABEL } from "./types";
 import type {
+  AgentStep,
   AttachmentCard,
   AttachmentKind,
   BriefSynthesis,
   BriefTheme,
+  MarkerFinding,
+  MarkerRelationship,
   RenderSection,
 } from "./types";
 
@@ -48,28 +59,24 @@ export function BriefStatusIndicator({
   summary: BriefSummary;
   synthesis?: BriefSynthesis;
 }) {
-  const synthesisCounts = synthesis?.progress
-    ? [
-        synthesis.progress.themesPrepared > 0
-          ? `${synthesis.progress.themesPrepared} themes prepared`
-          : null,
-        synthesis.progress.markersRead > 0
-          ? `${synthesis.progress.markersRead} markers read`
-          : null,
-        synthesis.progress.questionsQueued > 0
-          ? `${synthesis.progress.questionsQueued} context questions queued`
-          : null,
-      ].filter(Boolean)
-    : [];
+  const progress = synthesis?.progress;
+  const synthesisCounts =
+    progress && synthesis?.status === "ready"
+      ? [
+          progress.markersRead > 0
+            ? `${progress.markersRead} markers read`
+            : null,
+          progress.outOfRangeCount > 0
+            ? `${progress.outOfRangeCount} outside ranges`
+            : null,
+        ].filter(Boolean)
+      : [];
   const counts = [
     ...synthesisCounts,
     summary.areasCaptured > 0
       ? `${summary.areasCaptured} areas captured`
       : null,
     summary.filesUploaded > 0 ? `${summary.filesUploaded} uploaded` : null,
-    synthesisCounts.length === 0 && summary.reviewAreas > 0
-      ? `${summary.reviewAreas} for your doctor`
-      : null,
   ].filter(Boolean);
 
   return (
@@ -83,17 +90,221 @@ export function BriefStatusIndicator({
   );
 }
 
-// ─── Top of mind highlights ───────────────────────────────────────────────────
+// ─── Narrative (streams token-by-token) ───────────────────────────────────────
 
 function BriefNarrative({ synthesis }: { synthesis?: BriefSynthesis }) {
   const narrative = synthesis?.narrative?.trim();
-  if (!narrative && synthesis?.status !== "synthesizing") return null;
+  const streaming = synthesis?.status === "synthesizing";
+  if (!narrative && !streaming) return null;
   return (
     <section className="drb-narrative" aria-label="What we understand so far">
       <span className="drb-highlights-eyebrow">What we understand so far</span>
-      <p>
-        {narrative ||
-          "Preparing a grounded doctor-prep summary from your uploads and answers."}
+      <p aria-live="polite">
+        {narrative ? (
+          synthesis?.degraded && !streaming ? (
+            <RevealText text={narrative} />
+          ) : (
+            narrative
+          )
+        ) : (
+          "Reading across your uploads and answers…"
+        )}
+        {streaming && <span className="drb-caret" aria-hidden="true" />}
+      </p>
+    </section>
+  );
+}
+
+// ─── Doctor-facing sections ───────────────────────────────────────────────────
+
+function DoctorSection({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="drb-doctor-section" aria-label={title}>
+      <header className="drb-highlights-head">
+        <span className="drb-highlights-eyebrow">{eyebrow}</span>
+        <h4>{title}</h4>
+      </header>
+      {children}
+    </section>
+  );
+}
+
+const FLAG_LABEL: Record<string, string> = {
+  high: "Above range",
+  low: "Below range",
+  abnormal: "Marked abnormal",
+};
+
+function FlagChip({ flag }: { flag: MarkerFinding["flag"] }) {
+  if (!flag) return null;
+  const Icon = flag === "high" ? ArrowUp : flag === "low" ? ArrowDown : Minus;
+  return (
+    <span className={`drb-oor-flag drb-oor-flag--${flag}`}>
+      <Icon strokeWidth={2.2} aria-hidden="true" />
+      {FLAG_LABEL[flag]}
+    </span>
+  );
+}
+
+function OutOfRangeSection({ findings }: { findings: MarkerFinding[] }) {
+  if (findings.length === 0) return null;
+  return (
+    <DoctorSection eyebrow="From your reports" title="Outside printed ranges">
+      <ul className="drb-oor-list">
+        {findings.map((finding, index) => (
+          <li
+            key={finding.id}
+            className="drb-oor-row drb-reveal"
+            style={{ animationDelay: `${Math.min(index, 10) * 70}ms` }}
+          >
+            <div className="drb-oor-main">
+              <span className="drb-oor-name">{finding.name}</span>
+              <FlagChip flag={finding.flag} />
+            </div>
+            <div className="drb-oor-values">
+              {finding.value && (
+                <span className="drb-oor-value">
+                  {finding.value}
+                  {finding.unit ? ` ${finding.unit}` : ""}
+                </span>
+              )}
+              {finding.referenceRange && (
+                <span className="drb-oor-range">
+                  ref {finding.referenceRange}
+                </span>
+              )}
+            </div>
+            {finding.sourceLabel && (
+              <span className="drb-oor-source">{finding.sourceLabel}</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="drb-highlights-note">
+        These restate what your report itself marks against its printed
+        reference ranges — your doctor interprets them in context.
+      </p>
+    </DoctorSection>
+  );
+}
+
+function RelationshipsSection({
+  relationships,
+}: {
+  relationships: MarkerRelationship[];
+}) {
+  if (relationships.length === 0) return null;
+  return (
+    <DoctorSection eyebrow="Patterns" title="Reviewed together by your doctor">
+      <ul className="drb-rel-list">
+        {relationships.map((relationship, index) => (
+          <li
+            key={relationship.id}
+            className="drb-rel drb-reveal"
+            style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+          >
+            <p className="drb-highlight-title">{relationship.title}</p>
+            {relationship.note && (
+              <p className="drb-highlight-detail">{relationship.note}</p>
+            )}
+            <div className="drb-theme-evidence">
+              {relationship.markers.slice(0, 6).map((marker) => (
+                <span key={marker} className="drb-evidence-chip">
+                  {marker}
+                </span>
+              ))}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </DoctorSection>
+  );
+}
+
+function ListSection({
+  eyebrow,
+  title,
+  items,
+  keyPrefix,
+}: {
+  eyebrow: string;
+  title: string;
+  items: string[];
+  keyPrefix: string;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <DoctorSection eyebrow={eyebrow} title={title}>
+      <ul className="drb-doctor-list">
+        {items.map((item, index) => (
+          <li
+            key={`${keyPrefix}-${index}`}
+            className="drb-reveal"
+            style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+          >
+            {item}
+          </li>
+        ))}
+      </ul>
+    </DoctorSection>
+  );
+}
+
+function SynthesisThemes({ synthesis }: { synthesis?: BriefSynthesis }) {
+  const themes = synthesis?.themes ?? [];
+  if (themes.length === 0 && synthesis?.status !== "error") return null;
+  return (
+    <section className="drb-themes" aria-label="Top of mind for your doctor">
+      <header className="drb-highlights-head">
+        <span className="drb-highlights-eyebrow">Top of mind</span>
+        <h4>For your doctor to review</h4>
+      </header>
+      {themes.length > 0 ? (
+        <ul className="drb-theme-list">
+          {themes.map((theme, index) => (
+            <li
+              key={theme.id}
+              className={`drb-theme drb-theme--${theme.confidence} drb-reveal`}
+              style={{ animationDelay: `${Math.min(index, 8) * 70}ms` }}
+            >
+              <div className="drb-theme-body">
+                <div className="drb-theme-title-row">
+                  <p className="drb-highlight-title">{theme.title}</p>
+                  <span>{theme.confidence} confidence</span>
+                </div>
+                <p className="drb-highlight-detail">{theme.summary}</p>
+                <ThemeEvidence theme={theme} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="drb-theme drb-theme--pending">
+          <p className="drb-highlight-title">Themes need another pass</p>
+          <p className="drb-highlight-detail">
+            Your attachments are still in the brief. Continue answering — the
+            brief retries as you go.
+          </p>
+        </div>
+      )}
+      {synthesis?.degraded && (
+        <p className="drb-degraded-note">
+          Prepared with basic matching — your doctor still sees everything you
+          uploaded.
+        </p>
+      )}
+      <p className="drb-highlights-note">
+        These are doctor-prep themes based on extracted report facts and your
+        answers. They are not diagnoses, treatment recommendations, or urgency
+        labels.
       </p>
     </section>
   );
@@ -117,61 +328,6 @@ function ThemeEvidence({ theme }: { theme: BriefTheme }) {
         </span>
       ))}
     </div>
-  );
-}
-
-function SynthesisThemes({ synthesis }: { synthesis?: BriefSynthesis }) {
-  const themes = synthesis?.themes ?? [];
-  if (
-    themes.length === 0 &&
-    synthesis?.status !== "synthesizing" &&
-    synthesis?.status !== "error"
-  )
-    return null;
-  return (
-    <section className="drb-themes" aria-label="Top of mind for your doctor">
-      <header className="drb-highlights-head">
-        <span className="drb-highlights-eyebrow">Top of mind</span>
-        <h4>For your doctor to review</h4>
-      </header>
-      {themes.length > 0 ? (
-        <ul className="drb-theme-list">
-          {themes.map((theme) => (
-            <li
-              key={theme.id}
-              className={`drb-theme drb-theme--${theme.confidence}`}
-            >
-              <div className="drb-theme-body">
-                <div className="drb-theme-title-row">
-                  <p className="drb-highlight-title">{theme.title}</p>
-                  <span>{theme.confidence} confidence</span>
-                </div>
-                <p className="drb-highlight-detail">{theme.summary}</p>
-                <ThemeEvidence theme={theme} />
-              </div>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <div className="drb-theme drb-theme--pending">
-          <p className="drb-highlight-title">
-            {synthesis?.status === "error"
-              ? "Themes need another pass"
-              : "Preparing themes from your uploads"}
-          </p>
-          <p className="drb-highlight-detail">
-            {synthesis?.status === "error"
-              ? "Your attachments are still in the brief. Try re-uploading or removing a file to run synthesis again."
-              : "We are reading across the uploaded documents before showing doctor-prep priorities."}
-          </p>
-        </div>
-      )}
-      <p className="drb-highlights-note">
-        These are doctor-prep themes based on extracted report facts and your
-        answers. They are not diagnoses, treatment recommendations, or urgency
-        labels.
-      </p>
-    </section>
   );
 }
 
@@ -222,7 +378,7 @@ function AttachmentCardView({
           {truncateName(card.fileName)}
         </p>
         <p className="drb-attachment-sub">
-          {analyzing ? "Reviewing…" : card.typeLabel}
+          {analyzing ? "Reading…" : card.typeLabel}
         </p>
       </div>
       {manageMode && onRemove && (
@@ -334,6 +490,8 @@ export function LivingBriefPanel({
   summary,
   attachments = [],
   synthesis,
+  agentSteps = [],
+  pipelineRunning = false,
   onEdit,
   onRemoveAttachment,
   showStatus = true,
@@ -342,6 +500,8 @@ export function LivingBriefPanel({
   summary: BriefSummary;
   attachments?: AttachmentCard[];
   synthesis?: BriefSynthesis;
+  agentSteps?: AgentStep[];
+  pipelineRunning?: boolean;
   onEdit?: (questionId: string) => void;
   onRemoveAttachment?: (fileId: string) => void;
   showStatus?: boolean;
@@ -350,7 +510,8 @@ export function LivingBriefPanel({
     sections.length === 0 &&
     attachments.length === 0 &&
     !synthesis?.narrative &&
-    !synthesis?.themes?.length;
+    !synthesis?.themes?.length &&
+    !synthesis?.outOfRange?.length;
 
   return (
     <div className="drb-brief">
@@ -363,6 +524,10 @@ export function LivingBriefPanel({
           <BriefStatusIndicator summary={summary} synthesis={synthesis} />
         )}
       </div>
+
+      {pipelineRunning && (
+        <AgentActivityFeed steps={agentSteps} condensed />
+      )}
 
       {isEmpty ? (
         <div className="drb-brief-empty">
@@ -377,6 +542,22 @@ export function LivingBriefPanel({
       ) : (
         <>
           <BriefNarrative synthesis={synthesis} />
+          <OutOfRangeSection findings={synthesis?.outOfRange ?? []} />
+          <RelationshipsSection
+            relationships={synthesis?.relationships ?? []}
+          />
+          <ListSection
+            eyebrow="Worth exploring"
+            title="Lifestyle context to investigate"
+            items={synthesis?.lifestyleContext ?? []}
+            keyPrefix="lc"
+          />
+          <ListSection
+            eyebrow="In the room"
+            title="Questions your doctor may ask"
+            items={synthesis?.doctorQuestions ?? []}
+            keyPrefix="dq"
+          />
           <SynthesisThemes synthesis={synthesis} />
 
           {sections.length > 0 && (

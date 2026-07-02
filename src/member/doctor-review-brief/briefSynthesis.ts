@@ -1,48 +1,15 @@
-// ─── Doctor Review Brief · cross-document synthesis client ────────────────────
-// Sends extracted document facts + patient answers to our backend synthesis route.
+// ─── Doctor Review Brief · pipeline payload builders ──────────────────────────
+// Builds /api/doctor-review-brief/process request bodies from IntakeState and
+// computes the signature used for commit-based synthesis triggering (a rerun
+// only fires when the signature actually changed since the last run).
 
-import type {
-  AnsweredDynamicQuestion,
-  BriefSynthesis,
-  DocumentInsight,
-  IntakeState,
-  UploadedFile,
-} from "./types";
+import type { DocumentPayload } from "./extraction";
+import type { ProcessDocumentPayload, ProcessRequest } from "./sse";
+import type { DocumentInsight, IntakeState } from "./types";
 
-const SYNTHESIS_ENDPOINT = "/api/doctor-review-brief/synthesize";
-const SYNTHESIS_TIMEOUT_MS = 35_000;
+const INSIGHT_EXCERPT_CAP = 40_000;
 
-type SynthesisApiResponse =
-  | { ok: true; result: BriefSynthesis }
-  | { ok: false; error: string };
-
-function documentPayload(
-  files: UploadedFile[],
-  insights?: Record<string, DocumentInsight>,
-) {
-  return files.map((file) => {
-    const insight = insights?.[file.id];
-    return {
-      fileId: file.id,
-      fileName: file.name,
-      category: file.detectedCategory,
-      status: insight?.status ?? "uploaded",
-      documentType: insight?.documentType,
-      provider: insight?.provider,
-      reportDate: insight?.reportDate,
-      textExcerpt: insight?.textExcerpt
-        ? insight.textExcerpt.slice(0, 12_000)
-        : "",
-      sections: insight?.sections ?? [],
-      visibleMarkers: insight?.visibleMarkers ?? [],
-      flaggedMarkers: insight?.flaggedMarkers ?? [],
-      doctorReviewAreas: insight?.doctorReviewAreas ?? [],
-      patientFacingSummary: insight?.patientFacingSummary,
-    };
-  });
-}
-
-function answersPayload(state: IntakeState) {
+export function answersPayload(state: IntakeState) {
   return {
     reason: state.reason,
     reasonFreeText: state.reasonFreeText,
@@ -56,6 +23,63 @@ function answersPayload(state: IntakeState) {
   };
 }
 
+function insightPayload(
+  insight: DocumentInsight,
+): Omit<DocumentInsight, "questionId"> {
+  const { questionId: _questionId, ...rest } = insight;
+  return {
+    ...rest,
+    textExcerpt: insight.textExcerpt
+      ? insight.textExcerpt.slice(0, INSIGHT_EXCERPT_CAP)
+      : "",
+  };
+}
+
+/**
+ * Documents for a pipeline run. `prepared` holds freshly extracted content for
+ * files that still need a full extraction pass; files with a completed insight
+ * ride along as prior context so extraction never re-runs for them.
+ */
+export function buildProcessDocuments(
+  state: IntakeState,
+  prepared?: Map<string, DocumentPayload>,
+): ProcessDocumentPayload[] {
+  return state.uploadedFiles.map((file) => {
+    const insight = state.aiDocumentInsights?.[file.id];
+    const content = prepared?.get(file.id);
+    const hasUsableInsight =
+      insight &&
+      (insight.status === "done" || insight.status === "needs_review") &&
+      !content;
+    return {
+      fileId: file.id,
+      fileName: file.name,
+      category: file.detectedCategory,
+      ...(content?.textExcerpt ? { textExcerpt: content.textExcerpt } : {}),
+      ...(content?.images?.length ? { images: content.images } : {}),
+      ...(hasUsableInsight ? { insight: insightPayload(insight) } : {}),
+    };
+  });
+}
+
+export function buildProcessRequest(
+  state: IntakeState,
+  mode: ProcessRequest["mode"],
+  opts: {
+    prepared?: Map<string, DocumentPayload>;
+    askedQuestionIds: string[];
+  },
+): ProcessRequest {
+  return {
+    mode,
+    documents: buildProcessDocuments(state, opts.prepared),
+    answers: answersPayload(state),
+    answeredDynamicQuestions: state.answeredDynamicQuestions ?? [],
+    askedQuestionIds: opts.askedQuestionIds,
+  };
+}
+
+/** Change detector for commit-based synthesis triggering. */
 export function synthesisSignature(state: IntakeState): string {
   return JSON.stringify({
     uploadsConfirmedAt: state.uploadsConfirmedAt,
@@ -66,53 +90,12 @@ export function synthesisSignature(state: IntakeState): string {
         {
           status: i.status,
           documentType: i.documentType,
-          textExcerpt: i.textExcerpt ? i.textExcerpt.slice(0, 12_000) : "",
-          sections: i.sections,
-          visibleMarkers: i.visibleMarkers,
-          flaggedMarkers: i.flaggedMarkers,
-          doctorReviewAreas: i.doctorReviewAreas,
-          question: i.question,
+          markers: i.markers?.length ?? 0,
+          flagged: i.flaggedMarkers,
         },
       ]),
     ),
     answers: answersPayload(state),
     dynamic: state.answeredDynamicQuestions ?? [],
   });
-}
-
-export async function synthesizeBrief(
-  state: IntakeState,
-  answeredDynamicQuestions: AnsweredDynamicQuestion[],
-): Promise<BriefSynthesis> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), SYNTHESIS_TIMEOUT_MS);
-
-  try {
-    const res = await fetch(SYNTHESIS_ENDPOINT, {
-      method: "POST",
-      signal: controller.signal,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        documents: documentPayload(
-          state.uploadedFiles,
-          state.aiDocumentInsights,
-        ),
-        answers: answersPayload(state),
-        answeredDynamicQuestions,
-      }),
-    });
-
-    const data = (await res.json().catch(() => ({
-      ok: false,
-      error: "Brief synthesis failed.",
-    }))) as SynthesisApiResponse;
-
-    if (!res.ok || !data.ok) {
-      throw new Error(data.ok ? "Brief synthesis failed." : data.error);
-    }
-
-    return data.result;
-  } finally {
-    clearTimeout(timeout);
-  }
 }

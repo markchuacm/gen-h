@@ -33,6 +33,7 @@ import ProfileTab from "./doctor-review-brief/ProfileTab";
 import IntakeShell from "./doctor-review-brief/IntakeShell";
 import { clearSavedProgress } from "./doctor-review-brief/useIntakeState";
 import type { Phase } from "./doctor-review-brief/useIntakeState";
+import ResultsDashboard from "./results/ResultsDashboard";
 
 // ─── Journey state model ──────────────────────────────────────────────────────
 
@@ -262,9 +263,9 @@ const STATES: Record<JourneyStateId, StateConfig> = {
 
 type NavItem = { label: string; icon: LucideIcon };
 
-// Only Home and Profile are wired to views for this sprint; the rest keep their
+// Home, Profile, and Results are wired to views for this sprint; the rest keep their
 // current (inert) behavior unchanged.
-type MemberTab = "home" | "profile";
+type MemberTab = "home" | "profile" | "results";
 
 const primaryNavItems: NavItem[] = [
   { label: "Home", icon: Home },
@@ -275,7 +276,7 @@ const primaryNavItems: NavItem[] = [
 ];
 
 const tabForLabel = (label: string): MemberTab | undefined =>
-  label === "Home" ? "home" : label === "Profile" ? "profile" : undefined;
+  label === "Home" ? "home" : label === "Profile" ? "profile" : label === "Results" ? "results" : undefined;
 
 const secondaryNavItems: NavItem[] = [
   { label: "Referrals", icon: Gift },
@@ -661,6 +662,8 @@ function DashboardHome() {
   const [briefOpen, setBriefOpen] = useState(false);
   const [briefStartAt, setBriefStartAt] = useState<Phase | undefined>(undefined);
   const config = STATES[stateId];
+  const headingTitle =
+    activeTab === "profile" ? "Your profile" : activeTab === "results" ? "Your results" : config.headerTitle;
 
   return (
     <div className="member-dashboard-root">
@@ -668,10 +671,10 @@ function DashboardHome() {
       <MobileHeader />
       <main className="dashboard-main">
         <DesktopUserMenu stateId={stateId} onStateChange={setStateId} />
-        <div className="dashboard-content">
+        <div className={`dashboard-content ${activeTab === "results" ? "dashboard-content--results" : ""}`}>
           <header className="dashboard-heading">
             <h1>
-              <span>{activeTab === "profile" ? "Your profile" : config.headerTitle}</span>
+              <span>{headingTitle}</span>
             </h1>
           </header>
           {activeTab === "profile" ? (
@@ -680,6 +683,8 @@ function DashboardHome() {
               onViewBrief={() => { setBriefStartAt("preview"); setBriefOpen(true); }}
               onReset={() => { clearSavedProgress(); setBriefStartAt(undefined); setBriefOpen(true); }}
             />
+          ) : activeTab === "results" ? (
+            <ResultsDashboard />
           ) : (
             <>
               <HeroCard hero={config.hero} />

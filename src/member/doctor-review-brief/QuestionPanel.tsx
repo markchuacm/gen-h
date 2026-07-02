@@ -9,10 +9,11 @@ import {
   ChevronRight,
   FolderCheck,
   HelpCircle,
-  Loader2,
   Sparkles,
   TriangleAlert,
 } from "lucide-react";
+import { AgentActivityFeed } from "./AgentActivityFeed";
+import type { FeedDoc } from "./AgentActivityFeed";
 import {
   DynamicQuestionInput,
   FileUpload,
@@ -277,9 +278,28 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
     const files = c.state.uploadedFiles;
     const insights = c.state.aiDocumentInsights ?? {};
     const hasStartedPreparing = !!c.state.uploadsConfirmedAt;
+    const isWorking = c.pipelineStatus === "running" || c.aiAnalyzing;
     const hasReviewFallback = Object.values(insights).some(
       (i) => i.status === "error" || i.status === "needs_review",
     );
+
+    const feedDocs: FeedDoc[] = files.map((f) => {
+      const ins = insights[f.id];
+      const markerCount = ins?.markers?.length ?? 0;
+      return {
+        fileId: f.id,
+        name: f.name,
+        status: ins?.status ?? "uploaded",
+        detail:
+          ins?.status === "done"
+            ? `${ins.documentType}${markerCount > 0 ? ` · ${markerCount} markers` : ""}`
+            : ins?.status === "needs_review"
+              ? "Attached for doctor review"
+              : ins?.status === "error"
+                ? "Couldn't be read — re-add to analyze"
+                : undefined,
+      };
+    });
 
     content = (
       <>
@@ -288,63 +308,37 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
           title={
             !hasStartedPreparing && files.length > 0
               ? "Ready to prepare your brief"
-              : c.aiAnalyzing
-                ? "Reviewing your documents…"
-                : c.state.synthesisStatus === "synthesizing"
-                  ? "Connecting the dots…"
+              : isWorking
+                ? "Building your doctor's brief…"
+                : c.pipelineStatus === "error"
+                  ? "The brief needs another pass"
                   : "Ready for your doctor"
           }
           helper={
             !hasStartedPreparing && files.length > 0
-              ? "We'll only review your uploaded files after you continue."
-              : c.aiAnalyzing
-                ? "We're reading the document structure so we can ask you the right questions."
-                : c.state.synthesisStatus === "synthesizing"
-                  ? "We're turning the extracted report facts into doctor-prep themes."
-                  : undefined
+              ? "We'll only read your uploaded files after you continue. You can watch the brief assemble on the left."
+              : isWorking
+                ? "Follow along — each step below is happening right now."
+                : undefined
           }
         />
-        {files.length > 0 ? (
+        {hasStartedPreparing && c.agentSteps.length > 0 ? (
+          <AgentActivityFeed
+            steps={c.agentSteps}
+            docs={feedDocs}
+            onRetry={c.retryPipeline}
+          />
+        ) : files.length > 0 ? (
           <ul className="drb-prepare-cards">
-            {files.map((f) => {
-              const ins = insights[f.id];
-              const isAnalyzing = ins?.status === "analyzing";
-              const isDone = ins?.status === "done";
-              const needsReview =
-                ins?.status === "needs_review" || ins?.status === "error";
-              return (
-                <li
-                  key={f.id}
-                  className={`drb-prepare-file ${isAnalyzing ? "is-analyzing" : ""}`}
-                >
-                  {isAnalyzing ? (
-                    <Loader2
-                      strokeWidth={1.7}
-                      aria-hidden="true"
-                      className="drb-spin"
-                    />
-                  ) : isDone ? (
-                    <Sparkles strokeWidth={1.7} aria-hidden="true" />
-                  ) : (
-                    <FolderCheck strokeWidth={1.7} aria-hidden="true" />
-                  )}
-                  <div className="drb-prepare-file-info">
-                    <strong>{f.name}</strong>
-                    <span>
-                      {isAnalyzing
-                        ? "Reviewing document structure…"
-                        : isDone
-                          ? `${ins.documentType} · added to brief`
-                          : needsReview
-                            ? "Needs doctor review"
-                            : hasStartedPreparing
-                              ? "Uploaded for doctor review"
-                              : "Ready for review"}
-                    </span>
-                  </div>
-                </li>
-              );
-            })}
+            {files.map((f) => (
+              <li key={f.id} className="drb-prepare-file">
+                <FolderCheck strokeWidth={1.7} aria-hidden="true" />
+                <div className="drb-prepare-file-info">
+                  <strong>{f.name}</strong>
+                  <span>Ready for review</span>
+                </div>
+              </li>
+            ))}
           </ul>
         ) : (
           <ul className="drb-prepare-cards">
@@ -357,22 +351,22 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
             </li>
           </ul>
         )}
-        {!c.aiAnalyzing && hasReviewFallback && (
+        {!isWorking && hasStartedPreparing && hasReviewFallback && (
           <p className="drb-prepare-note">
             <TriangleAlert strokeWidth={1.7} aria-hidden="true" />
             Some documents need doctor review before details can be summarized.
           </p>
         )}
-        {!c.aiAnalyzing &&
+        {!isWorking &&
           hasStartedPreparing &&
           c.briefSynthesis?.status === "ready" &&
           c.briefSynthesis.progress && (
             <p className="drb-prepare-note drb-prepare-note--ready">
               <Sparkles strokeWidth={1.7} aria-hidden="true" />
               {[
-                `${c.briefSynthesis.progress.themesPrepared} themes prepared`,
                 `${c.briefSynthesis.progress.markersRead} markers read`,
-                `${c.briefSynthesis.progress.questionsQueued} context questions queued`,
+                `${c.briefSynthesis.progress.outOfRangeCount} outside printed ranges`,
+                `${c.briefSynthesis.progress.questionsQueued} questions prepared for you`,
               ].join(" · ")}
             </p>
           )}
@@ -383,13 +377,15 @@ export function QuestionPanel({ c }: { c: IntakeController }) {
   const isPreparingBrief =
     step.kind === "preparing" &&
     !!c.state.uploadsConfirmedAt &&
-    (c.aiAnalyzing || c.state.synthesisStatus === "synthesizing");
+    (c.pipelineStatus === "running" ||
+      c.aiAnalyzing ||
+      c.state.synthesisStatus === "synthesizing");
   const proceed = canContinue(step, c) && !isPreparingBrief;
   const showSkip = step.kind === "question" && !step.question.required;
   const continueLabel =
     step.kind === "preparing" && isPreparingBrief
       ? c.aiAnalyzing
-        ? "Reviewing…"
+        ? "Reading…"
         : "Preparing…"
       : step.kind === "question" && step.question.id === "reportFork"
         ? "Continue"

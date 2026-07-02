@@ -53,6 +53,10 @@ export type BriefSectionId =
   | "documentSummary"
   | "flaggedMarkers"
   | "reviewAreas"
+  | "outOfRange"
+  | "relationships"
+  | "lifestyleContext"
+  | "doctorQuestions"
   | "questions";
 
 export type LifestyleSnapshot = {
@@ -92,7 +96,6 @@ export type IntakeState = {
   // AI-generated insights per uploaded file (keyed by fileId)
   uploadsConfirmedAt?: string;
   aiDocumentInsights?: Record<string, DocumentInsight>;
-  documentExtractions?: Record<string, DocumentInsight>;
   briefSynthesis?: BriefSynthesis;
   dynamicQuestionQueue?: DynamicQuestion[];
   answeredDynamicQuestions?: AnsweredDynamicQuestion[];
@@ -148,9 +151,38 @@ export type RenderSection = {
 
 export type BriefStatus = "getting_started" | "useful" | "doctor_ready";
 
+// ─── Structured markers ───────────────────────────────────────────────────────
+// Extracted exactly as printed on the report — value, unit, reference range and
+// whether the report itself marks the value out of range. Never AI-graded.
+
+export type MarkerFlag = "high" | "low" | "abnormal" | null;
+
+export type ExtractedMarker = {
+  name: string;
+  value?: string;
+  unit?: string;
+  referenceRange?: string;
+  flag: MarkerFlag;
+};
+
+export type MarkerFinding = ExtractedMarker & {
+  id: string; // `${fileId}:${canonicalKey}:${index}`
+  canonicalKey?: string; // normalized key, e.g. "egfr", "vitamin_b12"
+  panel?: string; // "kidney" | "lipids" | …
+  sourceFileId: string;
+  sourceLabel?: string; // "Lipid Panel · BP Healthcare"
+};
+
+export type MarkerRelationship = {
+  id: string;
+  title: string; // "Creatinine and eGFR move together"
+  markers: string[];
+  note: string; // factual restatement only, never diagnostic
+};
+
 // ─── AI document insights ─────────────────────────────────────────────────────
-// Populated by documentAnalysis.ts after a file is uploaded. Never surfaces
-// clinical interpretations — only visible field names + a patient-facing question.
+// Populated by the brief pipeline after a file is uploaded. Never surfaces
+// clinical interpretations — only printed report facts + a patient question.
 
 export type DocumentInsightStatus =
   | "analyzing"
@@ -165,6 +197,7 @@ export type DocumentInsight = {
   reportDate: string | null;
   textExcerpt?: string;
   sections: string[];
+  markers: ExtractedMarker[];
   visibleMarkers: string[];
   flaggedMarkers: string[];
   doctorReviewAreas: string[];
@@ -195,6 +228,8 @@ export type DynamicQuestion = {
   options: string[];
   allowFreeText: boolean;
   whyWeAsk: string;
+  triggeredBy?: string[]; // marker names that prompted this question
+  origin?: "ai" | "rules";
 };
 
 export type AnsweredDynamicQuestion = {
@@ -208,14 +243,33 @@ export type BriefSynthesis = {
   status: "idle" | "synthesizing" | "ready" | "error";
   narrative: string;
   themes: BriefTheme[];
-  nextQuestion?: DynamicQuestion;
+  outOfRange: MarkerFinding[];
+  relationships: MarkerRelationship[];
+  lifestyleContext: string[];
+  doctorQuestions: string[];
+  nextQuestions: DynamicQuestion[];
+  degraded?: boolean; // true when built by basic matching instead of full synthesis
   progress: {
-    themesPrepared: number;
+    documentsRead: number;
     markersRead: number;
+    outOfRangeCount: number;
     questionsQueued: number;
   };
   updatedAt?: string;
   error?: string;
+};
+
+// ─── Agent activity feed ──────────────────────────────────────────────────────
+// Local (non-persisted) view of the pipeline's reasoning steps, driven by SSE
+// `stage` / `doc` / `error` events.
+
+export type AgentStepStatus = "pending" | "active" | "done" | "error";
+
+export type AgentStep = {
+  id: string; // "extract" | "classify" | "compose"
+  label: string;
+  detail?: string;
+  status: AgentStepStatus;
 };
 
 // ─── "Top of mind highlights to doctor" ───────────────────────────────────────

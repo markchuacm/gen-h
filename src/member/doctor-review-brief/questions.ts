@@ -196,20 +196,20 @@ function contextQuestionsFor(
   return out;
 }
 
-function dynamicQuestionFor(
-  question: DynamicQuestion | undefined,
-  state: IntakeState,
-): Question | undefined {
-  if (!question) return undefined;
-  const alreadyAnswered = (state.answeredDynamicQuestions ?? []).some(
-    (answered) => answered.questionId === question.id && answered.answer.trim(),
-  );
-  if (alreadyAnswered) return undefined;
+// Adaptive questions never crowd out the core flow: at most 2 queued questions
+// surface at a time, and at most 4 are asked per session in total.
+const MAX_DYNAMIC_VISIBLE = 2;
+const MAX_DYNAMIC_PER_SESSION = 4;
+
+function toFlowQuestion(question: DynamicQuestion): Question {
   return {
     id: `dyn_${question.id}`,
     dynamicQuestionId: question.id,
     section: "questions",
-    itemLabel: "Context from you",
+    itemLabel:
+      question.triggeredBy && question.triggeredBy.length > 0
+        ? `About ${question.triggeredBy.slice(0, 2).join(" & ")}`
+        : "Context from you",
     type: "dynamic",
     prompt: question.prompt,
     whyWeAsk: question.whyWeAsk,
@@ -218,6 +218,28 @@ function dynamicQuestionFor(
     freeTextLabel: "Answer in your own words",
     required: true,
   };
+}
+
+/** Finding-driven questions from the queue: answered ones stay (so Back works),
+ *  then unanswered ones fill the remaining visible/session budget. */
+function dynamicQuestionsFor(state: IntakeState): Question[] {
+  const queue = state.dynamicQuestionQueue ?? [];
+  if (queue.length === 0) return [];
+  const answeredIds = new Set(
+    (state.answeredDynamicQuestions ?? [])
+      .filter((q) => q.answer.trim())
+      .map((q) => q.questionId),
+  );
+
+  const answered = queue.filter((q) => answeredIds.has(q.id));
+  const unanswered = queue.filter((q) => !answeredIds.has(q.id));
+  const sessionBudget = Math.max(0, MAX_DYNAMIC_PER_SESSION - answered.length);
+  const visible = unanswered.slice(
+    0,
+    Math.min(MAX_DYNAMIC_VISIBLE, sessionBudget),
+  );
+
+  return [...answered, ...visible].map(toFlowQuestion);
 }
 
 // ─── Flow assembly ────────────────────────────────────────────────────────────
@@ -243,12 +265,9 @@ export function buildFlow(state: IntakeState): FlowStep[] {
   if (hasRoute(state)) {
     steps.push({ key: "upload", kind: "upload" });
     steps.push({ key: "preparing", kind: "preparing" });
-    const dynamic = dynamicQuestionFor(
-      state.briefSynthesis?.nextQuestion ?? state.dynamicQuestionQueue?.[0],
-      state,
+    dynamicQuestionsFor(state).forEach((q) =>
+      steps.push({ key: q.id, kind: "question", question: q }),
     );
-    if (dynamic)
-      steps.push({ key: dynamic.id, kind: "question", question: dynamic });
     contextQuestionsFor(state.uploadedFiles, state.aiDocumentInsights).forEach(
       (q) => steps.push({ key: q.id, kind: "question", question: q }),
     );

@@ -1,13 +1,13 @@
 import { createServer } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
-import {
-  analyzeDocumentWithOpenRouter,
-  synthesizeBriefWithOpenRouter,
-} from "./openrouterDocumentAnalysis.mjs";
+import { runBriefPipeline } from "./briefPipeline.mjs";
+import { DEFAULT_MODEL } from "./openrouterClient.mjs";
 
 const PORT = Number(process.env.API_PORT || 8787);
-const MAX_BODY_BYTES = 6 * 1024 * 1024;
+// Base64-encoded report photos / rendered PDF pages ride in the process body.
+const MAX_BODY_BYTES = 25 * 1024 * 1024;
+const SSE_PING_INTERVAL_MS = 15_000;
 
 function loadEnvFile(fileName, { override = false } = {}) {
   const filePath = resolve(process.cwd(), fileName);
@@ -66,36 +66,10 @@ function send(res, response) {
   res.end(response.body);
 }
 
-const server = createServer(async (req, res) => {
-  const route = req.url?.split("?")[0];
-  if (
-    route !== "/api/doctor-review-brief/analyze-document" &&
-    route !== "/api/doctor-review-brief/synthesize"
-  ) {
-    send(res, {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ok: false, error: "Not found." }),
-    });
-    return;
-  }
-
-  if (req.method !== "POST") {
-    send(res, {
-      status: 405,
-      headers: { "Content-Type": "application/json", Allow: "POST" },
-      body: JSON.stringify({ ok: false, error: "Method not allowed." }),
-    });
-    return;
-  }
-
+async function handleProcessStream(req, res) {
+  let body;
   try {
-    const body = await readJsonBody(req);
-    const response =
-      route === "/api/doctor-review-brief/synthesize"
-        ? await synthesizeBriefWithOpenRouter(body)
-        : await analyzeDocumentWithOpenRouter(body);
-    send(res, response);
+    body = await readJsonBody(req);
   } catch (error) {
     send(res, {
       status: error.status || 400,
@@ -105,7 +79,59 @@ const server = createServer(async (req, res) => {
         error: error instanceof Error ? error.message : "Invalid request.",
       }),
     });
+    return;
   }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.flushHeaders?.();
+
+  const abortController = new AbortController();
+  const emit = (type, data) => {
+    if (res.writableEnded || abortController.signal.aborted) return;
+    res.write(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+  const ping = setInterval(() => {
+    if (!res.writableEnded) res.write(": ping\n\n");
+  }, SSE_PING_INTERVAL_MS);
+  // Client disconnect cancels in-flight OpenRouter calls (cost control).
+  req.on("close", () => abortController.abort());
+
+  try {
+    await runBriefPipeline(body, emit, {
+      signal: abortController.signal,
+    });
+  } finally {
+    clearInterval(ping);
+    if (!res.writableEnded) res.end();
+  }
+}
+
+const server = createServer(async (req, res) => {
+  const route = req.url?.split("?")[0];
+
+  if (route === "/api/doctor-review-brief/process") {
+    if (req.method !== "POST") {
+      send(res, {
+        status: 405,
+        headers: { "Content-Type": "application/json", Allow: "POST" },
+        body: JSON.stringify({ ok: false, error: "Method not allowed." }),
+      });
+      return;
+    }
+    await handleProcessStream(req, res);
+    return;
+  }
+
+  send(res, {
+    status: 404,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ok: false, error: "Not found." }),
+  });
 });
 
 server.listen(PORT, "127.0.0.1", () => {
@@ -114,6 +140,6 @@ server.listen(PORT, "127.0.0.1", () => {
     `OpenRouter key loaded: ${redactedKey(process.env.OPENROUTER_API_KEY)}`,
   );
   console.log(
-    `OpenRouter model loaded: ${process.env.OPENROUTER_MODEL || "openrouter/free"}`,
+    `OpenRouter model loaded: ${process.env.OPENROUTER_MODEL || DEFAULT_MODEL}`,
   );
 });

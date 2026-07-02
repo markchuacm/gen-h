@@ -1757,6 +1757,463 @@
   height: 14px;
 }
 
+/* ─── Agent activity feed ────────────────────────────────────────────────────*/
+
+.drb-feed {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 4px 2px;
+  list-style: none;
+}
+
+.drb-feed-step {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 11px 0;
+}
+
+/* Hairline connector between step glyphs. */
+.drb-feed-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 9px;
+  top: 34px;
+  bottom: -6px;
+  width: 1px;
+  background: rgba(17, 23, 27, 0.1);
+}
+
+.drb-feed-glyph {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 19px;
+  height: 19px;
+  margin-top: 2px;
+  border-radius: 999px;
+}
+
+.drb-feed-glyph--pending {
+  width: 9px;
+  height: 9px;
+  margin: 7px 5px 0;
+  border: 1.5px solid rgba(17, 23, 27, 0.28);
+  background: transparent;
+}
+
+.drb-feed-glyph--active {
+  width: 11px;
+  height: 11px;
+  margin: 6px 4px 0;
+  background: var(--member-accent);
+}
+
+.drb-feed-glyph--done {
+  background: var(--member-copper-soft);
+  color: var(--member-accent-dark);
+}
+
+.drb-feed-glyph--done svg {
+  width: 12px;
+  height: 12px;
+}
+
+.drb-feed-glyph--error {
+  background: rgba(191, 132, 21, 0.14);
+  color: #9a6a0c;
+}
+
+.drb-feed-glyph--error svg {
+  width: 12px;
+  height: 12px;
+}
+
+.drb-feed-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.drb-feed-label-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.drb-feed-label {
+  font-size: 0.95rem;
+  font-weight: 520;
+  color: var(--member-ink);
+  line-height: 1.4;
+}
+
+.drb-feed-step.is-pending .drb-feed-label {
+  color: rgba(17, 23, 27, 0.4);
+  font-weight: 400;
+}
+
+.drb-feed-step.is-done .drb-feed-label {
+  font-weight: 450;
+}
+
+.drb-feed-detail {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--member-muted);
+}
+
+.drb-feed-retry {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 5px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--member-copper-soft);
+  color: var(--member-accent-dark);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 150ms var(--member-ease);
+}
+
+.drb-feed-retry:hover {
+  transform: translateY(-1px);
+}
+
+/* Live "thinking" dots next to the active step label. */
+.drb-feed-dots {
+  display: inline-flex;
+  gap: 3px;
+  align-items: baseline;
+}
+
+.drb-feed-dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--member-accent);
+}
+
+/* Per-document chips under the extract step. */
+.drb-feed-docs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drb-feed-doc {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 11px;
+  border-radius: 12px;
+  background: var(--drb-quiet);
+  font-size: 0.82rem;
+  color: var(--member-ink);
+}
+
+.drb-feed-doc svg {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--member-muted);
+}
+
+.drb-feed-doc.is-analyzing svg {
+  color: var(--member-accent);
+}
+
+.drb-feed-doc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.drb-feed-doc-detail {
+  flex-shrink: 0;
+  color: var(--member-muted);
+}
+
+.drb-feed-doc--error .drb-feed-doc-detail {
+  color: #9a6a0c;
+}
+
+/* Condensed one-liner used atop the brief panel during re-synthesis. */
+.drb-feed-condensed {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 14px;
+  border-radius: 999px;
+  background: var(--drb-quiet);
+  font-size: 0.84rem;
+  color: var(--member-ink);
+  animation: drb-rise 260ms var(--member-ease);
+}
+
+.drb-feed-condensed .drb-feed-glyph--active {
+  margin: 0;
+}
+
+.drb-feed-condensed .drb-feed-glyph--done {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+/* ─── Doctor-facing brief sections ───────────────────────────────────────────*/
+
+.drb-doctor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: var(--drb-card);
+  box-shadow: var(--member-shadow-border);
+  animation: drb-rise 260ms var(--member-ease);
+}
+
+/* Out-of-range marker rows: printed facts only, never alarm styling. */
+.drb-oor-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drb-oor-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 0;
+}
+
+.drb-oor-row + .drb-oor-row {
+  border-top: 1px solid rgba(17, 23, 27, 0.06);
+}
+
+.drb-oor-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.drb-oor-name {
+  font-size: 0.9rem;
+  font-weight: 560;
+  color: var(--member-ink);
+}
+
+.drb-oor-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--member-accent) 12%, transparent);
+  color: var(--member-accent-dark);
+  font-size: 0.7rem;
+  font-weight: 620;
+  white-space: nowrap;
+}
+
+.drb-oor-flag svg {
+  width: 11px;
+  height: 11px;
+}
+
+.drb-oor-values {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.drb-oor-value {
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--member-ink);
+}
+
+.drb-oor-range {
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  color: rgba(17, 23, 27, 0.5);
+}
+
+.drb-oor-source {
+  font-size: 0.72rem;
+  color: var(--member-soft);
+}
+
+/* Marker relationships ("reviewed together"). */
+.drb-rel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drb-rel {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--drb-quiet);
+}
+
+/* Lifestyle context / doctor questions lists. */
+.drb-doctor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.drb-doctor-list li {
+  position: relative;
+  padding-left: 18px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--member-ink);
+}
+
+.drb-doctor-list li::before {
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--member-copper-soft);
+}
+
+.drb-degraded-note {
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--drb-quiet);
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--member-muted);
+}
+
+/* Streaming caret at the tip of the live narrative. */
+.drb-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  background: var(--member-accent);
+}
+
+/* ─── Progressive reveal (motion-gated) ──────────────────────────────────────*/
+/* Base styles stay fully visible; opacity-zero starts live ONLY inside the
+   no-preference gate so reduced-motion users never see blank content. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .drb-reveal {
+    opacity: 0;
+    animation: drb-reveal-in 420ms var(--member-ease) forwards;
+  }
+
+  .drb-reveal-word {
+    display: inline-block;
+    opacity: 0;
+    animation: drb-word-in 300ms var(--member-ease) forwards;
+  }
+
+  .drb-caret {
+    animation: drb-caret-blink 900ms steps(2, start) infinite;
+  }
+
+  .drb-feed-glyph--active {
+    animation: drb-pulse 1.6s var(--member-ease) infinite;
+  }
+
+  .drb-feed-dots i {
+    animation: drb-dot 1.1s ease-in-out infinite;
+  }
+
+  .drb-feed-dots i:nth-child(2) {
+    animation-delay: 150ms;
+  }
+
+  .drb-feed-dots i:nth-child(3) {
+    animation-delay: 300ms;
+  }
+
+  .drb-feed-step.is-done .drb-feed-body {
+    transition: opacity 300ms var(--member-ease);
+  }
+}
+
+@keyframes drb-reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes drb-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes drb-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes drb-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--member-accent) 32%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+@keyframes drb-dot {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
 /* ─── Reduced motion ─────────────────────────────────────────────────────────*/
 
 @media (prefers-reduced-motion: reduce) {
