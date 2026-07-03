@@ -277,8 +277,29 @@
     padding-top: 138px;
   }
 
-  :root {
-    /* 138px page padding + 64 heading + 24 bottom = 226 = 64 + 64 + 98 */
-    --desktop-top: 64px;
+  /* results.css hardcodes its mobile height budgets (100vh - 184px at ≤720,
+     100vh - 172px at ≤460), so the results page must fit heading + padding
+     inside that budget minus ~24px bottom breathing room. */
+  .p-page.dashboard-content--results {
+    padding-top: 124px;
+  }
+
+  .p-results-heading {
+    height: 36px;
+    padding-bottom: 6px;
+  }
+
+  .p-results-heading .p-h1 {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 460px) {
+  .p-page.dashboard-content--results {
+    padding-top: 120px;
+  }
+
+  .p-results-heading {
+    height: 28px;
   }
 }

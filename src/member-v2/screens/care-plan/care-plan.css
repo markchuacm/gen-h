@@ -460,6 +460,11 @@ button.cp-marker-chip:hover {
     display: none;
   }
 
+  /* Focus-area context lives in the detail panel; the chip crowds titles here. */
+  .cp-row-side .cp-marker-chip {
+    display: none;
+  }
+
   .cp-row-detail {
     padding-left: 60px;
   }

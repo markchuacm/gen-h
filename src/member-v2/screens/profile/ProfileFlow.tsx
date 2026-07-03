@@ -10,10 +10,13 @@ import {
 } from "./profileQuestions";
 import type { ProfileAnswers, StepDef } from "./profileQuestions";
 
+export type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements";
+
 type ProfileFlowProps = {
   answers: ProfileAnswers;
   startAt?: number;
   onPatch: (patch: Partial<ProfileAnswers>) => void;
+  onToggle: (key: ToggleListKey, option: string) => void;
   onReachStep: (step: number) => void;
   onComplete: () => void;
   onClose: () => void;
@@ -127,10 +130,12 @@ function StepInputs({
   step,
   answers,
   onPatch,
+  onToggle,
 }: {
   step: StepDef;
   answers: ProfileAnswers;
   onPatch: (patch: Partial<ProfileAnswers>) => void;
+  onToggle: (key: ToggleListKey, option: string) => void;
 }) {
   if (step.kind === "basics") {
     const { basics } = answers;
@@ -248,13 +253,7 @@ function StepInputs({
           numbered
           options={step.options ?? []}
           selected={answers.supplements}
-          onToggle={(option) =>
-            onPatch({
-              supplements: answers.supplements.includes(option)
-                ? answers.supplements.filter((item) => item !== option)
-                : [...answers.supplements, option],
-            })
-          }
+          onToggle={(option) => onToggle("supplements", option)}
         />
         <input
           className="pf-other-input"
@@ -268,25 +267,26 @@ function StepInputs({
   }
 
   // Plain multi-select chips (reason / goals / symptoms / family).
-  const key = step.id as "reason" | "goals" | "symptoms" | "family";
-  const selected = answers[key];
+  const key = step.id as ToggleListKey;
   return (
     <ChipGrid
       numbered
       options={step.options ?? []}
-      selected={selected}
-      onToggle={(option) =>
-        onPatch({
-          [key]: selected.includes(option)
-            ? selected.filter((item) => item !== option)
-            : [...selected, option],
-        } as Partial<ProfileAnswers>)
-      }
+      selected={answers[key]}
+      onToggle={(option) => onToggle(key, option)}
     />
   );
 }
 
-function ProfileFlow({ answers, startAt, onPatch, onReachStep, onComplete, onClose }: ProfileFlowProps) {
+function ProfileFlow({
+  answers,
+  startAt,
+  onPatch,
+  onToggle,
+  onReachStep,
+  onComplete,
+  onClose,
+}: ProfileFlowProps) {
   const [stepIndex, setStepIndex] = useState(Math.min(startAt ?? 0, STEP_COUNT - 1));
   const [whyOpen, setWhyOpen] = useState(false);
   const [composing, setComposing] = useState(false);
@@ -346,16 +346,8 @@ function ProfileFlow({ answers, startAt, onPatch, onReachStep, onComplete, onClo
         if (!options || (step.kind !== "chips" && step.kind !== "supplements")) return;
         const option = options[Number(event.key) - 1];
         if (!option) return;
-        const key =
-          step.kind === "supplements"
-            ? "supplements"
-            : (step.id as "reason" | "goals" | "symptoms" | "family");
-        const selected = answers[key];
-        onPatch({
-          [key]: selected.includes(option)
-            ? selected.filter((item) => item !== option)
-            : [...selected, option],
-        } as Partial<ProfileAnswers>);
+        const key = step.kind === "supplements" ? "supplements" : (step.id as ToggleListKey);
+        onToggle(key, option);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -399,7 +391,7 @@ function ProfileFlow({ answers, startAt, onPatch, onReachStep, onComplete, onClo
             {step.promptEm && <em>{step.promptEm}</em>}
           </h2>
           {step.helper && <p className="pf-stage-helper">{step.helper}</p>}
-          <StepInputs step={step} answers={answers} onPatch={onPatch} />
+          <StepInputs step={step} answers={answers} onPatch={onPatch} onToggle={onToggle} />
           {step.whyWeAsk && (
             <div className="pf-why">
               <button type="button" onClick={() => setWhyOpen((open) => !open)}>

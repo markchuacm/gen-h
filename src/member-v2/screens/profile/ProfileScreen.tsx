@@ -21,7 +21,8 @@ const COVERS = [
 ];
 
 function ProfileScreen({ flowOpen, onFlowOpenChange, onCompleted }: ProfileScreenProps) {
-  const { state, setAnswers, setLastStep, markCompleted, reset } = useProfileAnswers();
+  const { state, setAnswers, toggleListItem, setLastStep, markCompleted, reset } =
+    useProfileAnswers();
   const [startAt, setStartAt] = useState(0);
 
   const started = state.lastStep > 0;
@@ -120,6 +121,7 @@ function ProfileScreen({ flowOpen, onFlowOpenChange, onCompleted }: ProfileScree
           answers={state.answers}
           startAt={startAt}
           onPatch={setAnswers}
+          onToggle={toggleListItem}
           onReachStep={setLastStep}
           onComplete={() => {
             markCompleted();

@@ -49,6 +49,20 @@ export function useProfileAnswers() {
     [save],
   );
 
+  /** Atomic list toggle — safe against rapid successive presses, where patches
+      computed from a stale render would overwrite each other. */
+  const toggleListItem = useCallback(
+    (key: "reason" | "goals" | "symptoms" | "family" | "supplements", option: string) =>
+      save((current) => {
+        const list = current.answers[key];
+        const next = list.includes(option)
+          ? list.filter((item) => item !== option)
+          : [...list, option];
+        return { ...current, answers: { ...current.answers, [key]: next } };
+      }),
+    [save],
+  );
+
   const setLastStep = useCallback(
     (step: number) => save((current) => ({ ...current, lastStep: Math.max(current.lastStep, step) })),
     [save],
@@ -64,5 +78,5 @@ export function useProfileAnswers() {
     setState(INITIAL_STATE);
   }, []);
 
-  return { state, setAnswers, setLastStep, markCompleted, reset };
+  return { state, setAnswers, toggleListItem, setLastStep, markCompleted, reset };
 }
