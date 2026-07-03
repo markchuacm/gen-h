@@ -1,0 +1,153 @@
+/* Gen-H member portal v2 — design language lifted from src/landing/landing.css.
+   Landing tokens are the source of truth; keep values in sync with it. */
+
+:root {
+  color-scheme: light;
+  --cream: #ffffff;
+  --ink: #111827;
+  --muted: #64748b;
+  --faint: rgba(15, 23, 42, 0.1);
+  --line: rgba(15, 23, 42, 0.13);
+  --accent: #b85d35;
+  --accent-dark: #964829;
+  --accent-soft: #cf7a56;
+  --accent-tint: rgba(184, 93, 53, 0.08);
+  --dark: #0f172a;
+  --container: min(1280px, calc(100% - clamp(32px, 5vw, 96px)));
+  --shadow-border:
+    0 0 0 1px rgba(0, 0, 0, 0.06),
+    0 1px 2px -1px rgba(0, 0, 0, 0.06),
+    0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-border-hover:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 1px 2px -1px rgba(0, 0, 0, 0.08),
+    0 8px 24px rgba(15, 23, 42, 0.1);
+  --shadow-lift:
+    0 20px 60px rgba(15, 23, 42, 0.13),
+    0 0 0 1px rgba(0, 0, 0, 0.06);
+  --ease-ui: cubic-bezier(0.2, 0, 0, 1);
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --sans:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  /* ── Compat block ─────────────────────────────────────────────────────────
+     Consumed ONLY by src/member/results/results.css, which v2 imports
+     unchanged. Values are verbatim from src/member/styles.css — do not
+     restyle these; new screens use the landing tokens above instead. */
+  --member-cream: #f7f8fa;
+  --member-ink: #11171b;
+  --member-muted: #4f555b;
+  --member-copper-dark: #964829;
+  --member-copper-soft: rgba(184, 93, 53, 0.08);
+  --member-ease: cubic-bezier(0.2, 0, 0, 1);
+  --member-shadow-border:
+    0 0 0 1px rgba(0, 0, 0, 0.07),
+    0 1px 2px -1px rgba(0, 0, 0, 0.06),
+    0 18px 42px rgba(17, 23, 27, 0.04);
+  --member-shadow-hover:
+    0 0 0 1px rgba(0, 0, 0, 0.09),
+    0 1px 2px -1px rgba(0, 0, 0, 0.08),
+    0 22px 54px rgba(17, 23, 27, 0.08);
+  /* Height knobs for results.css .results-dashboard's 100vh calc — retuned
+     for the v2 floating capsule nav instead of the old sidebar shell.
+     --header-row-height also sizes .p-results-heading; --desktop-top is a
+     pure knob (real top offset is .p-page's 104px padding): the calc
+     subtracts desktop-top + header-row-height + 98, and 34+64+98 = 196 =
+     104 padding + 64 heading + 28px bottom breathing room. */
+  --desktop-top: 34px;
+  --header-row-height: 64px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+/* The Results screen scrolls internally (results.css); lock the document
+   while it is the active tab. Toggled by MemberApp. */
+body.is-results-locked {
+  height: 100vh;
+  overflow: hidden;
+}
+
+::selection {
+  background: rgba(184, 93, 53, 0.16);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+img,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+h1 em,
+h2 em,
+h3 em {
+  font-style: italic;
+  color: var(--accent);
+}
+
+p,
+dl,
+dd,
+ol,
+ul {
+  margin: 0;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

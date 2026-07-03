@@ -1,0 +1,513 @@
+/* v2 Profile — intro card, typeform-style flow takeover, doctor brief summary. */
+
+/* ── Intro card ──────────────────────────────────────────────────────────── */
+
+.pf-intro {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: clamp(28px, 4vw, 56px);
+  align-items: center;
+  padding: clamp(28px, 3.4vw, 48px);
+  border-radius: 34px;
+  background: #fff;
+  box-shadow: var(--shadow-lift);
+}
+
+.pf-intro-copy {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+}
+
+.pf-intro-copy h2 {
+  font-size: clamp(2rem, 3.6vw, 3.1rem);
+}
+
+.pf-intro-copy > p {
+  max-width: 46ch;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.pf-intro-facts {
+  display: grid;
+  gap: 10px;
+  margin: 4px 0;
+}
+
+.pf-intro-facts li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.pf-intro-facts svg {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+}
+
+.pf-progress-note {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.pf-progress-track {
+  width: 220px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  overflow: hidden;
+}
+
+.pf-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 480ms var(--ease-spring);
+}
+
+.pf-intro-art {
+  overflow: hidden;
+  border-radius: 24px;
+  aspect-ratio: 5 / 4;
+}
+
+.pf-intro-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.55) brightness(0.99);
+  transition: filter 520ms var(--ease-spring), scale 520ms var(--ease-spring);
+}
+
+.pf-intro:hover .pf-intro-art img {
+  filter: none;
+  scale: 1.04;
+}
+
+/* ── Flow takeover ───────────────────────────────────────────────────────── */
+
+.pf-flow {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: #fff;
+}
+
+.pf-flow-top {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px clamp(20px, 4vw, 40px);
+}
+
+.pf-flow-wordmark {
+  font-weight: 560;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.pf-flow-bar {
+  flex: 1;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.07);
+  overflow: hidden;
+}
+
+.pf-flow-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 480ms var(--ease-spring);
+}
+
+.pf-flow-close {
+  font-size: 0.88rem;
+  color: var(--muted);
+  transition: color 180ms var(--ease-ui);
+}
+
+.pf-flow-close:hover {
+  color: var(--ink);
+}
+
+.pf-stage {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 20px;
+  width: min(680px, calc(100% - 48px));
+  margin-inline: auto;
+  overflow-y: auto;
+  padding-block: 24px;
+  animation: pf-step-in 360ms var(--ease-spring);
+}
+
+@keyframes pf-step-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
+.pf-stage-count {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pf-stage h2 {
+  font-size: clamp(1.7rem, 3vw, 2.4rem);
+}
+
+.pf-stage-helper {
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+
+.pf-why {
+  font-size: 0.88rem;
+}
+
+.pf-why > button {
+  color: var(--accent-dark);
+  font-size: 0.88rem;
+  transition: color 180ms var(--ease-ui);
+}
+
+.pf-why > button:hover {
+  color: var(--accent);
+}
+
+.pf-why p {
+  margin-top: 6px;
+  max-width: 52ch;
+  color: var(--muted);
+}
+
+.pf-flow-bottom {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: min(680px, calc(100% - 48px));
+  margin-inline: auto;
+  padding-block: 20px 32px;
+}
+
+.pf-enter-hint {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.pf-enter-hint kbd {
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.05);
+  font-family: inherit;
+  font-size: 0.78rem;
+}
+
+/* ── Inputs ──────────────────────────────────────────────────────────────── */
+
+.pf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  font-size: 0.95rem;
+  text-align: left;
+  transition:
+    box-shadow 180ms var(--ease-ui),
+    background-color 180ms var(--ease-ui),
+    color 180ms var(--ease-ui);
+}
+
+.pf-chip:hover {
+  box-shadow: var(--shadow-border-hover);
+}
+
+.pf-chip.is-selected {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--accent-dark);
+}
+
+.pf-chip svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+.pf-chip-key {
+  display: grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.pf-chip.is-selected .pf-chip-key {
+  background: rgba(184, 93, 53, 0.16);
+  color: var(--accent-dark);
+}
+
+/* Slider rows (basics + lifestyle) */
+
+.pf-controls {
+  display: grid;
+  gap: 22px;
+  width: 100%;
+}
+
+.pf-control {
+  display: grid;
+  gap: 10px;
+}
+
+.pf-control-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pf-control-head label {
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.pf-control-value {
+  font-size: 1.15rem;
+  font-weight: 480;
+  letter-spacing: -0.01em;
+}
+
+.pf-control input[type="range"] {
+  width: 100%;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.pf-segment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pf-segment .pf-chip {
+  min-height: 40px;
+  padding: 6px 16px;
+  font-size: 0.9rem;
+}
+
+.pf-other-input {
+  width: 100%;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.04);
+  color: var(--ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.pf-other-input::placeholder {
+  color: var(--muted);
+}
+
+.pf-other-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+/* Composing interstitial */
+
+.pf-composing {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.pf-composing p {
+  color: var(--muted);
+}
+
+.pf-composing-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: pf-pulse 1.1s var(--ease-ui) infinite;
+}
+
+@keyframes pf-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    scale: 1;
+  }
+  50% {
+    opacity: 0.35;
+    scale: 0.82;
+  }
+}
+
+/* ── Doctor brief summary ────────────────────────────────────────────────── */
+
+.pf-brief {
+  max-width: 780px;
+  overflow: hidden;
+  border-radius: 28px;
+}
+
+.pf-brief-head {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 18px;
+  align-items: center;
+  padding: 26px 32px;
+  background: #f8f6f3;
+}
+
+.pf-brief-head img {
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.pf-brief-head strong {
+  display: block;
+  font-weight: 560;
+}
+
+.pf-brief-head p {
+  margin-top: 2px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.pf-brief-date {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.pf-brief-body {
+  display: grid;
+  gap: 26px;
+  padding: 30px 32px 34px;
+}
+
+.pf-brief-section {
+  display: grid;
+  gap: 10px;
+}
+
+.pf-brief-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.pf-brief-section-head h3 {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pf-brief-edit {
+  font-size: 0.82rem;
+  color: var(--accent-dark);
+  transition: color 180ms var(--ease-ui);
+}
+
+.pf-brief-edit:hover {
+  color: var(--accent);
+}
+
+.pf-brief-sentence {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.pf-brief-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pf-brief-foot {
+  padding: 18px 32px;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  font-size: 0.88rem;
+}
+
+.pf-summary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+/* ── Breakpoints ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .pf-intro {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-intro-art {
+    order: -1;
+    aspect-ratio: 16 / 10;
+  }
+}
+
+@media (max-width: 720px) {
+  .pf-stage h2 {
+    font-size: 1.5rem;
+  }
+
+  .pf-chip {
+    min-height: 42px;
+    font-size: 0.9rem;
+  }
+
+  .pf-brief-head {
+    grid-template-columns: auto 1fr;
+  }
+
+  .pf-brief-date {
+    display: none;
+  }
+}

@@ -1,0 +1,394 @@
+/* v2 Home — journey-state-driven. One layout, five content states. */
+
+.home-head {
+  margin-bottom: 36px;
+}
+
+/* ── Journey rail ────────────────────────────────────────────────────────── */
+
+.home-rail {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin-bottom: 28px;
+  padding: 22px 12px 18px;
+}
+
+.home-rail::before {
+  content: "";
+  position: absolute;
+  top: 36px;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: var(--line);
+}
+
+.home-rail-step {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  row-gap: 10px;
+  text-align: center;
+}
+
+.home-rail-marker {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 560;
+}
+
+.home-rail-marker svg {
+  width: 13px;
+  height: 13px;
+}
+
+.home-rail-step.is-completed .home-rail-marker {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px rgba(184, 93, 53, 0.25);
+  color: var(--accent);
+}
+
+.home-rail-step.is-active .home-rail-marker {
+  background: var(--accent);
+  box-shadow: none;
+  color: #fff;
+}
+
+.home-rail-label {
+  font-size: 0.85rem;
+  font-weight: 480;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.home-rail-step.is-active .home-rail-label {
+  color: var(--ink);
+  font-weight: 560;
+}
+
+.home-rail-status {
+  font-size: 0.74rem;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.home-rail-step.is-active .home-rail-status {
+  color: var(--accent-dark);
+}
+
+/* ── Next-action hero ────────────────────────────────────────────────────── */
+
+.home-hero {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(28px, 4vw, 56px);
+  align-items: center;
+  margin-bottom: 24px;
+  padding: clamp(28px, 3.4vw, 48px);
+  border-radius: 34px;
+  background: #fff;
+  box-shadow: var(--shadow-lift);
+}
+
+.home-hero-copy {
+  display: grid;
+  justify-items: start;
+  gap: 18px;
+}
+
+.home-hero-copy h2 {
+  font-size: clamp(2rem, 3.6vw, 3.1rem);
+}
+
+.home-hero-copy p {
+  max-width: 44ch;
+  color: var(--muted);
+  font-size: 1.02rem;
+}
+
+.home-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.home-hero-art {
+  overflow: hidden;
+  border-radius: 24px;
+  aspect-ratio: 5 / 4;
+}
+
+.home-hero-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.55) brightness(0.99);
+  scale: 1.001;
+  transition: filter 520ms var(--ease-spring), scale 520ms var(--ease-spring);
+}
+
+.home-hero:hover .home-hero-art img {
+  filter: none;
+  scale: 1.04;
+}
+
+/* ── Supporting row ──────────────────────────────────────────────────────── */
+
+.home-grid {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.home-context {
+  display: grid;
+  gap: 20px;
+  padding: 28px;
+}
+
+.home-context h3 {
+  font-size: 1.25rem;
+}
+
+.home-context-person {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.home-context-avatar {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.home-context-person strong {
+  display: block;
+  font-weight: 560;
+  line-height: 1.3;
+}
+
+.home-context-person span {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.home-context-details {
+  display: grid;
+  gap: 12px;
+}
+
+.home-context-details > div {
+  display: grid;
+  grid-template-columns: 18px auto 1fr;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.home-context-details svg {
+  width: 17px;
+  height: 17px;
+  align-self: center;
+  color: var(--muted);
+}
+
+.home-context-details dt {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.home-context-details dd {
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+.home-context .p-btn,
+.home-context .p-btn-ghost {
+  justify-content: center;
+}
+
+/* Results-processing mini timeline */
+
+.home-timeline {
+  display: grid;
+  gap: 0;
+}
+
+.home-timeline-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+
+.home-timeline-stage:last-child {
+  padding-bottom: 0;
+}
+
+.home-timeline-stage::before {
+  content: "";
+  position: absolute;
+  top: 18px;
+  bottom: 2px;
+  left: 9px;
+  width: 1px;
+  background: var(--line);
+}
+
+.home-timeline-stage:last-child::before {
+  display: none;
+}
+
+.home-timeline-dot {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--accent);
+}
+
+.home-timeline-dot svg {
+  width: 11px;
+  height: 11px;
+}
+
+.home-timeline-stage.is-completed .home-timeline-dot {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px rgba(184, 93, 53, 0.25);
+}
+
+.home-timeline-stage.is-active .home-timeline-dot::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: home-pulse 2.2s var(--ease-ui) infinite;
+}
+
+@keyframes home-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.home-timeline-stage strong {
+  font-size: 0.95rem;
+  font-weight: 480;
+  color: var(--muted);
+}
+
+.home-timeline-stage.is-active strong,
+.home-timeline-stage.is-completed strong {
+  color: var(--ink);
+}
+
+.home-timeline-meta {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Care-plan teaser stats */
+
+.home-teaser-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.home-teaser-stats > div {
+  display: grid;
+  gap: 2px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--member-cream);
+}
+
+.home-teaser-stats strong {
+  font-size: 1.5rem;
+  font-weight: 440;
+  letter-spacing: -0.01em;
+}
+
+.home-teaser-stats span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Tip card */
+
+.home-tip {
+  display: grid;
+  gap: 8px;
+  padding: 28px;
+  border-radius: 24px;
+  background: #f8f6f3;
+}
+
+.home-tip strong {
+  font-weight: 560;
+  font-size: 0.98rem;
+}
+
+.home-tip p {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* ── Breakpoints ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 960px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .home-hero {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .home-hero-art {
+    order: -1;
+    aspect-ratio: 16 / 10;
+  }
+
+  .home-rail {
+    padding-inline: 0;
+  }
+
+  .home-rail-status {
+    display: none;
+  }
+
+  .home-rail-label {
+    font-size: 0.76rem;
+  }
+}
