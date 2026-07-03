@@ -1,6 +1,6 @@
 import { gsap, MOTION, maskedLines } from "../lib/scroll";
 import { useMotion } from "../lib/useGsapContext";
-import { heroProofs, heroVideo, heroMountainImage } from "../data";
+import { heroProofs, heroVideo } from "../data";
 import WhatsAppCta from "./WhatsAppCta";
 
 export default function Hero() {
@@ -63,7 +63,6 @@ export default function Hero() {
       <div className="l-hero-media" aria-hidden="true">
         <video
           src={heroVideo}
-          poster={heroMountainImage}
           autoPlay
           muted
           loop
