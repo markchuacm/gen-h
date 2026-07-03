@@ -42,8 +42,8 @@ function JourneyRail({ steps }: { steps: Step[] }) {
           <span className="home-rail-marker" aria-hidden="true">
             {step.state === "completed" ? <Check strokeWidth={2.4} /> : index + 1}
           </span>
-          <strong>{step.label}</strong>
-          <span>{step.statusLabel}</span>
+          <strong className="home-rail-label">{step.label}</strong>
+          <span className="home-rail-status">{step.statusLabel}</span>
         </li>
       ))}
     </ol>

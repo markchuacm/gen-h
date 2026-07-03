@@ -62,25 +62,25 @@
   color: #fff;
 }
 
-.home-rail-step strong {
+.home-rail-label {
   font-size: 0.85rem;
   font-weight: 480;
   color: var(--muted);
   line-height: 1.2;
 }
 
-.home-rail-step.is-active strong {
+.home-rail-step.is-active .home-rail-label {
   color: var(--ink);
   font-weight: 560;
 }
 
-.home-rail-step span {
+.home-rail-status {
   font-size: 0.74rem;
   color: var(--muted);
   line-height: 1.2;
 }
 
-.home-rail-step.is-active span {
+.home-rail-step.is-active .home-rail-status {
   color: var(--accent-dark);
 }
 
@@ -384,11 +384,11 @@
     padding-inline: 0;
   }
 
-  .home-rail-step span {
+  .home-rail-status {
     display: none;
   }
 
-  .home-rail-step strong {
+  .home-rail-label {
     font-size: 0.76rem;
   }
 }
