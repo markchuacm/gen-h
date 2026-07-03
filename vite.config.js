@@ -14,8 +14,7 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 main: "index.html",
-                memberV2: "member-v2.html",
-                landing: "landing.html",
+                memberV2: "member.html",
             },
         },
     },
