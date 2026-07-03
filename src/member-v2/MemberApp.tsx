@@ -3,22 +3,10 @@ import TopNav from "./shell/TopNav";
 import { JOURNEY_STATES } from "./journey/journeyState";
 import type { JourneyStateId, MemberTab } from "./journey/journeyState";
 import HomeScreen from "./screens/home/HomeScreen";
+import ProfileScreen from "./screens/profile/ProfileScreen";
 import CarePlanScreen from "./screens/care-plan/CarePlanScreen";
 import ResultsDashboard from "../member/results/ResultsDashboard";
 import "./shell/shell.css";
-
-function StubScreen({ title }: { title: string }) {
-  return (
-    <main className="p-page">
-      <header className="p-heading-row">
-        <h1 className="p-h1">{title}</h1>
-      </header>
-      <section className="p-card" style={{ padding: 40, color: "var(--muted)" }}>
-        Coming next.
-      </section>
-    </main>
-  );
-}
 
 function ResultsScreen() {
   return (
@@ -36,6 +24,7 @@ function ResultsScreen() {
 function MemberApp() {
   const [activeTab, setActiveTab] = useState<MemberTab>("home");
   const [journeyState, setJourneyState] = useState<JourneyStateId>("PROFILE_INCOMPLETE");
+  const [profileFlowOpen, setProfileFlowOpen] = useState(false);
   const config = JOURNEY_STATES[journeyState];
 
   // Results scrolls internally (results.css owns its viewport height); every
@@ -57,10 +46,20 @@ function MemberApp() {
         <HomeScreen
           config={config}
           onNav={setActiveTab}
-          onStartProfile={() => setActiveTab("profile")}
+          onStartProfile={() => {
+            setActiveTab("profile");
+            setProfileFlowOpen(true);
+          }}
         />
       ) : activeTab === "profile" ? (
-        <StubScreen title="Your profile" />
+        <ProfileScreen
+          flowOpen={profileFlowOpen}
+          onFlowOpenChange={setProfileFlowOpen}
+          onCompleted={() => {
+            // Demo continuity: finishing the profile moves the journey along.
+            if (journeyState === "PROFILE_INCOMPLETE") setJourneyState("CONSULT_UPCOMING");
+          }}
+        />
       ) : activeTab === "carePlan" ? (
         <CarePlanScreen onNav={setActiveTab} />
       ) : (
