@@ -3,8 +3,7 @@
 // question bank. This is the deterministic safety net: if the model produces no
 // usable follow-up questions, these still fire from structured findings.
 //
-// Mirrored by src/member/doctor-review-brief/questionRules.ts — keep the two in
-// sync when adding markers or rules.
+// Keep this in sync with any client-side intake option routing.
 
 export const MARKER_ALIASES = {
   // kidney

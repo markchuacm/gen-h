@@ -1,6 +1,5 @@
-// v2 profile onboarding — static, choice-first question flow. Copy mined from
-// the original intake (src/member/doctor-review-brief/questions.ts); the UX is
-// new and fully client-side.
+// v2 profile onboarding: static, choice-first question flow adapted from the
+// earlier member intake. The UX is new and fully client-side.
 
 export type StepId =
   | "basics"

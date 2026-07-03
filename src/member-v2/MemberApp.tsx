@@ -5,7 +5,7 @@ import type { JourneyStateId, MemberTab } from "./journey/journeyState";
 import HomeScreen from "./screens/home/HomeScreen";
 import ProfileScreen from "./screens/profile/ProfileScreen";
 import CarePlanScreen from "./screens/care-plan/CarePlanScreen";
-import ResultsDashboard from "../member/results/ResultsDashboard";
+import ResultsDashboard from "./screens/results/ResultsDashboard";
 import "./shell/shell.css";
 
 function ResultsScreen() {
@@ -27,8 +27,7 @@ function MemberApp() {
   const [profileFlowOpen, setProfileFlowOpen] = useState(false);
   const config = JOURNEY_STATES[journeyState];
 
-  // Results scrolls internally (results.css owns its viewport height); every
-  // other screen uses normal document scroll.
+  // Results scrolls internally; every other screen uses normal document scroll.
   useEffect(() => {
     document.body.classList.toggle("is-results-locked", activeTab === "results");
     return () => document.body.classList.remove("is-results-locked");
