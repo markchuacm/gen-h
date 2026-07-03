@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import TopNav from "./shell/TopNav";
 import { JOURNEY_STATES } from "./journey/journeyState";
 import type { JourneyStateId, MemberTab } from "./journey/journeyState";
+import HomeScreen from "./screens/home/HomeScreen";
 import ResultsDashboard from "../member/results/ResultsDashboard";
 import "./shell/shell.css";
 
@@ -52,7 +53,11 @@ function MemberApp() {
         onJourneyStateChange={setJourneyState}
       />
       {activeTab === "home" ? (
-        <StubScreen title={config.greeting} />
+        <HomeScreen
+          config={config}
+          onNav={setActiveTab}
+          onStartProfile={() => setActiveTab("profile")}
+        />
       ) : activeTab === "profile" ? (
         <StubScreen title="Your profile" />
       ) : activeTab === "carePlan" ? (
