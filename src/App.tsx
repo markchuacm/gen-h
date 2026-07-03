@@ -29,7 +29,7 @@ import liverKidneyImage from "../assets/biomarkers/liver-kidney-hd.png";
 import nutrientsVitaminsImage from "../assets/biomarkers/nutrients-vitamins-hd.png";
 import deeperTestingImage from "../assets/future-health/deeper-testing.png";
 import earlierSignalsImage from "../assets/future-health/earlier-signals.png";
-import lifestyleImpactsImage from "../assets/future-health/lifestyle-impacts.png";
+import lifestyleImpactsImage from "../assets/future-health/lifestyle-impacts-landing.png";
 
 const whatsappMessage =
   "Hi, I'm interested in the Gen-H Founding Members program. Could you share availability and next steps?";
@@ -94,14 +94,18 @@ function FutureHealthVisual({
   image,
   imageAlt,
   number,
+  title,
 }: {
   image: (typeof futureHealthCards)[number]["image"];
   imageAlt: (typeof futureHealthCards)[number]["imageAlt"];
   number: (typeof futureHealthCards)[number]["number"];
+  title: (typeof futureHealthCards)[number]["title"];
 }) {
+  const imageClassName = title === "Lifestyle impacts" ? "is-lifestyle-impacts" : undefined;
+
   return (
     <div className="future-visual">
-      <img src={image} alt={imageAlt} loading="lazy" />
+      <img src={image} alt={imageAlt} className={imageClassName} loading="lazy" />
       <span className="future-card-number" aria-hidden="true">
         {number}
       </span>
@@ -1177,7 +1181,12 @@ function App() {
               data-future-card-index={index}
               key={card.number}
             >
-              <FutureHealthVisual image={card.image} imageAlt={card.imageAlt} number={card.number} />
+              <FutureHealthVisual
+                image={card.image}
+                imageAlt={card.imageAlt}
+                number={card.number}
+                title={card.title}
+              />
               <div className="future-card-copy">
                 <h3>{card.title}</h3>
                 <p>{card.text}</p>

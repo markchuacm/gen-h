@@ -10,6 +10,7 @@ export default function Hero() {
       const media = section.querySelector(".l-hero-media");
       const scrim = section.querySelector(".l-hero-scrim");
       const content = section.querySelector(".l-hero-content");
+      const wordmark = section.querySelector(".l-hero-wordmark");
       const secondary = section.querySelectorAll(
         ".l-hero-sub, .l-hero-cta-row, .l-hero-proofs",
       );
@@ -17,6 +18,15 @@ export default function Hero() {
       if (!heading || !media || !content) return;
 
       // Load choreography: masked line reveal, then supporting content.
+      if (wordmark) {
+        gsap.from(wordmark, {
+          y: 16,
+          autoAlpha: 0,
+          duration: 0.8,
+          ease: "power3.out",
+          delay: 0.1,
+        });
+      }
       maskedLines(heading, { delay: 0.25 });
       gsap.from(secondary, {
         y: 36,
@@ -63,6 +73,9 @@ export default function Hero() {
       </div>
       <div className="l-hero-scrim" aria-hidden="true" />
       <div className="l-hero-content">
+        <a className="l-hero-wordmark" href="#top" aria-label="Gen-H home">
+          Gen-H
+        </a>
         <h1 className="l-display-1">
           Helping you stay well for <em>life&rsquo;s best moments</em>
         </h1>

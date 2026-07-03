@@ -624,6 +624,10 @@ a {
   object-fit: cover;
 }
 
+.future-visual img.is-lifestyle-impacts {
+  object-position: 54% 50%;
+}
+
 .disease-monitor-section {
   position: relative;
   overflow: hidden;

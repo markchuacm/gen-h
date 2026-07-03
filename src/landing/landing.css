@@ -153,6 +153,11 @@ p {
   font-size: var(--display-3);
 }
 
+.l-split-line-mask {
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+
 .l-visually-hidden {
   position: absolute;
   width: 1px;
@@ -356,6 +361,18 @@ p {
   padding-block: clamp(48px, 7vh, 88px);
 }
 
+.l-hero-wordmark {
+  display: inline-block;
+  margin-bottom: clamp(28px, 4vh, 44px);
+  color: #fff;
+  font-size: clamp(1.1rem, 1.4vw, 1.35rem);
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  text-shadow: 0 1px 22px rgba(0, 0, 0, 0.28);
+}
+
 .l-hero h1 {
   max-width: 11ch;
   margin-bottom: clamp(24px, 3.5vh, 40px);
@@ -507,10 +524,18 @@ p {
   box-shadow: var(--shadow-border);
 }
 
+.l-dots-card-lifestyle .l-dots-visual {
+  aspect-ratio: 1 / 1;
+}
+
 .l-dots-visual img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.l-dots-visual img.is-lifestyle-impacts {
+  object-position: center;
 }
 
 .l-dots-number {
@@ -587,7 +612,7 @@ p {
   font-size: clamp(4rem, 9vw, 10rem);
   line-height: 1;
   letter-spacing: -0.04em;
-  color: rgba(17, 24, 39, 0.07);
+  color: rgba(17, 24, 39, 0.11);
   font-variant-numeric: tabular-nums;
   user-select: none;
 }
@@ -730,12 +755,29 @@ p {
     justify-content: center;
     margin-right: calc(-1 * clamp(24px, 2vw, 40px));
     padding-right: clamp(48px, 4vw, 80px);
+    background: var(--cream);
+  }
+
+  html.is-motion .l-gallery-head::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: calc(-1 * clamp(150px, 13vw, 240px));
+    bottom: 0;
+    width: clamp(210px, 18vw, 320px);
+    pointer-events: none;
     background: linear-gradient(
       to right,
       var(--cream) 0%,
-      var(--cream) 78%,
+      var(--cream) 58%,
+      rgba(255, 255, 255, 0.78) 76%,
       rgba(255, 255, 255, 0) 100%
     );
+  }
+
+  html.is-motion .l-gallery-head > * {
+    position: relative;
+    z-index: 1;
   }
 
   html.is-motion .l-gallery-track {
@@ -904,6 +946,10 @@ p {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.l-process-step:first-child .l-process-visual img {
+  object-position: left center;
 }
 
 .l-process-cta {
@@ -1332,11 +1378,11 @@ p {
 
 .l-final {
   position: relative;
-  height: 170svh;
+  height: 100svh;
 }
 
 .l-final-frame {
-  position: sticky;
+  position: relative;
   top: 0;
   height: 100svh;
   display: flex;

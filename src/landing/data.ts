@@ -29,7 +29,7 @@ import liverKidneyImage from "../../assets/biomarkers/liver-kidney-hd.png";
 import nutrientsVitaminsImage from "../../assets/biomarkers/nutrients-vitamins-hd.png";
 import deeperTestingImage from "../../assets/future-health/deeper-testing.png";
 import earlierSignalsImage from "../../assets/future-health/earlier-signals.png";
-import lifestyleImpactsImage from "../../assets/future-health/lifestyle-impacts.png";
+import lifestyleImpactsImage from "../../assets/future-health/lifestyle-impacts-landing.png";
 import bpHealthcareLogo from "../../assets/partners/bp-healthcare.png";
 import innoquestLogo from "../../assets/partners/innoquest.png";
 

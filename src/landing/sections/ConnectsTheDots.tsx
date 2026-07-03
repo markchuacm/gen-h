@@ -59,9 +59,17 @@ export default function ConnectsTheDots() {
         </h2>
         <div className="l-dots-grid">
           {futureHealthCards.map((card) => (
-            <article className="l-dots-card" key={card.title}>
+            <article
+              className={`l-dots-card${card.title === "Lifestyle impacts" ? " l-dots-card-lifestyle" : ""}`}
+              key={card.title}
+            >
               <div className="l-dots-visual">
-                <img src={card.image} alt={card.imageAlt} loading="lazy" />
+                <img
+                  src={card.image}
+                  alt={card.imageAlt}
+                  className={card.title === "Lifestyle impacts" ? "is-lifestyle-impacts" : undefined}
+                  loading="lazy"
+                />
                 <span className="l-dots-number" aria-hidden="true">
                   {card.number}
                 </span>
