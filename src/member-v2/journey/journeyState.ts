@@ -1,6 +1,5 @@
 // Journey-state config for the v2 Home screen. Content adapted from the
-// original portal's STATES map (src/member/DashboardHome.tsx) — copied, not
-// imported, so the two versions stay independent.
+// earlier member portal and owned here by v2.
 
 import heroProfileImage from "../../../assets/dashboard/health-profile-hero.png";
 import heroConsultImage from "../../../assets/dashboard/pre-consult-hero.png";

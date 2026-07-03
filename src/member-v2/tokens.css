@@ -35,10 +35,8 @@
     "Segoe UI",
     sans-serif;
 
-  /* ── Compat block ─────────────────────────────────────────────────────────
-     Consumed ONLY by src/member/results/results.css, which v2 imports
-     unchanged. Values are verbatim from src/member/styles.css — do not
-     restyle these; new screens use the landing tokens above instead. */
+  /* Legacy token aliases used by the v2 results dashboard while it migrates
+     toward the landing token set above. */
   --member-cream: #f7f8fa;
   --member-ink: #11171b;
   --member-muted: #4f555b;
@@ -53,12 +51,7 @@
     0 0 0 1px rgba(0, 0, 0, 0.09),
     0 1px 2px -1px rgba(0, 0, 0, 0.08),
     0 22px 54px rgba(17, 23, 27, 0.08);
-  /* Height knobs for results.css .results-dashboard's 100vh calc — retuned
-     for the v2 floating capsule nav instead of the old sidebar shell.
-     --header-row-height also sizes .p-results-heading; --desktop-top is a
-     pure knob (real top offset is .p-page's 104px padding): the calc
-     subtracts desktop-top + header-row-height + 98, and 34+64+98 = 196 =
-     104 padding + 64 heading + 28px bottom breathing room. */
+  /* Results dashboard viewport sizing for the v2 floating capsule nav. */
   --desktop-top: 34px;
   --header-row-height: 64px;
 }
@@ -81,8 +74,7 @@ body {
   line-height: 1.65;
 }
 
-/* The Results screen scrolls internally (results.css); lock the document
-   while it is the active tab. Toggled by MemberApp. */
+/* Internally scrolling member surfaces lock the document while they are open. */
 body.is-results-locked {
   height: 100vh;
   overflow: hidden;

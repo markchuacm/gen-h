@@ -170,8 +170,9 @@
   margin-bottom: 28px;
 }
 
-/* Results tab: heading row + the untouched v1 ResultsDashboard below it.
-   The wrapper class .dashboard-content--results is styled by results.css. */
+.p-page.dashboard-content--results {
+  overflow: hidden;
+}
 
 .p-results-heading {
   display: flex;
@@ -277,9 +278,6 @@
     padding-top: 138px;
   }
 
-  /* results.css hardcodes its mobile height budgets (100vh - 184px at ≤720,
-     100vh - 172px at ≤460), so the results page must fit heading + padding
-     inside that budget minus ~24px bottom breathing room. */
   .p-page.dashboard-content--results {
     padding-top: 124px;
   }
