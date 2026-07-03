@@ -3,6 +3,7 @@ import TopNav from "./shell/TopNav";
 import { JOURNEY_STATES } from "./journey/journeyState";
 import type { JourneyStateId, MemberTab } from "./journey/journeyState";
 import HomeScreen from "./screens/home/HomeScreen";
+import CarePlanScreen from "./screens/care-plan/CarePlanScreen";
 import ResultsDashboard from "../member/results/ResultsDashboard";
 import "./shell/shell.css";
 
@@ -61,7 +62,7 @@ function MemberApp() {
       ) : activeTab === "profile" ? (
         <StubScreen title="Your profile" />
       ) : activeTab === "carePlan" ? (
-        <StubScreen title="Your care plan" />
+        <CarePlanScreen onNav={setActiveTab} />
       ) : (
         <ResultsScreen />
       )}

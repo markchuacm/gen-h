@@ -263,7 +263,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     contextCard: {
       type: "carePlanTeaser",
       focusAreaCount: "4",
-      actionCount: "12",
+      actionCount: "15",
       nextReview: "In 12 weeks",
       primaryCta: "View care plan",
     },

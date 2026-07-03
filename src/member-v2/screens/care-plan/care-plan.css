@@ -1,0 +1,470 @@
+/* v2 Care Plan — doctor-prescribed protocol. */
+
+.cp-head {
+  margin-bottom: 32px;
+}
+
+/* ── Attribution card ────────────────────────────────────────────────────── */
+
+.cp-attribution {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 48px;
+  padding: 26px 30px;
+}
+
+.cp-attribution img {
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.cp-attribution-copy strong {
+  display: block;
+  font-weight: 560;
+}
+
+.cp-attribution-copy p {
+  margin-top: 2px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.cp-markers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cp-marker-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.045);
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 560;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: background-color 180ms var(--ease-ui), color 180ms var(--ease-ui);
+}
+
+button.cp-marker-chip:hover {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+}
+
+/* ── Section headings ────────────────────────────────────────────────────── */
+
+.cp-section {
+  margin-bottom: 56px;
+}
+
+.cp-section-head {
+  margin-bottom: 24px;
+}
+
+.cp-section-head h2 {
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+}
+
+.cp-section-head p {
+  margin-top: 8px;
+  max-width: 56ch;
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+
+/* ── Focus areas ─────────────────────────────────────────────────────────── */
+
+.cp-areas {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.cp-area {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  text-align: left;
+  transition: box-shadow 220ms var(--ease-ui), translate 220ms var(--ease-ui);
+}
+
+.cp-area:hover {
+  translate: 0 -3px;
+  box-shadow: var(--shadow-border-hover);
+}
+
+.cp-area-image {
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+
+.cp-area-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.6) brightness(0.99);
+  transition: filter 520ms var(--ease-spring), scale 520ms var(--ease-spring);
+}
+
+.cp-area:hover .cp-area-image img {
+  filter: none;
+  scale: 1.04;
+}
+
+.cp-area-body {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 22px 24px 24px;
+}
+
+.cp-area-body h3 {
+  font-size: 1.3rem;
+}
+
+.cp-area-body p {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.cp-area-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.cp-area-count {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* ── Focus-area detail panel ─────────────────────────────────────────────── */
+
+.cp-panel-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(15, 23, 42, 0.32);
+  animation: cp-fade 220ms var(--ease-ui);
+}
+
+@keyframes cp-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.cp-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 61;
+  width: min(520px, 100vw);
+  overflow-y: auto;
+  background: #fff;
+  box-shadow: var(--shadow-lift);
+  animation: cp-slide 380ms var(--ease-spring);
+}
+
+@keyframes cp-slide {
+  from {
+    translate: 40px 0;
+    opacity: 0;
+  }
+}
+
+.cp-panel-image {
+  position: relative;
+  aspect-ratio: 16 / 8;
+}
+
+.cp-panel-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cp-panel-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--shadow-border);
+  transition: background-color 180ms var(--ease-ui);
+}
+
+.cp-panel-close:hover {
+  background: #fff;
+}
+
+.cp-panel-close svg {
+  width: 17px;
+  height: 17px;
+}
+
+.cp-panel-body {
+  display: grid;
+  gap: 22px;
+  padding: 28px 30px 40px;
+}
+
+.cp-panel-body > h3 {
+  font-size: 1.6rem;
+}
+
+.cp-panel-summary {
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+
+.cp-doctor-note {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 16px;
+  padding: 20px 22px;
+  border-radius: 18px;
+  background: var(--accent-tint);
+}
+
+.cp-doctor-note img {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.cp-doctor-note blockquote {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.cp-doctor-note blockquote em {
+  font-style: italic;
+  color: var(--accent-dark);
+}
+
+.cp-doctor-note cite {
+  display: block;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  font-style: normal;
+  color: var(--accent-dark);
+}
+
+.cp-panel-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.cp-panel-actions h4 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ── Protocol checklist ──────────────────────────────────────────────────── */
+
+.cp-group {
+  margin-bottom: 28px;
+}
+
+.cp-group-title {
+  margin-bottom: 12px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cp-rows {
+  display: grid;
+  gap: 12px;
+}
+
+.cp-row {
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  transition: box-shadow 220ms var(--ease-ui);
+}
+
+.cp-row:hover {
+  box-shadow: var(--shadow-border-hover);
+}
+
+.cp-row-main {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  padding: 14px 18px;
+  text-align: left;
+}
+
+.cp-check {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  color: #fff;
+  transition: background-color 180ms var(--ease-ui), box-shadow 180ms var(--ease-ui);
+}
+
+.cp-check svg {
+  width: 13px;
+  height: 13px;
+  opacity: 0;
+  transition: opacity 180ms var(--ease-ui);
+}
+
+.cp-row.is-done .cp-check {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.cp-row.is-done .cp-check svg {
+  opacity: 1;
+}
+
+.cp-row-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  object-fit: cover;
+  filter: saturate(0.75);
+}
+
+.cp-row-copy strong {
+  display: block;
+  font-weight: 560;
+  font-size: 0.98rem;
+  line-height: 1.35;
+}
+
+.cp-row.is-done .cp-row-copy strong {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(15, 23, 42, 0.3);
+  text-decoration-thickness: 1px;
+}
+
+.cp-row-copy span {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.cp-row-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cp-row-side svg {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transition: rotate 220ms var(--ease-ui);
+}
+
+.cp-row.is-open .cp-row-side svg {
+  rotate: 180deg;
+}
+
+.cp-row-detail {
+  display: grid;
+  gap: 10px;
+  padding: 4px 18px 18px 104px;
+}
+
+.cp-row-detail p {
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.cp-row-detail strong {
+  color: var(--ink);
+  font-weight: 560;
+}
+
+/* ── Review card ─────────────────────────────────────────────────────────── */
+
+.cp-review {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 32px 36px;
+  border-radius: 24px;
+  background: #f8f6f3;
+}
+
+.cp-review h2 {
+  font-size: clamp(1.4rem, 2.2vw, 1.8rem);
+}
+
+.cp-review p {
+  margin-top: 8px;
+  max-width: 52ch;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+/* ── Breakpoints ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 860px) {
+  .cp-areas {
+    grid-template-columns: 1fr;
+  }
+
+  .cp-review {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .cp-row-main {
+    grid-template-columns: auto 1fr auto;
+  }
+
+  .cp-row-thumb {
+    display: none;
+  }
+
+  .cp-row-detail {
+    padding-left: 60px;
+  }
+
+  .cp-area-image {
+    aspect-ratio: 16 / 10;
+  }
+}
