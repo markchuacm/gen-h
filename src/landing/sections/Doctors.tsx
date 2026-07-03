@@ -55,7 +55,7 @@ export default function Doctors() {
           ))}
         </div>
         <div className="l-doctors-cta">
-          <WhatsAppCta variant="ghost">Talk to a doctor</WhatsAppCta>
+          <WhatsAppCta>Talk to a doctor</WhatsAppCta>
         </div>
       </div>
     </section>
