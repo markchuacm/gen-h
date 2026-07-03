@@ -15,6 +15,7 @@ export default defineConfig({
             input: {
                 main: "index.html",
                 member: "member.html",
+                memberV2: "member-v2.html",
                 landing: "landing.html",
             },
         },

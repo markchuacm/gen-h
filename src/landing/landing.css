@@ -762,15 +762,15 @@ p {
     content: "";
     position: absolute;
     top: 0;
-    right: calc(-1 * clamp(150px, 13vw, 240px));
+    right: calc(-1 * clamp(70px, 7vw, 130px));
     bottom: 0;
-    width: clamp(210px, 18vw, 320px);
+    width: clamp(96px, 8vw, 150px);
     pointer-events: none;
     background: linear-gradient(
       to right,
       var(--cream) 0%,
-      var(--cream) 58%,
-      rgba(255, 255, 255, 0.78) 76%,
+      var(--cream) 16%,
+      rgba(255, 255, 255, 0.72) 42%,
       rgba(255, 255, 255, 0) 100%
     );
   }
