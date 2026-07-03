@@ -806,6 +806,7 @@ ol {
   .dashboard-content {
     width: 100%;
     max-width: none;
+    margin: 0;
     padding: 46px 48px 140px;
   }
 

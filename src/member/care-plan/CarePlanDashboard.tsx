@@ -1,298 +1,372 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowLeft, ArrowRight, ChevronDown } from "lucide-react";
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  CalendarDays,
-  Check,
-  ChevronRight,
-  MessageCircle,
-  Sprout,
-  UserRound,
-  X,
-} from "lucide-react";
-import {
-  alreadyDoing,
   focusAreas,
-  planMeta,
-  reviewFooter,
+  lifestyleCategoryOrder,
+  type CarePlanAction,
   type FocusArea,
-  type FocusAreaPriority,
-  type MarkerChip,
-  type Protocol,
+  type FocusAreaId,
+  type LifestyleCategory,
 } from "./carePlanData";
 import "./care-plan.css";
 
-const priorityClass: Record<FocusAreaPriority, string> = {
-  Priority: "priority-priority",
-  "Quick win": "priority-quick-win",
-  Support: "priority-support",
+type OverviewTab = "focusAreas" | "allActions";
+
+type IndexedAction = CarePlanAction & {
+  focusAreaTitle: string;
 };
 
-function MarkerChipTag({ chip }: { chip: MarkerChip }) {
-  const Arrow = chip.direction === "up" ? ArrowUpRight : ArrowDownRight;
+function focusAreaById(id: FocusAreaId) {
+  return focusAreas.find((area) => area.id === id) ?? focusAreas[0];
+}
+
+function ViewToggle({
+  activeTab,
+  onChange,
+  toggleRef,
+}: {
+  activeTab: OverviewTab;
+  onChange: (tab: OverviewTab) => void;
+  toggleRef: React.RefObject<HTMLDivElement>;
+}) {
   return (
-    <span className={`marker-chip marker-chip--${chip.status}`}>
-      <span>{chip.label}</span>
-      <strong>{chip.value}</strong>
-      <Arrow strokeWidth={2.2} aria-hidden="true" />
-    </span>
+    <div className="care-plan-view-toggle" role="group" aria-label="Care plan view" ref={toggleRef}>
+      <button
+        type="button"
+        aria-pressed={activeTab === "focusAreas"}
+        className={activeTab === "focusAreas" ? "is-active" : ""}
+        onClick={() => onChange("focusAreas")}
+      >
+        Focus Areas
+      </button>
+      <button
+        type="button"
+        aria-pressed={activeTab === "allActions"}
+        className={activeTab === "allActions" ? "is-active" : ""}
+        onClick={() => onChange("allActions")}
+      >
+        All Actions
+      </button>
+    </div>
   );
 }
 
-function PlanHeader() {
+function FocusAreaCard({ area, onOpen }: { area: FocusArea; onOpen: () => void }) {
   return (
-    <header className="plan-header" aria-labelledby="care-plan-title">
-      <div className="plan-header-copy">
-        <span className="plan-kicker">Doctor-reviewed care plan</span>
-        <h2 id="care-plan-title">
-          {planMeta.titleLead}
-          <em>{planMeta.titleEmphasis}</em>
-          {planMeta.titleTail}
-        </h2>
-        <p>{planMeta.subtitle}</p>
-      </div>
-      <p className="plan-meta">
-        Reviewed by {planMeta.reviewedBy} · Next review {planMeta.nextReviewDate} ·{" "}
-        {planMeta.startThisWeekCount} protocols to start this week
-      </p>
-    </header>
-  );
-}
-
-function ProtocolRow({ protocol, onSelect }: { protocol: Protocol; onSelect: () => void }) {
-  return (
-    <button className="protocol-row" type="button" onClick={onSelect}>
-      <span className="protocol-thumb" aria-hidden="true">
-        <img src={protocol.imageUrl} alt="" />
-      </span>
-      <span className="protocol-copy">
-        <strong>{protocol.title}</strong>
-        <span className="protocol-tags">
-          <span className="protocol-category">{protocol.category}</span>
-          {protocol.markerChips.slice(0, 2).map((chip) => (
-            <MarkerChipTag chip={chip} key={chip.label} />
-          ))}
-          {protocol.startHere && <span className="start-week-tag">Start this week</span>}
+    <button className="focus-area-card" type="button" onClick={onOpen}>
+      <img src={area.overviewImageUrl} alt="" />
+      <span className="focus-area-card-panel">
+        <strong>{area.title}</strong>
+        <span>
+          View plan
+          <ArrowRight strokeWidth={1.7} aria-hidden="true" />
         </span>
       </span>
-      <ChevronRight className="protocol-chevron" strokeWidth={1.75} aria-hidden="true" />
     </button>
   );
 }
 
-function FocusAreaSection({
-  area,
-  onSelectProtocol,
+function FocusAreaGrid({ onOpenArea }: { onOpenArea: (id: FocusAreaId) => void }) {
+  return (
+    <div className="focus-area-grid">
+      {focusAreas.map((area) => (
+        <FocusAreaCard area={area} key={area.id} onOpen={() => onOpenArea(area.id)} />
+      ))}
+    </div>
+  );
+}
+
+function ActionIndexRow({ action, onOpen }: { action: IndexedAction; onOpen: () => void }) {
+  return (
+    <button className="action-index-row" type="button" onClick={onOpen}>
+      <span className="action-index-thumb" aria-hidden="true">
+        <img src={action.thumbnailUrl} alt="" />
+      </span>
+      <span className="action-index-title">{action.title}</span>
+      <span className="action-index-area">{action.focusAreaTitle}</span>
+      <ArrowRight className="action-index-arrow" strokeWidth={1.6} aria-hidden="true" />
+    </button>
+  );
+}
+
+function AllActionsIndex({
+  groupedActions,
+  onOpenAction,
 }: {
-  area: FocusArea;
-  onSelectProtocol: (id: string) => void;
+  groupedActions: Map<LifestyleCategory, IndexedAction[]>;
+  onOpenAction: (action: IndexedAction) => void;
 }) {
   return (
-    <section className="focus-section" aria-labelledby={`focus-${area.id}`}>
-      <div className="focus-section-heading">
-        <span className={`focus-section-eyebrow ${priorityClass[area.priority]}`}>
-          <span className="focus-section-dot" aria-hidden="true" />
-          {area.priority}
-        </span>
-        <h3 id={`focus-${area.id}`}>{area.title}</h3>
+    <div className="all-actions-index">
+      {lifestyleCategoryOrder.map((category) => {
+        const actions = groupedActions.get(category);
+        if (!actions?.length) return null;
+
+        return (
+          <section className="action-category-group" key={category} aria-labelledby={`actions-${category}`}>
+            <h2 id={`actions-${category}`}>{category}</h2>
+            <div className="action-index-list">
+              {actions.map((action) => (
+                <ActionIndexRow action={action} key={action.id} onOpen={() => onOpenAction(action)} />
+              ))}
+            </div>
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+function DetailTopBar({
+  activeFocusAreaId,
+  onBack,
+  onSelectArea,
+  backRef,
+}: {
+  activeFocusAreaId: FocusAreaId;
+  onBack: () => void;
+  onSelectArea: (id: FocusAreaId) => void;
+  backRef: React.RefObject<HTMLButtonElement>;
+}) {
+  return (
+    <div className="detail-top-bar">
+      <button className="detail-back-button" type="button" onClick={onBack} ref={backRef}>
+        <ArrowLeft strokeWidth={1.7} aria-hidden="true" />
+        Back to Focus Areas
+      </button>
+      <nav className="focus-area-tabs" aria-label="Focus areas">
+        {focusAreas.map((area) => (
+          <button
+            type="button"
+            key={area.id}
+            aria-current={activeFocusAreaId === area.id ? "page" : undefined}
+            onClick={() => onSelectArea(area.id)}
+          >
+            {area.title}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+function DetailHeader({ area }: { area: FocusArea }) {
+  return (
+    <header className="detail-header">
+      <img src={area.detailImageUrl} alt="" />
+      <div>
+        <h2>{area.title}</h2>
         <p>{area.summary}</p>
       </div>
-      <div className="protocol-list">
-        {area.protocols.map((protocol) => (
-          <ProtocolRow key={protocol.id} protocol={protocol} onSelect={() => onSelectProtocol(protocol.id)} />
-        ))}
-      </div>
-    </section>
+    </header>
   );
 }
 
-function AlreadyDoingSection() {
+function DoctorNoteCard({ area }: { area: FocusArea }) {
   return (
-    <section className="already-doing" aria-labelledby="already-doing-title">
-      <h3 id="already-doing-title">Already part of your routine</h3>
-      <ul>
-        {alreadyDoing.map((item) => (
-          <li key={item.text}>
-            <Check strokeWidth={2} aria-hidden="true" />
-            <span>
-              {item.text}
-              <em>{item.basedOn}</em>
-            </span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function ReviewFooter() {
-  return (
-    <section className="review-footer" aria-label={reviewFooter.title}>
-      <span className="review-footer-icon" aria-hidden="true">
-        <CalendarDays strokeWidth={1.75} />
-      </span>
+    <section className="doctor-note-card" aria-label={`Dr. Farheen's note for ${area.title}`}>
+      <img src={area.doctorNote.avatarUrl} alt="" />
       <div>
-        <strong>{reviewFooter.title}</strong>
-        <p>{reviewFooter.body}</p>
-        <em>{reviewFooter.note}</em>
+        <h3>Dr. Farheen&apos;s note</h3>
+        <p>{area.doctorNote.note}</p>
       </div>
-      <button className="review-footer-cta" type="button">
-        <MessageCircle strokeWidth={1.75} aria-hidden="true" />
-        <span>{reviewFooter.cta}</span>
-      </button>
     </section>
   );
 }
 
-function ProtocolDetailPanel({ protocol, onClose }: { protocol: Protocol; onClose: () => void }) {
-  const closeRef = useRef<HTMLButtonElement>(null);
+function GuidancePanel({ id, isExpanded, children }: { id: string; isExpanded: boolean; children: React.ReactNode }) {
+  return (
+    <div className={`guidance-panel ${isExpanded ? "is-expanded" : ""}`} id={id} aria-hidden={!isExpanded}>
+      <div>
+        <p>{children}</p>
+      </div>
+    </div>
+  );
+}
+
+function ActionCard({
+  action,
+  isExpanded,
+  isHighlighted,
+  onToggle,
+  setActionRef,
+}: {
+  action: CarePlanAction;
+  isExpanded: boolean;
+  isHighlighted: boolean;
+  onToggle: () => void;
+  setActionRef: (element: HTMLDivElement | null) => void;
+}) {
+  const guidanceId = `guidance-${action.id}`;
+
+  return (
+    <article
+      className={`action-card ${isHighlighted ? "action-card--highlight" : ""}`}
+      ref={setActionRef}
+      tabIndex={-1}
+    >
+      <img src={action.thumbnailUrl} alt="" />
+      <div className="action-card-copy">
+        <div>
+          <span>{action.lifestyleCategory}</span>
+          <h3>{action.title}</h3>
+        </div>
+        <p className="action-instruction">{action.instruction}</p>
+        <p className="action-rationale">{action.rationale}</p>
+        <button
+          className="guidance-toggle"
+          type="button"
+          aria-expanded={isExpanded}
+          aria-controls={guidanceId}
+          onClick={onToggle}
+        >
+          More guidance
+          <ChevronDown strokeWidth={1.7} aria-hidden="true" />
+        </button>
+        <GuidancePanel id={guidanceId} isExpanded={isExpanded}>
+          {action.moreGuidance}
+        </GuidancePanel>
+      </div>
+    </article>
+  );
+}
+
+function FocusAreaDetail({
+  area,
+  pendingActionId,
+  onPendingActionHandled,
+  onBack,
+  onSelectArea,
+}: {
+  area: FocusArea;
+  pendingActionId: string | null;
+  onPendingActionHandled: () => void;
+  onBack: () => void;
+  onSelectArea: (id: FocusAreaId) => void;
+}) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [highlightedActionId, setHighlightedActionId] = useState<string | null>(null);
+  const actionRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const backRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    closeRef.current?.focus();
-  }, [protocol.id]);
+    const targetAction = pendingActionId ? actionRefs.current[pendingActionId] : null;
+    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (targetAction) {
+      targetAction.scrollIntoView({ block: "center", behavior: prefersReducedMotion ? "auto" : "smooth" });
+      targetAction.focus({ preventScroll: true });
+      setHighlightedActionId(pendingActionId);
+      onPendingActionHandled();
+      const timer = window.setTimeout(() => setHighlightedActionId(null), 1600);
+      return () => window.clearTimeout(timer);
+    }
+
+    backRef.current?.focus({ preventScroll: true });
+  }, [area.id, onPendingActionHandled, pendingActionId]);
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   return (
-    <aside className="action-detail-drawer" aria-labelledby="protocol-detail-title" role="dialog" aria-modal="true">
-      <button
-        className="action-detail-close"
-        type="button"
-        aria-label="Close protocol details"
-        onClick={onClose}
-        ref={closeRef}
-      >
-        <X strokeWidth={1.85} />
-      </button>
-
-      <div className="action-detail-intro">
-        <span className="action-category-pill">{protocol.category}</span>
-        <img className="action-detail-thumb" src={protocol.imageUrl} alt="" />
-        <h2 id="protocol-detail-title">{protocol.title}</h2>
-        <p className="protocol-personal-lead">{protocol.personalLead}</p>
-      </div>
-
-      <section className="action-detail-section">
-        <h3>Why this is in your plan</h3>
-        <div className="protocol-detail-chips">
-          {protocol.markerChips.map((chip) => (
-            <MarkerChipTag chip={chip} key={chip.label} />
+    <section className="focus-area-detail" aria-labelledby={`detail-${area.id}`}>
+      <DetailTopBar activeFocusAreaId={area.id} onBack={onBack} onSelectArea={onSelectArea} backRef={backRef} />
+      <DetailHeader area={area} />
+      <DoctorNoteCard area={area} />
+      <section className="recommended-actions" aria-labelledby={`actions-for-${area.id}`}>
+        <h2 id={`actions-for-${area.id}`}>Recommended actions</h2>
+        <div className="action-card-list">
+          {area.actions.map((action) => (
+            <ActionCard
+              action={action}
+              isExpanded={expandedIds.has(action.id)}
+              isHighlighted={highlightedActionId === action.id}
+              key={action.id}
+              onToggle={() => toggleExpanded(action.id)}
+              setActionRef={(element) => {
+                actionRefs.current[action.id] = element;
+              }}
+            />
           ))}
         </div>
-        <p>{protocol.whyInPlan}</p>
       </section>
-
-      <section className="action-detail-section">
-        <h3>What to do</h3>
-        <p>{protocol.whatToDo.intro}</p>
-        <div className="action-option-list" aria-label="Options">
-          {protocol.whatToDo.options.map((option) => (
-            <span className="action-option-chip" key={option.label}>
-              <span className="action-option-visual" aria-hidden="true">
-                <img src={option.imageUrl} alt="" />
-              </span>
-              <span>{option.label}</span>
-            </span>
-          ))}
-        </div>
-        <div className="guidance-box">
-          <Sprout strokeWidth={1.85} aria-hidden="true" />
-          <span>{protocol.whatToDo.guidance}</span>
-        </div>
-        {protocol.whatToDo.alternatives.length > 0 && (
-          <div className="alternative-note">
-            <span>Other ways to hit this</span>
-            <ul>
-              {protocol.whatToDo.alternatives.map((alternative) => (
-                <li key={alternative}>{alternative}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
-
-      <section className="made-for-you" aria-labelledby="made-for-you-title">
-        <div className="made-for-you-heading">
-          <UserRound strokeWidth={1.75} aria-hidden="true" />
-          <h3 id="made-for-you-title">Made for you</h3>
-        </div>
-        {protocol.madeForYou.map((line) => (
-          <div className="made-for-you-line" key={line.text}>
-            <p>{line.text}</p>
-            <em>{line.basedOn}</em>
-          </div>
-        ))}
-      </section>
-
-      <section className="action-detail-section">
-        <h3>Key benefits</h3>
-        <ul className="benefit-list">
-          {protocol.benefits.map((benefit) => (
-            <li key={benefit.title}>
-              <Check strokeWidth={2} aria-hidden="true" />
-              <span>
-                <strong>{benefit.title}</strong> {benefit.detail}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="action-detail-section watchout-section">
-        <h3>Watch-outs</h3>
-        <ul className="watchout-list">
-          {protocol.watchOuts.map((watchOut) => (
-            <li key={watchOut}>{watchOut}</li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="review-timing-box">
-        <CalendarDays strokeWidth={1.8} aria-hidden="true" />
-        <div>
-          <strong>Retest / review timing</strong>
-          <p>{protocol.reviewTiming}</p>
-        </div>
-      </section>
-    </aside>
+    </section>
   );
 }
 
 export default function CarePlanDashboard() {
-  const [selectedProtocolId, setSelectedProtocolId] = useState<string | null>(null);
-  const allProtocols = useMemo(() => focusAreas.flatMap((area) => area.protocols), []);
-  const selectedProtocol = allProtocols.find((protocol) => protocol.id === selectedProtocolId) ?? null;
+  const [overviewTab, setOverviewTab] = useState<OverviewTab>("focusAreas");
+  const [activeFocusAreaId, setActiveFocusAreaId] = useState<FocusAreaId | null>(null);
+  const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+  const toggleRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!selectedProtocol) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setSelectedProtocolId(null);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [selectedProtocol]);
+  const groupedActions = useMemo(() => {
+    const groups = new Map<LifestyleCategory, IndexedAction[]>();
+    for (const area of focusAreas) {
+      for (const action of area.actions) {
+        const indexedAction: IndexedAction = { ...action, focusAreaTitle: area.title };
+        const existing = groups.get(action.lifestyleCategory) ?? [];
+        existing.push(indexedAction);
+        groups.set(action.lifestyleCategory, existing);
+      }
+    }
+    return groups;
+  }, []);
+
+  const activeFocusArea = activeFocusAreaId ? focusAreaById(activeFocusAreaId) : null;
+
+  const goBackToOverview = () => {
+    setActiveFocusAreaId(null);
+    setPendingActionId(null);
+    setOverviewTab("focusAreas");
+    window.setTimeout(() => toggleRef.current?.focus({ preventScroll: true }), 0);
+  };
 
   return (
     <section className="care-plan-dashboard" aria-label="Care Plan">
-      <div className="care-plan-main-panel">
-        <PlanHeader />
-
-        {focusAreas.map((area) => (
-          <FocusAreaSection area={area} key={area.id} onSelectProtocol={setSelectedProtocolId} />
-        ))}
-
-        <AlreadyDoingSection />
-        <ReviewFooter />
-      </div>
-
-      {selectedProtocol && (
-        <div className="action-detail-layer" role="presentation">
-          <button
-            className="action-detail-backdrop"
-            type="button"
-            aria-label="Dismiss protocol details"
-            onClick={() => setSelectedProtocolId(null)}
-          />
-          <ProtocolDetailPanel protocol={selectedProtocol} onClose={() => setSelectedProtocolId(null)} />
-        </div>
+      {activeFocusArea ? (
+        <FocusAreaDetail
+          area={activeFocusArea}
+          key={activeFocusArea.id}
+          onBack={goBackToOverview}
+          onPendingActionHandled={() => setPendingActionId(null)}
+          onSelectArea={(id) => {
+            setActiveFocusAreaId(id);
+            setPendingActionId(null);
+          }}
+          pendingActionId={pendingActionId}
+        />
+      ) : (
+        <>
+          <ViewToggle activeTab={overviewTab} onChange={setOverviewTab} toggleRef={toggleRef} />
+          {overviewTab === "focusAreas" ? (
+            <>
+              <p className="care-plan-intro">
+                Your care plan is organised around four focus areas. Each plan opens into Dr. Farheen&apos;s note and the actions to start with.
+              </p>
+              <FocusAreaGrid
+                onOpenArea={(id) => {
+                  setActiveFocusAreaId(id);
+                  setPendingActionId(null);
+                }}
+              />
+            </>
+          ) : (
+            <AllActionsIndex
+              groupedActions={groupedActions}
+              onOpenAction={(action) => {
+                setActiveFocusAreaId(action.focusAreaId);
+                setPendingActionId(action.id);
+              }}
+            />
+          )}
+        </>
       )}
     </section>
   );

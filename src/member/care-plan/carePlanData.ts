@@ -3,602 +3,273 @@ import chiaYoghurtImage from "../../../assets/care-plan/chia-yoghurt.png";
 import heartHealthFoodImage from "../../../assets/care-plan/heart-health-food.png";
 import sleepBedroomImage from "../../../assets/care-plan/sleep-bedroom.png";
 import sunlitPlantImage from "../../../assets/care-plan/sunlit-plant.png";
-// Placeholder crops reused from other sections until dedicated protocol photography exists.
+import farheenAvatarImage from "../../../assets/dashboard/doctors/farheen-nafisa-avatar.png";
+// Placeholder crops reused until dedicated action photography exists.
 import heartMetabolicImage from "../../../assets/biomarkers/heart-metabolic.jpg";
 import agingStressImage from "../../../assets/biomarkers/aging-stress.jpg";
 import nutrientsVitaminsImage from "../../../assets/biomarkers/nutrients-vitamins.jpg";
 import lifestyleImpactsImage from "../../../assets/future-health/lifestyle-impacts.png";
 import morningMountainImage from "../../../assets/genh-hero-mountain.jpg";
 
-export type MarkerStatus = "at_risk" | "needs_attention";
+export type LifestyleCategory = "Nutrition" | "Exercise" | "Supplements" | "Sleep";
+export type FocusAreaId = "glucose-stability" | "cholesterol-support" | "vitamin-d-repletion" | "recovery-rhythm";
 
-export type MarkerChip = {
-  label: string;
-  value: string;
-  direction: "up" | "down";
-  status: MarkerStatus;
-};
-
-export type ProtocolCategory = "Nutrition" | "Movement" | "Supplement" | "Sleep";
-
-// basedOn tags the intake answer a line is grounded in, so this can later be
-// generated from IntakeState (doctor-review-brief/types.ts) instead of mocks.
-export type MadeForYouLine = {
-  text: string;
-  basedOn: string;
-};
-
-export type ProtocolOption = {
-  label: string;
-  imageUrl: string;
-};
-
-export type Protocol = {
+export type CarePlanAction = {
   id: string;
   title: string;
-  category: ProtocolCategory;
-  imageUrl: string;
-  startHere?: boolean;
-  markerChips: MarkerChip[];
-  personalLead: string;
-  whyInPlan: string;
-  whatToDo: {
-    intro: string;
-    options: ProtocolOption[];
-    guidance: string;
-    alternatives: string[];
-  };
-  madeForYou: MadeForYouLine[];
-  benefits: { title: string; detail: string }[];
-  watchOuts: string[];
-  reviewTiming: string;
+  lifestyleCategory: LifestyleCategory;
+  focusAreaId: FocusAreaId;
+  thumbnailUrl: string;
+  instruction: string;
+  rationale: string;
+  moreGuidance: string;
 };
-
-export type FocusAreaPriority = "Priority" | "Quick win" | "Support";
 
 export type FocusArea = {
-  id: string;
+  id: FocusAreaId;
   title: string;
-  priority: FocusAreaPriority;
+  overviewImageUrl: string;
+  detailImageUrl: string;
   summary: string;
-  protocols: Protocol[];
+  doctorNote: {
+    doctorName: string;
+    avatarUrl: string;
+    note: string;
+  };
+  actions: CarePlanAction[];
 };
 
-const hba1cChip: MarkerChip = { label: "HbA1c", value: "5.8%", direction: "up", status: "at_risk" };
-const glucoseChip: MarkerChip = { label: "Fasting glucose", value: "101", direction: "up", status: "at_risk" };
-const apoBChip: MarkerChip = { label: "ApoB", value: "112", direction: "up", status: "needs_attention" };
-const ldlChip: MarkerChip = { label: "LDL-C", value: "142", direction: "up", status: "at_risk" };
-const vitaminDChip: MarkerChip = { label: "Vitamin D", value: "22", direction: "down", status: "at_risk" };
-const sleepChip: MarkerChip = { label: "Sleep avg", value: "6h 18m", direction: "down", status: "at_risk" };
-
-export const planMeta = {
-  patientFirstName: "Mark",
-  titleLead: "Mark's ",
-  titleEmphasis: "90-day",
-  titleTail: " plan",
-  subtitle:
-    "Four focus areas, ten protocols — built from your March results and what you told us about your week.",
-  reviewedBy: "Dr. Farheen Nafisa",
-  nextReviewDate: "20 Aug 2025",
-  startThisWeekCount: 4,
+const doctor = {
+  doctorName: "Dr. Farheen Nafisa",
+  avatarUrl: farheenAvatarImage,
 };
+
+export const lifestyleCategoryOrder: LifestyleCategory[] = ["Nutrition", "Exercise", "Supplements", "Sleep"];
 
 export const focusAreas: FocusArea[] = [
   {
     id: "glucose-stability",
     title: "Glucose stability",
-    priority: "Priority",
+    overviewImageUrl: breakfastBowlImage,
+    detailImageUrl: breakfastBowlImage,
     summary:
-      "Your HbA1c and morning glucose are running a little higher than we'd like. Steadier meals and light movement bring both down.",
-    protocols: [
+      "Steadier meals and light movement to reduce glucose spikes and support Mark's HbA1c and fasting glucose trend.",
+    doctorNote: {
+      ...doctor,
+      note:
+        "Mark, your glucose markers suggest the first move is not a restrictive diet. I want your breakfasts, drinks and largest meal to become steadier, because those are the moments most likely to move your HbA1c over the next 90 days.",
+    },
+    actions: [
       {
         id: "protein-first-breakfast",
         title: "Make breakfast protein-first",
-        category: "Nutrition",
-        imageUrl: breakfastBowlImage,
-        startHere: true,
-        markerChips: [hba1cChip, glucoseChip],
-        personalLead:
-          "Your usual kopitiam breakfast — kaya toast and sweetened kopi — is mostly refined carbohydrate, which sets up a sharp glucose rise first thing in the morning.",
-        whyInPlan:
-          "Your HbA1c of 5.8% and fasting glucose of 101 mg/dL sit just above the optimal range. Starting the day with protein slows how quickly glucose enters your blood, which steadies the whole morning and gradually pulls both markers down.",
-        whatToDo: {
-          intro: "Build breakfast around a protein anchor before any starch:",
-          options: [
-            { label: "Half-boiled eggs", imageUrl: breakfastBowlImage },
-            { label: "Greek yoghurt", imageUrl: chiaYoghurtImage },
-            { label: "Tofu or tempeh", imageUrl: heartHealthFoodImage },
-            { label: "Protein shake", imageUrl: nutrientsVitaminsImage },
-          ],
-          guidance: "Start with weekdays only — weekends can stay relaxed while the habit settles.",
-          alternatives: [
-            "Swap kaya toast for a wholemeal egg sandwich",
-            "On roti canai mornings, add dhal and eggs — and skip the second roti",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "You mentioned breakfast is usually eaten out — two half-boiled eggs with kopi kurang manis is an easy kopitiam order that fits this as-is.",
-            basedOn: "From your intake · meals",
-          },
-          {
-            text: "You're after steadier energy through the morning. Protein at breakfast is the single biggest lever for that.",
-            basedOn: "From your intake · goals",
-          },
-        ],
-        benefits: [
-          {
-            title: "Steadier glucose",
-            detail: "Protein-first meals blunt the post-meal spike that shows up in your HbA1c.",
-          },
-          {
-            title: "Fewer mid-morning dips",
-            detail: "A flatter curve means fewer energy crashes and less snacking before lunch.",
-          },
-        ],
-        watchOuts: [
-          "No need to cut carbs entirely — the order and proportion matter more than elimination.",
-        ],
-        reviewTiming: "Retest HbA1c and fasting glucose at your 12-week review.",
+        lifestyleCategory: "Nutrition",
+        focusAreaId: "glucose-stability",
+        thumbnailUrl: breakfastBowlImage,
+        instruction: "Start weekdays with a protein anchor before toast, noodles or rice.",
+        rationale: "Protein first slows the glucose rise that shows up in your HbA1c and morning glucose.",
+        moreGuidance:
+          "Keep this practical: half-boiled eggs, Greek yoghurt, tofu, tempeh or a simple protein shake all count. If breakfast is out, order the protein first and treat starch as the side rather than the base.",
       },
       {
-        id: "post-meal-walk",
-        title: "Walk 10 minutes after your largest meal",
-        category: "Movement",
-        imageUrl: lifestyleImpactsImage,
-        markerChips: [glucoseChip],
-        personalLead:
-          "Most of your days are desk-based, and your biggest meal is usually lunch out with colleagues — followed by a long sit.",
-        whyInPlan:
-          "Moving muscles clear glucose from the blood directly, without needing insulin. A short walk after your largest meal flattens the spike that your fasting glucose of 101 mg/dL suggests is happening regularly.",
-        whatToDo: {
-          intro: "Within 30 minutes of finishing your largest meal:",
-          options: [
-            { label: "Walk a block loop", imageUrl: lifestyleImpactsImage },
-            { label: "Take the stairs back", imageUrl: agingStressImage },
-            { label: "Walk to the farther kopi spot", imageUrl: heartMetabolicImage },
-          ],
-          guidance: "Even 8 minutes counts — consistency beats distance.",
-          alternatives: [
-            "Ten bodyweight squats at your desk if you truly can't step out",
-            "Move the walk to after dinner on days lunch is rushed",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "Since lunch is your biggest meal on workdays, that's the walk that matters — a covered walkway or mall loop keeps it doable in the midday heat.",
-            basedOn: "From your intake · meals",
-          },
-        ],
-        benefits: [
-          {
-            title: "Immediate effect",
-            detail: "Post-meal glucose drops on day one — this is the fastest-acting protocol in your plan.",
-          },
-          {
-            title: "No equipment or schedule",
-            detail: "It attaches to a meal you already eat, so there's nothing new to remember.",
-          },
-        ],
-        watchOuts: [
-          "Don't turn it into a workout — a stroll is enough, and keeping it easy is what keeps it daily.",
-        ],
-        reviewTiming: "Reviewed alongside HbA1c and fasting glucose at the 12-week retest.",
+        id: "pair-carbs",
+        title: "Pair carbs with protein or fibre",
+        lifestyleCategory: "Nutrition",
+        focusAreaId: "glucose-stability",
+        thumbnailUrl: chiaYoghurtImage,
+        instruction: "When you eat rice, noodles or bread, add protein and a fibre side in the same meal.",
+        rationale: "Mixed meals digest more slowly, which helps flatten post-meal glucose.",
+        moreGuidance:
+          "At hawker meals, this can be as simple as extra egg, tofu, fish, chicken, dhal, vegetables or ulam. You do not need to remove carbs; the pairing is the intervention.",
       },
       {
         id: "sweet-drinks",
-        title: "Cut sweet drinks to three a week",
-        category: "Nutrition",
-        imageUrl: heartMetabolicImage,
-        markerChips: [hba1cChip],
-        personalLead:
-          "You told us you have a sweet tooth — right now that mostly shows up as sweetened kopi, teh tarik and the occasional bubble tea, most days of the week.",
-        whyInPlan:
-          "Liquid sugar hits your blood faster than anything you eat, and it's the most direct contributor to the pattern in your HbA1c. Capping sweet drinks moves this marker without touching your meals.",
-        whatToDo: {
-          intro: "Keep three sweet drinks a week for the ones you enjoy most, and default to:",
-          options: [
-            { label: "Kopi kurang manis", imageUrl: breakfastBowlImage },
-            { label: "Teh o kosong", imageUrl: sunlitPlantImage },
-            { label: "Sparkling water", imageUrl: nutrientsVitaminsImage },
-          ],
-          guidance: "Step down gradually — kurang manis first, kosong later. Taste adjusts in about two weeks.",
-          alternatives: [
-            "Halve the syrup in bubble tea orders (25% sugar)",
-            "Swap the afternoon sweet drink for fruit — the fibre changes how the sugar lands",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "Rather than cutting sweetness cold turkey, this keeps three drinks a week for the ones you actually enjoy — a cap, not a ban.",
-            basedOn: "From your intake · sweet tooth",
-          },
-        ],
-        benefits: [
-          {
-            title: "Direct HbA1c lever",
-            detail: "Sweet drinks are the single largest removable source of glucose load in your week.",
-          },
-          {
-            title: "Energy stability",
-            detail: "Fewer sugar peaks means fewer afternoon slumps — this feeds your energy goal.",
-          },
-        ],
-        watchOuts: [
-          "Watch sugar creeping back in through bottled 'healthier' drinks — many carry as much as teh tarik.",
-        ],
-        reviewTiming: "Reflected in HbA1c at the 12-week retest.",
+        title: "Limit sweet drinks to three a week",
+        lifestyleCategory: "Nutrition",
+        focusAreaId: "glucose-stability",
+        thumbnailUrl: heartMetabolicImage,
+        instruction: "Keep three sweet drinks for the week and make the rest kurang manis or kosong.",
+        rationale: "Liquid sugar is the fastest glucose load and is a direct lever for HbA1c.",
+        moreGuidance:
+          "Choose the three drinks you actually enjoy and let the automatic ones go. Step down gradually if needed: normal, then kurang manis, then kosong or sparkling water.",
+      },
+      {
+        id: "walk-after-largest-meal",
+        title: "Walk 10 minutes after your largest meal",
+        lifestyleCategory: "Exercise",
+        focusAreaId: "glucose-stability",
+        thumbnailUrl: lifestyleImpactsImage,
+        instruction: "Within 30 minutes of your largest meal, walk easily for 10 minutes.",
+        rationale: "Working muscle clears glucose from the blood quickly, even without a workout.",
+        moreGuidance:
+          "Make this intentionally easy. A covered walkway, mall loop, stair loop or farther coffee stop all count. If lunch is rushed, do it after dinner instead.",
       },
     ],
   },
   {
-    id: "cholesterol-transport",
-    title: "Cholesterol transport",
-    priority: "Priority",
+    id: "cholesterol-support",
+    title: "Cholesterol support",
+    overviewImageUrl: heartHealthFoodImage,
+    detailImageUrl: heartHealthFoodImage,
     summary:
-      "ApoB and LDL-C suggest more cholesterol-carrying particles circulating than we'd like. Fibre, food swaps and strength work all move this.",
-    protocols: [
+      "Food swaps that increase soluble fibre and improve fat quality to support ApoB and LDL-C.",
+    doctorNote: {
+      ...doctor,
+      note:
+        "Mark, your ApoB and LDL-C point to cholesterol transport as a real priority. I want the plan to feel food-based and repeatable first: more soluble fibre, better fat defaults and less refined carbohydrate load.",
+    },
+    actions: [
       {
-        id: "fibre-30g",
-        title: "Reach 30g of fibre daily",
-        category: "Nutrition",
-        imageUrl: chiaYoghurtImage,
-        startHere: true,
-        markerChips: [apoBChip, ldlChip],
-        personalLead:
-          "You're getting fibre in one meal or less most days — mainly the vegetables in mixed rice and the occasional fruit after dinner.",
-        whyInPlan:
-          "Soluble fibre binds cholesterol in the gut so less of it is reabsorbed. With ApoB at 112 mg/dL and LDL-C at 142 mg/dL, consistent fibre is the first-line food lever — it typically brings LDL-C down 5–10% on its own.",
-        whatToDo: {
-          intro: "Stack small additions rather than overhauling meals:",
-          options: [
-            { label: "2 tbsp chia in yoghurt", imageUrl: chiaYoghurtImage },
-            { label: "Overnight oats", imageUrl: breakfastBowlImage },
-            { label: "Extra veg at mixed rice", imageUrl: heartHealthFoodImage },
-            { label: "Ulam with dinner", imageUrl: sunlitPlantImage },
-          ],
-          guidance: "Build up over a week or two, and drink more water as you go.",
-          alternatives: [
-            "Psyllium husk before dinner",
-            "Dhal or beans at lunch three times a week",
-            "Swap white rice for brown at one meal a day",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "Most of your lunches are hawker meals — the easiest add is one extra vegetable dish at mixed rice, or dhal with your roti instead of curry alone.",
-            basedOn: "From your intake · meals",
-          },
-          {
-            text: "You said weekday breakfasts at home are doable — chia stirred into yoghurt takes under a minute and covers a third of the target.",
-            basedOn: "From your intake · routine",
-          },
-        ],
-        benefits: [
-          {
-            title: "Improve cholesterol profile",
-            detail: "Soluble fibre lowers LDL-C and ApoB by reducing cholesterol reabsorption in the gut.",
-          },
-          {
-            title: "Steadier blood sugar",
-            detail: "Fibre slows digestion, which also supports your glucose stability work.",
-          },
-          {
-            title: "Fuller for longer",
-            detail: "Higher-fibre meals reduce grazing between meals without any counting.",
-          },
-        ],
-        watchOuts: [
-          "Increase water as you increase fibre — without it, constipation and bloating are common.",
-          "If you feel bloated, hold your current amount for a few days before stepping up again.",
-        ],
-        reviewTiming: "Retest ApoB and LDL-C at your 12-week review.",
+        id: "soluble-fibre",
+        title: "Add soluble fibre daily",
+        lifestyleCategory: "Nutrition",
+        focusAreaId: "cholesterol-support",
+        thumbnailUrl: chiaYoghurtImage,
+        instruction: "Add one soluble-fibre anchor daily: chia, oats, psyllium, lentils or beans.",
+        rationale: "Soluble fibre binds cholesterol in the gut, supporting lower LDL-C and ApoB.",
+        moreGuidance:
+          "Start with 1 tablespoon of chia or psyllium, or one serving of oats, dhal, lentils or beans. Increase water as fibre rises so the habit feels good, not bloating-heavy.",
       },
       {
-        id: "fried-meals",
-        title: "Keep deep-fried meals to twice a week",
-        category: "Nutrition",
-        imageUrl: heartHealthFoodImage,
-        markerChips: [ldlChip],
-        personalLead:
-          "Eating out most days means fried items land on your plate more often than you'd guess — ayam goreng, fried noodles, the keropok on the side.",
-        whyInPlan:
-          "Repeatedly-heated frying oils push LDL-C in the wrong direction, and fried meals tend to crowd out the fish and vegetables that would help. A twice-a-week cap works on your LDL-C of 142 mg/dL from the other side of the fibre protocol.",
-        whatToDo: {
-          intro: "Default to grilled, steamed or soup versions when ordering:",
-          options: [
-            { label: "Chicken rice, roasted", imageUrl: heartHealthFoodImage },
-            { label: "Fish soup noodles", imageUrl: breakfastBowlImage },
-            { label: "Ikan bakar", imageUrl: heartMetabolicImage },
-          ],
-          guidance: "Decide which two fried meals you'll keep at the start of the week — it makes every other order automatic.",
-          alternatives: [
-            "Same dish, different stall: many hawker dishes exist in soup and fried forms",
-            "At economy rice, count battered items as your fried pick for the day",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "This isn't a no-fried rule — two a week keeps your nasi lemak Sunday intact. Choose your favourites and let the rest go.",
-            basedOn: "From your intake · meals",
-          },
-        ],
-        benefits: [
-          {
-            title: "Lower LDL-C load",
-            detail: "Cutting reheated frying oils removes a direct driver of your cholesterol markers.",
-          },
-          {
-            title: "Better meals by default",
-            detail: "Soup and grilled versions carry more protein and vegetables for the same price.",
-          },
-        ],
-        watchOuts: [
-          "Fried food eaten at home in fresh oil behaves differently — this cap is mainly about stall-fried food.",
-        ],
-        reviewTiming: "Retest ApoB and LDL-C at your 12-week review.",
+        id: "upgrade-fats",
+        title: "Upgrade your default fats",
+        lifestyleCategory: "Nutrition",
+        focusAreaId: "cholesterol-support",
+        thumbnailUrl: heartHealthFoodImage,
+        instruction: "Choose avocado, olive oil, nuts, seeds or fish more often than fried sides.",
+        rationale: "Better fat quality helps shift LDL-C without making meals feel clinical.",
+        moreGuidance:
+          "This is a default-setting change. Keep favourite fried meals occasionally, but let grilled, soup-based, roasted or unsaturated-fat options be the normal choice.",
       },
       {
-        id: "second-strength-session",
-        title: "Add a second strength session weekly",
-        category: "Movement",
-        imageUrl: agingStressImage,
-        markerChips: [apoBChip],
-        personalLead:
-          "You're already in the gym once a week alongside badminton — a second short session is the cheapest upgrade available to you.",
-        whyInPlan:
-          "Muscle is where most of your glucose gets stored and burned, and regular resistance work improves the lipid picture your ApoB of 112 mg/dL describes. Doubling a habit you already have is far more reliable than starting a new one.",
-        whatToDo: {
-          intro: "Repeat your current session with one change:",
-          options: [
-            { label: "Same gym, second slot", imageUrl: agingStressImage },
-            { label: "40-min full body", imageUrl: lifestyleImpactsImage },
-            { label: "Home dumbbell circuit", imageUrl: heartMetabolicImage },
-          ],
-          guidance: "Anchor it to a fixed weekday evening — the slot matters more than the program.",
-          alternatives: [
-            "A 25-minute bodyweight circuit at home on busy weeks",
-            "Turn one badminton night into badminton plus 20 minutes of weights",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "You already train on Wednesdays — we're suggesting Saturday morning before badminton, since that block is usually free in your week.",
-            basedOn: "From your intake · exercise",
-          },
-        ],
-        benefits: [
-          {
-            title: "Lipid and glucose gains",
-            detail: "Twice-weekly resistance training measurably improves ApoB and insulin sensitivity.",
-          },
-          {
-            title: "Long-term resilience",
-            detail: "Muscle mass is one of the strongest predictors of healthy ageing — this compounds.",
-          },
-        ],
-        watchOuts: [
-          "Keep it to 40 minutes if time is the constraint — two short sessions beat one long one you skip.",
-        ],
-        reviewTiming: "Reviewed at 12 weeks alongside your lipid retest.",
+        id: "whole-food-carbs",
+        title: "Choose whole-food carbs once daily",
+        lifestyleCategory: "Nutrition",
+        focusAreaId: "cholesterol-support",
+        thumbnailUrl: heartHealthFoodImage,
+        instruction: "Swap one refined-carb serving for oats, barley, brown rice, beans or lentils.",
+        rationale: "Less refined carbohydrate load supports both ApoB and glucose stability.",
+        moreGuidance:
+          "Pick one predictable meal, not every meal. Breakfast oats, dhal at lunch, brown rice at dinner or beans in a bowl are all enough to start.",
+      },
+      {
+        id: "fish-meal",
+        title: "Add one oily fish meal weekly",
+        lifestyleCategory: "Nutrition",
+        focusAreaId: "cholesterol-support",
+        thumbnailUrl: heartMetabolicImage,
+        instruction: "Eat one serving of salmon, sardines, mackerel or ikan kembung each week.",
+        rationale: "Oily fish supports cardiometabolic health and improves the overall fat profile of the week.",
+        moreGuidance:
+          "Use local options where possible. Grilled ikan kembung or sardines are useful, accessible choices. Keep the preparation simple rather than deep-fried.",
       },
     ],
   },
   {
     id: "vitamin-d-repletion",
     title: "Vitamin D repletion",
-    priority: "Quick win",
+    overviewImageUrl: sunlitPlantImage,
+    detailImageUrl: sunlitPlantImage,
     summary:
-      "Your vitamin D is below the optimal range. This is the fastest marker on your panel to fix.",
-    protocols: [
+      "A simple repletion routine to correct low vitamin D and support immunity, energy and recovery.",
+    doctorNote: {
+      ...doctor,
+      note:
+        "Mark, vitamin D is the quickest win in this plan. I want you to make the dose visible and boringly consistent, then we can reassess your level after the plan period.",
+    },
+    actions: [
       {
-        id: "vitamin-d-supplement",
-        title: "Take 2,000 IU vitamin D with breakfast",
-        category: "Supplement",
-        imageUrl: sunlitPlantImage,
-        startHere: true,
-        markerChips: [vitaminDChip],
-        personalLead:
-          "You're not taking any supplements at the moment, and at 22 ng/mL your vitamin D won't correct through food and incidental sun alone.",
-        whyInPlan:
-          "Vitamin D below 30 ng/mL is linked to poorer immune resilience, mood and recovery. A daily 2,000 IU dose reliably lifts levels like yours into the optimal range within about three months — it's the closest thing to a sure win on your panel.",
-        whatToDo: {
-          intro: "One softgel, every morning, with food:",
-          options: [
-            { label: "With your morning kopi", imageUrl: breakfastBowlImage },
-            { label: "Bottle by the kettle", imageUrl: sunlitPlantImage },
-          ],
-          guidance: "Vitamin D is fat-soluble — take it with a meal that has some fat, which your usual breakfast covers.",
-          alternatives: [
-            "A weekly higher-dose option exists if daily doesn't stick — raise it at your review",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "Since this is your first supplement, we've kept it to a single morning dose — no stack to manage.",
-            basedOn: "From your intake · supplements",
-          },
-          {
-            text: "Anchor it to your morning kopi order or the kettle at home, so it rides on a habit you never skip.",
-            basedOn: "From your intake · routine",
-          },
-        ],
-        benefits: [
-          {
-            title: "Immune resilience",
-            detail: "Adequate vitamin D supports the immune regulation your panel flagged as worth protecting.",
-          },
-          {
-            title: "Mood and energy",
-            detail: "Correcting a low level often shows up as better baseline energy within weeks.",
-          },
-        ],
-        watchOuts: [
-          "Don't double up on days you forget — just continue the next morning.",
-        ],
-        reviewTiming: "Recheck vitamin D at the 12-week review; the dose may step down to maintenance once you're above 40 ng/mL.",
+        id: "vitamin-d-breakfast",
+        title: "Take vitamin D with breakfast",
+        lifestyleCategory: "Supplements",
+        focusAreaId: "vitamin-d-repletion",
+        thumbnailUrl: breakfastBowlImage,
+        instruction: "Take vitamin D with your first meal each day.",
+        rationale: "Daily consistency is the main driver of repletion from a low baseline.",
+        moreGuidance:
+          "Attach it to something you already do: breakfast, morning kopi, or the kettle. Do not double up if you miss a day; just restart the next morning.",
       },
       {
-        id: "morning-daylight",
-        title: "Get 15 minutes of morning daylight",
-        category: "Movement",
-        imageUrl: morningMountainImage,
-        markerChips: [vitaminDChip, sleepChip],
-        personalLead:
-          "Your weekdays run car to office to car — most days you're not outdoors before evening.",
-        whyInPlan:
-          "Morning light does double duty for you: skin exposure supports the vitamin D you're repleting, and light in the first hours after waking anchors your body clock — which is exactly what your short weekday sleep needs.",
-        whatToDo: {
-          intro: "Get outside within a couple of hours of waking:",
-          options: [
-            { label: "Park farther, walk in", imageUrl: morningMountainImage },
-            { label: "Kopi at an outdoor table", imageUrl: breakfastBowlImage },
-            { label: "Balcony breakfast", imageUrl: sunlitPlantImage },
-          ],
-          guidance: "Forearms in daylight, no sunglasses needed for the clock effect — a bright sky works even under cloud.",
-          alternatives: [
-            "Fold it into your post-lunch walk on mornings that are truly back-to-back",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "The simplest version for your commute: park at the far end of the lot and take the uncovered route in. That alone is most of the 15 minutes.",
-            basedOn: "From your intake · routine",
-          },
-        ],
-        benefits: [
-          {
-            title: "Supports repletion",
-            detail: "Regular sun exposure works alongside your supplement to lift vitamin D.",
-          },
-          {
-            title: "Anchors your body clock",
-            detail: "Morning light makes the 10:45pm wind-down in your sleep protocol easier to feel.",
-          },
-        ],
-        watchOuts: [
-          "Malaysian mid-morning sun gets strong — 15 minutes is the target, not an hour.",
-        ],
-        reviewTiming: "Reviewed with your vitamin D recheck at 12 weeks.",
+        id: "fat-containing-meal",
+        title: "Pair the dose with fat",
+        lifestyleCategory: "Supplements",
+        focusAreaId: "vitamin-d-repletion",
+        thumbnailUrl: heartHealthFoodImage,
+        instruction: "Take the dose with a meal containing eggs, yoghurt, avocado, nuts or olive oil.",
+        rationale: "Vitamin D is fat-soluble, so absorption is better with a fat-containing meal.",
+        moreGuidance:
+          "This does not require a heavy meal. A few nuts, yoghurt, egg or avocado is enough. If breakfast is very light, move the dose to lunch.",
+      },
+      {
+        id: "keep-visible",
+        title: "Keep the supplement visible",
+        lifestyleCategory: "Supplements",
+        focusAreaId: "vitamin-d-repletion",
+        thumbnailUrl: nutrientsVitaminsImage,
+        instruction: "Place the bottle where your morning routine already happens.",
+        rationale: "Visibility reduces missed doses more reliably than motivation.",
+        moreGuidance:
+          "Good locations are beside the kettle, coffee beans, toothbrush or breakfast bowl. The goal is to see it before you need to remember it.",
       },
     ],
   },
   {
-    id: "recovery-consistency",
-    title: "Recovery consistency",
-    priority: "Support",
+    id: "recovery-rhythm",
+    title: "Recovery rhythm",
+    overviewImageUrl: sleepBedroomImage,
+    detailImageUrl: sleepBedroomImage,
     summary:
-      "Weekday sleep is averaging 6h 18m — enough to blunt recovery, glucose control and next-day energy.",
-    protocols: [
+      "A steadier evening and morning rhythm to lift weekday sleep duration and recovery consistency.",
+    doctorNote: {
+      ...doctor,
+      note:
+        "Mark, sleep is not separate from the cardiometabolic work. Short weekday sleep can make glucose control and food choices harder the next day, so this focus area is here to make the rest of the plan easier.",
+    },
+    actions: [
       {
-        id: "wind-down",
-        title: "Protect a 10:45pm wind-down",
-        category: "Sleep",
-        imageUrl: sleepBedroomImage,
-        startHere: true,
-        markerChips: [sleepChip],
-        personalLead:
-          "You told us work often follows you home — most nights the laptop closes after 11pm and sleep lands around midnight.",
-        whyInPlan:
-          "At 6h 18m on weekdays, sleep is quietly working against everything else in this plan — short sleep worsens insulin sensitivity and raises cravings the next day. A protected wind-down is the intervention; the extra sleep is the result.",
-        whatToDo: {
-          intro: "At 10:45pm, trigger the same short sequence:",
-          options: [
-            { label: "Dim the living room", imageUrl: sleepBedroomImage },
-            { label: "Phone on the shelf", imageUrl: agingStressImage },
-            { label: "Ten pages of a book", imageUrl: sunlitPlantImage },
-          ],
-          guidance: "The cue matters more than the bedtime — same trigger nightly, weekends included where possible.",
-          alternatives: [
-            "If work truly can't stop, switch to paper for the last task of the night",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "We set 10:45pm — not earlier — because your wake time is 6:45am, and this gets you past 7 hours without a drastic shift from where you are now.",
-            basedOn: "From your intake · sleep",
-          },
-        ],
-        benefits: [
-          {
-            title: "Recovery first",
-            detail: "An extra 45 minutes of sleep improves training recovery and next-day focus quickly.",
-          },
-          {
-            title: "Helps your glucose work",
-            detail: "Sleep debt raises next-day glucose responses — this protocol supports that whole focus area.",
-          },
-        ],
-        watchOuts: [
-          "Don't chase lost sleep with weekend lie-ins beyond an hour — it shifts your rhythm back.",
-        ],
-        reviewTiming: "Review your sleep average at the 12-week consult — aim for 7h+ on weekdays.",
+        id: "wind-down-cue",
+        title: "Set a 10:45 pm wind-down cue",
+        lifestyleCategory: "Sleep",
+        focusAreaId: "recovery-rhythm",
+        thumbnailUrl: sleepBedroomImage,
+        instruction: "At 10:45 pm, dim lights and move work apps out of reach.",
+        rationale: "A consistent cue protects the extra sleep your weekday average needs.",
+        moreGuidance:
+          "Keep the cue small: dim the living room, put the phone on a shelf, close the laptop and read a few pages. The repeatable sequence matters more than perfection.",
+      },
+      {
+        id: "reduce-bright-light",
+        title: "Reduce bright light after 10 pm",
+        lifestyleCategory: "Sleep",
+        focusAreaId: "recovery-rhythm",
+        thumbnailUrl: sleepBedroomImage,
+        instruction: "Switch to warmer, lower light in the last hour before bed.",
+        rationale: "Lower light makes it easier for your body clock to shift into sleep mode.",
+        moreGuidance:
+          "Use lamps instead of overhead lights, lower phone brightness and avoid work dashboards late. This is a recovery cue, not a productivity rule.",
+      },
+      {
+        id: "consistent-wake-time",
+        title: "Keep wake time within one hour",
+        lifestyleCategory: "Sleep",
+        focusAreaId: "recovery-rhythm",
+        thumbnailUrl: morningMountainImage,
+        instruction: "Keep weekend wake time within one hour of weekdays.",
+        rationale: "A steadier wake time anchors sleep rhythm and makes bedtime easier.",
+        moreGuidance:
+          "If you need more recovery, use a short nap rather than a long lie-in. The aim is rhythm, not rigidity.",
       },
       {
         id: "caffeine-boundary",
-        title: "Set a 2pm caffeine boundary",
-        category: "Sleep",
-        imageUrl: nutrientsVitaminsImage,
-        markerChips: [sleepChip],
-        personalLead:
-          "Your second or third kopi usually lands mid-afternoon — and with caffeine's six-hour half-life, half of it is still circulating at 9pm.",
-        whyInPlan:
-          "Late caffeine doesn't always stop you falling asleep, but it reliably shallows the sleep you get. With your weekday average at 6h 18m, protecting sleep quality matters as much as adding minutes.",
-        whatToDo: {
-          intro: "Caffeine before 2pm, then switch to:",
-          options: [
-            { label: "Kopi o kosong at noon", imageUrl: breakfastBowlImage },
-            { label: "Sparkling water", imageUrl: nutrientsVitaminsImage },
-            { label: "Decaf or barley", imageUrl: sunlitPlantImage },
-          ],
-          guidance: "Keep your total the same at first — this is about timing, not quitting kopi.",
-          alternatives: [
-            "A 10-minute walk beats the 4pm coffee for shaking off the afternoon slump",
-          ],
-        },
-        madeForYou: [
-          {
-            text: "Your afternoon kopi is partly the sweet habit too — a kopi o kosong at noon and sparkling water later covers this and your sweet-drinks cap in one move.",
-            basedOn: "From your intake · caffeine",
-          },
-        ],
-        benefits: [
-          {
-            title: "Deeper sleep, same bedtime",
-            detail: "Clearing caffeine by night improves sleep depth even before the wind-down adds minutes.",
-          },
-          {
-            title: "Steadier afternoons",
-            detail: "Breaking the late-caffeine cycle usually reduces the slump that prompted it.",
-          },
-        ],
-        watchOuts: [
-          "Expect three or four groggy afternoons in week one — it passes.",
-        ],
-        reviewTiming: "Reviewed with your sleep average at the 12-week consult.",
+        title: "Set a 2 pm caffeine boundary",
+        lifestyleCategory: "Sleep",
+        focusAreaId: "recovery-rhythm",
+        thumbnailUrl: agingStressImage,
+        instruction: "Keep caffeine before 2 pm, then switch to non-caffeinated drinks.",
+        rationale: "Late caffeine can reduce sleep depth even when you still fall asleep.",
+        moreGuidance:
+          "Keep your morning coffee. This is mainly about the afternoon cup. If the 4 pm slump hits, try a short walk or sparkling water first.",
       },
     ],
   },
 ];
-
-export const alreadyDoing: MadeForYouLine[] = [
-  {
-    text: "Badminton twice a week — keep it exactly as it is.",
-    basedOn: "From your intake · exercise",
-  },
-  {
-    text: "Mostly home-cooked dinners — already doing quiet work for your cholesterol.",
-    basedOn: "From your intake · meals",
-  },
-  {
-    text: "No smoking, alcohol only occasionally — two of the biggest levers already covered.",
-    basedOn: "From your intake · lifestyle",
-  },
-];
-
-export const reviewFooter = {
-  title: "Your 12-week review",
-  body: "Retest ApoB, LDL-C, HbA1c and vitamin D · 20 Aug 2025",
-  note: "Dr. Farheen will adjust doses and targets based on how these land.",
-  cta: "Message your care team",
-};
