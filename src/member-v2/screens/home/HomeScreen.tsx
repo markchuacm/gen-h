@@ -24,13 +24,6 @@ type HomeScreenProps = {
   onStartProfile: () => void;
 };
 
-function splitGreeting(greeting: string) {
-  // Set the member's name in italic terracotta, landing-heading style.
-  const lastComma = greeting.lastIndexOf(", ");
-  if (lastComma === -1) return { before: greeting, em: "" };
-  return { before: greeting.slice(0, lastComma + 2), em: greeting.slice(lastComma + 2) };
-}
-
 function JourneyRail({ steps }: { steps: Step[] }) {
   return (
     <ol className="home-rail" aria-label="Your Gen-H journey">
@@ -292,7 +285,6 @@ function DetailDialog({
 }
 
 function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
-  const greeting = splitGreeting(config.greeting);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const handleHeroAction = (action: HeroAction) => {
@@ -305,10 +297,7 @@ function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
       <header className="home-head">
         <span className="p-eyebrow">{config.stageLabel}</span>
         <div className="home-title-row">
-          <h1 className="p-h1">
-            {greeting.before}
-            {greeting.em && <em>{greeting.em}</em>}
-          </h1>
+          <h1 className="p-h1">{config.greeting}</h1>
           <JourneyRail steps={config.steps} />
         </div>
       </header>

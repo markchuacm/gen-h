@@ -840,14 +840,14 @@ export default function ResultsDashboard() {
 
   return (
     <section className="results-dashboard" aria-labelledby="results-dashboard-title">
+      <header className="p-heading-row results-heading">
+        <span className="p-eyebrow">YOUR RESULTS</span>
+        <h1 className="p-h1" id="results-dashboard-title">
+          Core <em>biomarker</em> overviews
+        </h1>
+      </header>
+
       <div className="results-overview-card">
-        <div className="results-overview-copy">
-          <span className="results-kicker">Sample patient results</span>
-          <h2 id="results-dashboard-title">Your Core biomarker overview</h2>
-          <p>
-            A calm view of where your markers sit today, grouped by health area and ready for review with your doctor.
-          </p>
-        </div>
         <div className="overview-total">
           <strong>{measured}</strong>
           <span>of {total} markers measured</span>

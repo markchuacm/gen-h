@@ -171,7 +171,9 @@
 }
 
 .p-page.dashboard-content--results {
+  height: 100dvh;
   overflow: hidden;
+  padding-bottom: 0;
 }
 
 .p-results-heading {
