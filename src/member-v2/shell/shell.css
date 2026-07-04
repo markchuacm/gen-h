@@ -74,18 +74,6 @@
   scale: 0.96;
 }
 
-.p-nav-tab.is-active::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  bottom: -1px;
-  width: 4px;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--accent-soft);
-  translate: -50% 0;
-}
-
 .p-nav-right {
   display: flex;
   align-items: center;
@@ -259,6 +247,14 @@
 
   .p-demo-select {
     display: none;
+  }
+
+  .p-nav-right {
+    display: none;
+  }
+
+  .p-nav-tabs {
+    gap: 4px;
   }
 
   .p-nav-tab {

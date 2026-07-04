@@ -40,9 +40,6 @@ function TopNav({ activeTab, onNav, journeyState, onJourneyStateChange }: TopNav
       </nav>
       <div className="p-nav-right">
         <DevStateSwitcher value={journeyState} onChange={onJourneyStateChange} />
-        <span className="p-avatar" aria-label="Mark Chua">
-          M
-        </span>
       </div>
     </header>
   );

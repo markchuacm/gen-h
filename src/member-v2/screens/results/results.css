@@ -294,12 +294,14 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--member-ink);
+  color: rgba(79, 85, 91, 0.82);
   font: inherit;
+  font-size: 0.88rem;
+  font-weight: 440;
 }
 
 .results-search input::placeholder {
-  color: rgba(79, 85, 91, 0.76);
+  color: rgba(79, 85, 91, 0.62);
 }
 
 .biomarker-category-list {
