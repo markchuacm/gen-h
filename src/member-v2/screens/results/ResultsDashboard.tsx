@@ -901,6 +901,19 @@ export default function ResultsDashboard() {
             );
           })}
         </div>
+        <label className="results-filter-select">
+          <span className="sr-only">Filter biomarkers by status</span>
+          <select
+            value={activeFilter}
+            onChange={(event) => setActiveFilter(event.target.value as FilterId)}
+          >
+            {FILTERS.map((filter) => (
+              <option key={filter.id} value={filter.id}>
+                {filter.label} ({filterCount(filter.id)})
+              </option>
+            ))}
+          </select>
+        </label>
         <label className="results-search">
           <Search strokeWidth={1.8} aria-hidden="true" />
           <span className="sr-only">Search biomarkers</span>

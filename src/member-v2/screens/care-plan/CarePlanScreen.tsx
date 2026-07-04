@@ -174,7 +174,7 @@ function CarePlanScreen({ onNav }: { onNav: (tab: MemberTab) => void }) {
   return (
     <main className="p-page">
       <header className="cp-head">
-        <span className="p-eyebrow">Prescribed for you</span>
+        <span className="p-eyebrow">YOUR CARE PLAN</span>
         <h1 className="p-h1">
           Your plan for the next <em>12 weeks</em>
         </h1>

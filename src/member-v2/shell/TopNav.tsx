@@ -1,11 +1,13 @@
+import { Activity, ClipboardList, Home, UserRound } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { JourneyStateId, MemberTab } from "../journey/journeyState";
 import DevStateSwitcher from "./DevStateSwitcher";
 
-const TABS: Array<{ tab: MemberTab; label: string }> = [
-  { tab: "home", label: "Home" },
-  { tab: "profile", label: "Profile" },
-  { tab: "results", label: "Results" },
-  { tab: "carePlan", label: "Care plan" },
+const TABS: Array<{ tab: MemberTab; label: string; Icon: LucideIcon }> = [
+  { tab: "home", label: "Home", Icon: Home },
+  { tab: "profile", label: "Profile", Icon: UserRound },
+  { tab: "results", label: "Results", Icon: Activity },
+  { tab: "carePlan", label: "Care plan", Icon: ClipboardList },
 ];
 
 type TopNavProps = {
@@ -17,45 +19,32 @@ type TopNavProps = {
 
 function TopNav({ activeTab, onNav, journeyState, onJourneyStateChange }: TopNavProps) {
   return (
-    <>
-      <header className="p-nav">
-        <a className="p-nav-wordmark" href="/" aria-label="Gen-H home">
-          Gen-H
-        </a>
-        <nav className="p-nav-tabs" aria-label="Portal">
-          {TABS.map(({ tab, label }) => (
-            <button
-              key={tab}
-              type="button"
-              className={`p-nav-tab ${tab === activeTab ? "is-active" : ""}`}
-              aria-current={tab === activeTab ? "page" : undefined}
-              onClick={() => onNav(tab)}
-            >
-              {label}
-            </button>
-          ))}
-        </nav>
-        <div className="p-nav-right">
-          <DevStateSwitcher value={journeyState} onChange={onJourneyStateChange} />
-          <span className="p-avatar" aria-label="Mark Chua">
-            M
-          </span>
-        </div>
-      </header>
-      <nav className="p-tabstrip" aria-label="Portal">
-        {TABS.map(({ tab, label }) => (
+    <header className="p-nav">
+      <a className="p-nav-wordmark" href="/" aria-label="Gen-H home">
+        Gen-H
+      </a>
+      <nav className="p-nav-tabs" aria-label="Portal">
+        {TABS.map(({ tab, label, Icon }) => (
           <button
             key={tab}
             type="button"
-            className={tab === activeTab ? "is-active" : ""}
+            className={`p-nav-tab ${tab === activeTab ? "is-active" : ""}`}
             aria-current={tab === activeTab ? "page" : undefined}
+            aria-label={label}
+            title={label}
             onClick={() => onNav(tab)}
           >
-            {label}
+            <Icon strokeWidth={1.7} aria-hidden="true" />
           </button>
         ))}
       </nav>
-    </>
+      <div className="p-nav-right">
+        <DevStateSwitcher value={journeyState} onChange={onJourneyStateChange} />
+        <span className="p-avatar" aria-label="Mark Chua">
+          M
+        </span>
+      </div>
+    </header>
   );
 }
 

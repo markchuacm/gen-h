@@ -68,7 +68,7 @@ function ProfileScreen({
   return (
     <main className="p-page">
       <header className="home-head">
-        <span className="p-eyebrow">Ready for your doctor</span>
+        <span className="p-eyebrow">YOUR PROFILE</span>
         <h1 className="p-h1">
           What your doctor <em>will see</em>
         </h1>

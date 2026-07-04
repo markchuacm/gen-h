@@ -22,10 +22,23 @@ function MemberApp() {
   const [profileFlowOpen, setProfileFlowOpen] = useState(false);
   const config = JOURNEY_STATES[journeyState];
 
-  // Results scrolls internally; every other screen uses normal document scroll.
+  // Results scrolls internally on larger viewports; mobile uses normal document scroll.
   useEffect(() => {
-    document.body.classList.toggle("is-results-locked", activeTab === "results");
-    return () => document.body.classList.remove("is-results-locked");
+    const desktopResultsQuery = window.matchMedia("(min-width: 721px)");
+    const syncResultsLock = () => {
+      document.body.classList.toggle(
+        "is-results-locked",
+        activeTab === "results" && desktopResultsQuery.matches,
+      );
+    };
+
+    syncResultsLock();
+    desktopResultsQuery.addEventListener("change", syncResultsLock);
+
+    return () => {
+      desktopResultsQuery.removeEventListener("change", syncResultsLock);
+      document.body.classList.remove("is-results-locked");
+    };
   }, [activeTab]);
 
   return (
