@@ -117,6 +117,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       body: "Help your doctor understand your goals, lifestyle and history before your consult.",
       primaryCta: "Continue profile",
       primaryAction: { kind: "profileFlow" },
+      secondaryCta: "View consult details",
       image: heroProfileImage,
     },
     steps: [
@@ -141,10 +142,10 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       pill: "Upcoming consult",
       titleBefore: "Get ready for ",
       titleEm: "your consult",
-      body: "Meet Dr. Lim Wen Qi at 10:00 AM.",
+      body: "Meet Dr. Lim Wen Qi on 3 July 2026 (Fri) at 10:00 AM.",
       primaryCta: "Join consult",
       primaryAction: { kind: "none" },
-      secondaryCta: "Add to calendar",
+      secondaryCta: "View consult details",
       image: heroConsultImage,
     },
     steps: [
@@ -208,6 +209,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       body: "We'll organise them by health area once they're ready.",
       primaryCta: "View past results",
       primaryAction: { kind: "tab", tab: "results" },
+      secondaryCta: "View timeline",
       image: heroResultsImage,
     },
     steps: [
@@ -246,6 +248,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       body: "Clear next steps from your doctor, built around your results.",
       primaryCta: "View care plan",
       primaryAction: { kind: "tab", tab: "carePlan" },
+      secondaryCta: "View plan summary",
       image: heroCarePlanImage,
     },
     steps: [

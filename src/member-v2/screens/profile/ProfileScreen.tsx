@@ -39,7 +39,7 @@ function ProfileScreen({ flowOpen, onFlowOpenChange, onCompleted }: ProfileScree
     <main className="p-page">
       <header className="home-head">
         <span className="p-eyebrow">
-          {completed ? "Ready for your doctor" : "About 3 minutes · no typing"}
+          {completed ? "Ready for your doctor" : "About 3 minutes"}
         </span>
         <h1 className="p-h1">
           {completed ? (
