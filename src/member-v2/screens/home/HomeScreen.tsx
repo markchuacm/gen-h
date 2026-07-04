@@ -239,12 +239,14 @@ function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
     <main className="p-page">
       <header className="home-head">
         <span className="p-eyebrow">{config.stageLabel}</span>
-        <h1 className="p-h1">
-          {greeting.before}
-          {greeting.em && <em>{greeting.em}</em>}
-        </h1>
+        <div className="home-title-row">
+          <h1 className="p-h1">
+            {greeting.before}
+            {greeting.em && <em>{greeting.em}</em>}
+          </h1>
+          <JourneyRail steps={config.steps} />
+        </div>
       </header>
-      <JourneyRail steps={config.steps} />
       <HeroCard hero={config.hero} onAction={handleHeroAction} />
       <div className="home-grid">
         <ContextCard data={config.contextCard} onNav={onNav} />
