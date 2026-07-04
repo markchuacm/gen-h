@@ -2,6 +2,8 @@
 // earlier member intake. The UX is new and fully client-side.
 
 export type StepId =
+  | "reports"
+  | "reportUpload"
   | "basics"
   | "reason"
   | "goals"
@@ -13,7 +15,7 @@ export type StepId =
 
 export type StepDef = {
   id: StepId;
-  kind: "basics" | "chips" | "lifestyle" | "habits" | "supplements";
+  kind: "reports" | "reportUpload" | "basics" | "chips" | "lifestyle" | "habits" | "supplements";
   prompt: string;
   promptEm?: string;
   helper?: string;
@@ -23,6 +25,52 @@ export type StepDef = {
   options?: string[];
   /** For chips steps: at least one selection required to continue. */
   required?: boolean;
+};
+
+export type ReportUploadCategory = "health_screening" | "genetic_tests" | "other_tests";
+export type ReportSelection = ReportUploadCategory | "no_tests";
+export type UploadedReportKind = "pdf" | "image" | "sheet" | "doc" | "other";
+
+export type UploadedReport = {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  uploadedAt: string;
+  category: ReportUploadCategory;
+  kind: UploadedReportKind;
+};
+
+export const REPORT_OPTIONS: Array<{
+  id: ReportSelection;
+  label: string;
+  helper?: string;
+}> = [
+  {
+    id: "health_screening",
+    label: "Health screening",
+    helper: "Blood work, urine tests, health screening reports",
+  },
+  {
+    id: "genetic_tests",
+    label: "Genetic tests",
+    helper: "DNA, ancestry, nutrigenomics or carrier reports",
+  },
+  {
+    id: "other_tests",
+    label: "Other tests",
+    helper: "Imaging, gut microbiome, wearable data or other files",
+  },
+  {
+    id: "no_tests",
+    label: "I don't have any tests",
+  },
+];
+
+export const REPORT_CATEGORY_LABELS: Record<ReportUploadCategory, string> = {
+  health_screening: "Health screening",
+  genetic_tests: "Genetic tests",
+  other_tests: "Other tests",
 };
 
 export const STEPS: StepDef[] = [
@@ -149,6 +197,27 @@ export const STEPS: StepDef[] = [
       "Nothing at the moment",
     ],
   },
+  {
+    id: "reports",
+    kind: "reports",
+    prompt: "Do you have any previous ",
+    promptEm: "tests?",
+    helper: "Choose every type you can share. Uploads come next.",
+    whyWeAsk:
+      "Existing reports help your doctor connect your current profile with what has already been measured.",
+    summaryLabel: "Previous reports",
+    required: true,
+  },
+  {
+    id: "reportUpload",
+    kind: "reportUpload",
+    prompt: "Upload what you already ",
+    promptEm: "have",
+    helper: "PDF, JPG, PNG, CSV, DOC or DOCX. You can also continue without uploading.",
+    whyWeAsk:
+      "Your doctor can review these files alongside your answers, even before any new testing is done.",
+    summaryLabel: "Uploaded reports",
+  },
 ];
 
 export const STEP_COUNT = STEPS.length;
@@ -159,6 +228,8 @@ export const ALCOHOL_OPTIONS = ["Rarely / never", "Socially", "Most days"] as co
 export const SMOKING_OPTIONS = ["Never", "Former smoker", "Current smoker"] as const;
 
 export type ProfileAnswers = {
+  reportSelections: ReportSelection[];
+  uploadedReports: UploadedReport[];
   basics: { age: number; sex: "Male" | "Female"; heightCm: number; weightKg: number };
   reason: string[];
   goals: string[];
@@ -179,6 +250,8 @@ export type ProfileAnswers = {
 };
 
 export const DEFAULT_ANSWERS: ProfileAnswers = {
+  reportSelections: [],
+  uploadedReports: [],
   basics: { age: 36, sex: "Male", heightCm: 173, weightKg: 76 },
   reason: [],
   goals: [],

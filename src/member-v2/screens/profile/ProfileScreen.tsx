@@ -18,11 +18,21 @@ const COVERS = [
   "Your goals and what feels off",
   "Daily rhythm — sleep, movement, meals",
   "Family history, supplements and medications",
+  "Previous reports, genetic tests or other health screens",
 ];
 
 function ProfileScreen({ flowOpen, onFlowOpenChange, onCompleted }: ProfileScreenProps) {
-  const { state, setAnswers, toggleListItem, setLastStep, markCompleted, reset } =
-    useProfileAnswers();
+  const {
+    state,
+    setAnswers,
+    toggleListItem,
+    toggleReportSelection,
+    addUploadedReports,
+    removeUploadedReport,
+    setLastStep,
+    markCompleted,
+    reset,
+  } = useProfileAnswers();
   const [startAt, setStartAt] = useState(0);
 
   const started = state.lastStep > 0;
@@ -85,8 +95,8 @@ function ProfileScreen({ flowOpen, onFlowOpenChange, onCompleted }: ProfileScree
               Help your doctor see the <em>full picture</em>
             </h2>
             <p>
-              Eight quick questions — all taps and sliders — so your consult starts from you, not
-              from a blank page.
+              Answer a few quick taps and sliders, then share any existing reports so your consult
+              starts from you, not from a blank page.
             </p>
             <ul className="pf-intro-facts">
               {COVERS.map((item) => (
@@ -122,6 +132,9 @@ function ProfileScreen({ flowOpen, onFlowOpenChange, onCompleted }: ProfileScree
           startAt={startAt}
           onPatch={setAnswers}
           onToggle={toggleListItem}
+          onToggleReport={toggleReportSelection}
+          onAddReports={addUploadedReports}
+          onRemoveReport={removeUploadedReport}
           onReachStep={setLastStep}
           onComplete={() => {
             markCompleted();

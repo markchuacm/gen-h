@@ -1,6 +1,8 @@
+import { File as FileIcon, FileText, Image as ImageIcon, Paperclip, Table as TableIcon } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import farheenAvatarImage from "../../../../assets/dashboard/doctors/farheen-nafisa-avatar.png";
-import { STEPS } from "./profileQuestions";
-import type { ProfileAnswers, StepId } from "./profileQuestions";
+import { REPORT_CATEGORY_LABELS, STEPS } from "./profileQuestions";
+import type { ProfileAnswers, StepId, UploadedReport, UploadedReportKind } from "./profileQuestions";
 
 type ProfileSummaryProps = {
   answers: ProfileAnswers;
@@ -30,6 +32,63 @@ function ChipList({ items }: { items: string[] }) {
       ))}
     </div>
   );
+}
+
+const REPORT_FILE_ICONS: Record<UploadedReportKind, LucideIcon> = {
+  pdf: FileText,
+  image: ImageIcon,
+  sheet: TableIcon,
+  doc: FileIcon,
+  other: Paperclip,
+};
+
+function ReportFileTile({ report }: { report: UploadedReport }) {
+  const Icon = REPORT_FILE_ICONS[report.kind];
+  const ext = report.name.includes(".") ? report.name.split(".").pop()?.toUpperCase() : report.kind;
+
+  return (
+    <article className={`pf-report-file pf-report-file--summary pf-report-file--${report.kind}`}>
+      <div className="pf-report-file-thumb" aria-hidden="true">
+        <Icon strokeWidth={1.6} />
+        <span>{ext}</span>
+      </div>
+      <div className="pf-report-file-meta">
+        <strong title={report.name}>{report.name}</strong>
+        <span>{REPORT_CATEGORY_LABELS[report.category]}</span>
+      </div>
+    </article>
+  );
+}
+
+function ReportSummary({ answers }: { answers: ProfileAnswers }) {
+  if (answers.uploadedReports.length > 0) {
+    return (
+      <div className="pf-report-file-grid pf-report-file-grid--summary">
+        {answers.uploadedReports.map((report) => (
+          <ReportFileTile key={report.id} report={report} />
+        ))}
+      </div>
+    );
+  }
+
+  if (answers.reportSelections.includes("no_tests")) {
+    return <p className="pf-brief-sentence">No previous tests shared.</p>;
+  }
+
+  const selectedLabels = answers.reportSelections
+    .filter((selection): selection is keyof typeof REPORT_CATEGORY_LABELS => selection !== "no_tests")
+    .map((selection) => REPORT_CATEGORY_LABELS[selection]);
+
+  if (selectedLabels.length > 0) {
+    return (
+      <>
+        <ChipList items={selectedLabels} />
+        <p className="pf-brief-sentence pf-brief-muted">No files uploaded yet.</p>
+      </>
+    );
+  }
+
+  return <p className="pf-brief-sentence">No previous tests shared.</p>;
 }
 
 function Section({
@@ -82,6 +141,9 @@ function ProfileSummary({ answers, completedAt, onEditStep }: ProfileSummaryProp
         {completedAt && <span className="pf-brief-date">{formatDate(completedAt)}</span>}
       </header>
       <div className="pf-brief-body">
+        <Section stepId="reports" title="Previous reports" onEditStep={onEditStep}>
+          <ReportSummary answers={answers} />
+        </Section>
         <Section stepId="basics" title="About you" onEditStep={onEditStep}>
           <p className="pf-brief-sentence">{aboutSentence}</p>
         </Section>
