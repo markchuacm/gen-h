@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   CalendarDays,
   Check,
@@ -6,6 +7,7 @@ import {
   FlaskConical,
   MapPin,
   Video,
+  X,
 } from "lucide-react";
 import type {
   ContextCardData,
@@ -53,9 +55,11 @@ function JourneyRail({ steps }: { steps: Step[] }) {
 function HeroCard({
   hero,
   onAction,
+  onDetails,
 }: {
   hero: JourneyStateConfig["hero"];
   onAction: (action: HeroAction) => void;
+  onDetails: () => void;
 }) {
   return (
     <section className="home-hero" aria-labelledby="home-hero-title">
@@ -73,7 +77,12 @@ function HeroCard({
             <ChevronRight strokeWidth={2} />
           </button>
           {hero.secondaryCta && (
-            <button className="p-btn-ghost" type="button">
+            <button
+              className="p-btn-ghost"
+              type="button"
+              aria-haspopup="dialog"
+              onClick={onDetails}
+            >
               {hero.secondaryCta}
             </button>
           )}
@@ -86,17 +95,19 @@ function HeroCard({
   );
 }
 
-function ContextCard({
+function DetailsContent({
   data,
   onNav,
+  onClose,
 }: {
   data: ContextCardData;
   onNav: (tab: MemberTab) => void;
+  onClose: () => void;
 }) {
   if (data.type === "consult") {
     return (
-      <section className="p-card home-context" aria-labelledby="home-context-title">
-        <h3 id="home-context-title">Your pre-test consult</h3>
+      <section className="home-context" aria-labelledby="home-detail-title">
+        <h3>Your pre-test consult</h3>
         <div className="home-context-person">
           <span className="home-context-avatar" aria-hidden="true">
             {data.doctorInitials}
@@ -132,8 +143,8 @@ function ContextCard({
 
   if (data.type === "bloodDraw") {
     return (
-      <section className="p-card home-context" aria-labelledby="home-context-title">
-        <h3 id="home-context-title">Blood draw details</h3>
+      <section className="home-context" aria-labelledby="home-detail-title">
+        <h3>Blood draw details</h3>
         <div className="home-context-person">
           <span className="home-context-avatar" aria-hidden="true">
             {data.labInitials}
@@ -165,8 +176,8 @@ function ContextCard({
 
   if (data.type === "resultsTimeline") {
     return (
-      <section className="p-card home-context" aria-labelledby="home-context-title">
-        <h3 id="home-context-title">Where your sample is</h3>
+      <section className="home-context" aria-labelledby="home-detail-title">
+        <h3>Where your sample is</h3>
         <div className="home-context-person">
           <span className="home-context-avatar" aria-hidden="true">
             <FlaskConical strokeWidth={1.6} style={{ width: 18, height: 18 }} />
@@ -195,7 +206,14 @@ function ContextCard({
             </li>
           ))}
         </ol>
-        <button className="p-btn-ghost" type="button" onClick={() => onNav("results")}>
+        <button
+          className="p-btn-ghost"
+          type="button"
+          onClick={() => {
+            onClose();
+            onNav("results");
+          }}
+        >
           {data.primaryCta}
         </button>
       </section>
@@ -203,8 +221,8 @@ function ContextCard({
   }
 
   return (
-    <section className="p-card home-context" aria-labelledby="home-context-title">
-      <h3 id="home-context-title">Your care plan, at a glance</h3>
+    <section className="home-context" aria-labelledby="home-detail-title">
+      <h3>Your care plan, at a glance</h3>
       <div className="home-teaser-stats">
         <div>
           <strong>{data.focusAreaCount}</strong>
@@ -219,7 +237,14 @@ function ContextCard({
           <span>Next review</span>
         </div>
       </div>
-      <button className="p-btn" type="button" onClick={() => onNav("carePlan")}>
+      <button
+        className="p-btn"
+        type="button"
+        onClick={() => {
+          onClose();
+          onNav("carePlan");
+        }}
+      >
         {data.primaryCta}
         <ChevronRight strokeWidth={2} />
       </button>
@@ -227,8 +252,49 @@ function ContextCard({
   );
 }
 
+function DetailDialog({
+  config,
+  onClose,
+  onNav,
+}: {
+  config: JourneyStateConfig;
+  onClose: () => void;
+  onNav: (tab: MemberTab) => void;
+}) {
+  return (
+    <div className="home-detail-backdrop" role="presentation" onClick={onClose}>
+      <section
+        className="home-detail-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${config.hero.pill} details`}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="home-detail-head">
+          <button
+            className="home-detail-close"
+            type="button"
+            aria-label="Close details"
+            onClick={onClose}
+          >
+            <X strokeWidth={1.8} />
+          </button>
+        </header>
+        <div className="home-detail-body">
+          <DetailsContent data={config.contextCard} onNav={onNav} onClose={onClose} />
+          <aside className="home-detail-tip">
+            <strong>{config.tip.title}</strong>
+            <p>{config.tip.body}</p>
+          </aside>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
   const greeting = splitGreeting(config.greeting);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const handleHeroAction = (action: HeroAction) => {
     if (action.kind === "tab") onNav(action.tab);
@@ -247,14 +313,14 @@ function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
           <JourneyRail steps={config.steps} />
         </div>
       </header>
-      <HeroCard hero={config.hero} onAction={handleHeroAction} />
-      <div className="home-grid">
-        <ContextCard data={config.contextCard} onNav={onNav} />
-        <aside className="home-tip">
-          <strong>{config.tip.title}</strong>
-          <p>{config.tip.body}</p>
-        </aside>
-      </div>
+      <HeroCard
+        hero={config.hero}
+        onAction={handleHeroAction}
+        onDetails={() => setIsDetailOpen(true)}
+      />
+      {isDetailOpen && (
+        <DetailDialog config={config} onClose={() => setIsDetailOpen(false)} onNav={onNav} />
+      )}
     </main>
   );
 }

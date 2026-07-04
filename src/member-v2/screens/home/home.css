@@ -106,7 +106,6 @@
   grid-template-columns: 1.1fr 1fr;
   gap: clamp(28px, 4vw, 56px);
   align-items: center;
-  margin-bottom: 24px;
   padding: clamp(28px, 3.4vw, 48px);
   border-radius: 34px;
   background: #fff;
@@ -158,23 +157,80 @@
   scale: 1.012;
 }
 
-/* ── Supporting row ──────────────────────────────────────────────────────── */
+/* ── On-demand details ───────────────────────────────────────────────────── */
 
-.home-grid {
+.home-detail-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: 24px;
-  align-items: start;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(10px);
+}
+
+.home-detail-dialog {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: min(720px, calc(100vh - 48px));
+  overflow: auto;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow:
+    0 30px 90px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.home-detail-head {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 1;
+}
+
+.home-detail-close {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--member-cream);
+  color: var(--muted);
+  transition:
+    background 180ms var(--ease-ui),
+    color 180ms var(--ease-ui),
+    transform 180ms var(--ease-spring);
+}
+
+.home-detail-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.home-detail-close:hover {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  transform: translateY(-1px);
+}
+
+.home-detail-body {
+  display: grid;
+  gap: 20px;
+  padding: 34px 28px 28px;
 }
 
 .home-context {
   display: grid;
-  gap: 20px;
-  padding: 28px;
+  gap: 18px;
+  padding: 0;
 }
 
 .home-context h3 {
-  font-size: 1.25rem;
+  max-width: calc(100% - 56px);
+  font-size: 1.32rem;
+  line-height: 1.18;
 }
 
 .home-context-person {
@@ -208,7 +264,7 @@
 
 .home-context-details {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .home-context-details > div {
@@ -358,22 +414,20 @@
   color: var(--muted);
 }
 
-/* Tip card */
-
-.home-tip {
+.home-detail-tip {
   display: grid;
-  gap: 8px;
-  padding: 28px;
-  border-radius: 24px;
+  gap: 10px;
+  padding: 20px;
+  border-radius: 18px;
   background: #f8f6f3;
 }
 
-.home-tip strong {
+.home-detail-tip strong {
   font-weight: 560;
   font-size: 0.98rem;
 }
 
-.home-tip p {
+.home-detail-tip p {
   color: var(--muted);
   font-size: 0.95rem;
 }
@@ -392,9 +446,6 @@
     margin-bottom: 0;
   }
 
-  .home-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 720px) {
@@ -418,5 +469,34 @@
 
   .home-rail-label {
     font-size: 0.76rem;
+  }
+
+  .home-detail-backdrop {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .home-detail-dialog {
+    max-height: calc(100vh - 24px);
+    border-radius: 24px;
+  }
+
+  .home-detail-head {
+    top: 16px;
+    right: 16px;
+  }
+
+  .home-detail-body {
+    gap: 18px;
+    padding: 32px 22px 22px;
+  }
+
+  .home-context-details > div {
+    grid-template-columns: 18px 1fr;
+  }
+
+  .home-context-details dd {
+    grid-column: 2;
+    text-align: left;
   }
 }
