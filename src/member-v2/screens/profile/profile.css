@@ -778,6 +778,7 @@
 
 .pf-brief {
   max-width: 780px;
+  min-width: 0;
   overflow: hidden;
   border-radius: 28px;
 }
@@ -789,6 +790,10 @@
   align-items: center;
   padding: 26px 32px;
   background: #f8f6f3;
+}
+
+.pf-brief-head > div {
+  min-width: 0;
 }
 
 .pf-brief-head img {
@@ -816,17 +821,20 @@
 
 .pf-brief-body {
   display: grid;
+  min-width: 0;
   gap: 26px;
   padding: 30px 32px 34px;
 }
 
 .pf-brief-section {
   display: grid;
+  min-width: 0;
   gap: 10px;
 }
 
 .pf-brief-section-head {
   display: flex;
+  min-width: 0;
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
@@ -841,6 +849,9 @@
 }
 
 .pf-brief-edit {
+  min-height: 40px;
+  padding-inline: 8px;
+  margin-block: -9px;
   font-size: 0.82rem;
   color: var(--accent-dark);
   transition: color 180ms var(--ease-ui);
@@ -857,8 +868,18 @@
 
 .pf-brief-chips {
   display: flex;
+  min-width: 0;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+.pf-brief-chips .p-chip {
+  max-width: 100%;
+  min-height: 30px;
+  height: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .pf-brief-foot {
@@ -933,9 +954,66 @@
 
   .pf-brief-head {
     grid-template-columns: auto 1fr;
+    padding: 22px 24px;
   }
 
   .pf-brief-date {
     display: none;
+  }
+
+  .pf-brief-body {
+    gap: 24px;
+    padding: 26px 24px 30px;
+  }
+
+  .pf-brief-section-head {
+    align-items: start;
+  }
+
+  .pf-brief-section-head h3 {
+    min-width: 0;
+    line-height: 1.35;
+  }
+
+  .pf-brief-foot {
+    padding: 16px 24px;
+  }
+
+  .pf-summary-actions .p-btn-ghost {
+    justify-content: center;
+    width: 100%;
+  }
+}
+
+@media (max-width: 460px) {
+  .pf-brief {
+    border-radius: 22px;
+  }
+
+  .pf-brief-head {
+    gap: 14px;
+    padding: 20px;
+  }
+
+  .pf-brief-body {
+    gap: 22px;
+    padding: 24px 20px 28px;
+  }
+
+  .pf-brief-section-head {
+    gap: 12px;
+  }
+
+  .pf-brief-section-head h3 {
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+  }
+
+  .pf-brief-sentence {
+    font-size: 0.95rem;
+  }
+
+  .pf-brief-foot {
+    padding: 15px 20px;
   }
 }

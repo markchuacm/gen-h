@@ -295,7 +295,7 @@ function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
   return (
     <main className="p-page">
       <header className="home-head">
-        <span className="p-eyebrow">{config.stageLabel}</span>
+        <span className="p-eyebrow">HOME</span>
         <div className="home-title-row">
           <h1 className="p-h1">{config.greeting}</h1>
           <JourneyRail steps={config.steps} />

@@ -11,8 +11,10 @@
   z-index: 40;
   display: flex;
   align-items: center;
-  gap: clamp(16px, 2.6vw, 30px);
-  padding: 10px 12px 10px 24px;
+  gap: clamp(10px, 1.7vw, 22px);
+  width: max-content;
+  max-width: calc(100dvw - 24px);
+  padding: 8px 10px 8px 20px;
   border-radius: 999px;
   background: rgba(32, 31, 27, 0.64);
   -webkit-backdrop-filter: blur(20px);
@@ -30,24 +32,46 @@
 
 .p-nav-tabs {
   display: flex;
-  gap: clamp(4px, 1vw, 8px);
+  align-items: center;
+  gap: 4px;
 }
 
 .p-nav-tab {
   position: relative;
-  padding: 6px 12px;
-  font-size: 0.92rem;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
   color: rgba(255, 255, 255, 0.72);
-  white-space: nowrap;
-  transition: color 180ms var(--ease-ui);
+  transition:
+    background-color 180ms var(--ease-ui),
+    color 180ms var(--ease-ui),
+    scale 180ms var(--ease-ui);
+}
+
+.p-nav-tab svg {
+  width: 18px;
+  height: 18px;
 }
 
 .p-nav-tab:hover {
+  background: rgba(255, 255, 255, 0.08);
   color: #fff;
 }
 
 .p-nav-tab.is-active {
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
+}
+
+.p-nav-tab:focus-visible {
+  border-radius: 999px;
+  outline-offset: 2px;
+}
+
+.p-nav-tab:active {
+  scale: 0.96;
 }
 
 .p-nav-tab.is-active::after {
@@ -109,38 +133,6 @@
 .p-demo-select option {
   color: var(--ink);
   background: #fff;
-}
-
-/* ── Mobile tab strip ────────────────────────────────────────────────────── */
-
-.p-tabstrip {
-  position: fixed;
-  top: 78px;
-  left: 50%;
-  translate: -50% 0;
-  z-index: 39;
-  display: none;
-  gap: 4px;
-  padding: 4px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  box-shadow: var(--shadow-border);
-}
-
-.p-tabstrip button {
-  padding: 7px 13px;
-  border-radius: 999px;
-  font-size: 0.85rem;
-  color: var(--muted);
-  white-space: nowrap;
-  transition: color 180ms var(--ease-ui), background-color 180ms var(--ease-ui);
-}
-
-.p-tabstrip button.is-active {
-  background: var(--accent-tint);
-  color: var(--ink);
 }
 
 /* ── Page scaffold ───────────────────────────────────────────────────────── */
@@ -260,28 +252,30 @@
 
 @media (max-width: 720px) {
   .p-nav {
-    gap: 16px;
-    padding: 8px 10px 8px 20px;
-  }
-
-  .p-nav-tabs {
-    display: none;
+    top: 12px;
+    gap: 8px;
+    padding: 7px 8px 7px 16px;
   }
 
   .p-demo-select {
-    max-width: 118px;
+    display: none;
   }
 
-  .p-tabstrip {
-    display: flex;
+  .p-nav-tab {
+    width: 40px;
+    height: 40px;
   }
 
   .p-page {
-    padding-top: 138px;
+    padding-top: 96px;
   }
 
   .p-page.dashboard-content--results {
-    padding-top: 124px;
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    padding-top: 96px;
+    padding-bottom: 72px;
   }
 
   .p-results-heading {
@@ -295,8 +289,28 @@
 }
 
 @media (max-width: 460px) {
+  .p-nav {
+    max-width: calc(100dvw - 16px);
+  }
+
+  .p-nav-wordmark {
+    font-size: 0.98rem;
+  }
+
+  .p-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .p-nav-tab svg {
+    width: 17px;
+    height: 17px;
+  }
+
   .p-page.dashboard-content--results {
-    padding-top: 120px;
+    height: auto;
+    overflow: visible;
+    padding-top: 92px;
   }
 
   .p-results-heading {

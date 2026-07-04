@@ -228,6 +228,41 @@
   box-shadow: inset 0 0 0 1px rgba(17, 23, 27, 0.07);
 }
 
+.results-filter-select {
+  position: relative;
+  display: none;
+  min-width: 0;
+}
+
+.results-filter-select::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 17px;
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid rgba(17, 23, 27, 0.45);
+  border-bottom: 1.5px solid rgba(17, 23, 27, 0.45);
+  pointer-events: none;
+  rotate: 45deg;
+  translate: 0 -70%;
+}
+
+.results-filter-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-height: 46px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 42px 0 18px;
+  background: #fff;
+  color: var(--member-ink);
+  box-shadow: inset 0 0 0 1px rgba(17, 23, 27, 0.1);
+  font: inherit;
+  font-size: 0.92rem;
+}
+
 .results-search {
   display: grid;
   min-height: 44px;
@@ -254,6 +289,7 @@
 
 .results-search input {
   width: 100%;
+  min-height: 40px;
   min-width: 0;
   border: 0;
   outline: 0;
@@ -1076,24 +1112,124 @@
 }
 
 @media (max-width: 720px) {
+  .dashboard-content--results,
+  .p-page.dashboard-content--results {
+    height: auto;
+    min-height: 100dvh;
+    overflow: visible;
+    padding-bottom: 72px;
+  }
+
   .results-dashboard {
-    height: 100%;
+    height: auto;
+    min-height: 0;
     gap: 18px;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .results-heading {
+    margin-bottom: 4px;
   }
 
   .results-overview-card {
     border-radius: 24px;
     padding: 22px;
+    min-height: 0;
+  }
+
+  .overview-total strong {
+    font-size: 2.55rem;
+  }
+
+  .overview-legend {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
   }
 
   .result-filter-chips {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    padding-bottom: 2px;
+    display: none;
   }
 
-  .result-filter-chips button {
-    flex: 0 0 auto;
+  .results-filter-select {
+    display: block;
+    order: 2;
+  }
+
+  .results-search {
+    order: 1;
+  }
+
+  .biomarker-category-list {
+    gap: 28px;
+  }
+
+  .biomarker-category-section {
+    gap: 12px;
+    padding-top: 22px;
+  }
+
+  .biomarker-category-copy p {
+    max-width: none;
+  }
+
+  .biomarker-result-list {
+    gap: 10px;
+  }
+
+  .biomarker-result-row {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+    border-radius: 20px;
+    padding: 15px;
+    box-shadow: var(--member-shadow-border);
+  }
+
+  .biomarker-result-name {
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
+  }
+
+  .biomarker-result-name strong {
+    font-size: 0.98rem;
+  }
+
+  .biomarker-result-value {
+    grid-column: 1 / 2;
+    grid-row: 2 / 3;
+  }
+
+  .biomarker-result-reading strong {
+    font-size: 1.05rem;
+  }
+
+  .result-status-pill {
+    grid-column: 2 / 3;
+    grid-row: 1 / 3;
+    align-self: start;
+  }
+
+  .sparkline,
+  .sparkline-empty {
+    display: none;
+  }
+
+  .range-indicator,
+  .range-blank {
+    grid-column: 1 / -1;
+    grid-row: 3 / 4;
+    width: 100%;
+    margin-top: 4px;
+  }
+
+  .range-indicator:not(.range-indicator--large) {
+    width: 100%;
+  }
+
+  .row-chevron {
+    display: none;
   }
 
   .biomarker-drawer-layer {
@@ -1159,10 +1295,19 @@
 
 @media (max-width: 460px) {
   .results-dashboard {
-    height: 100%;
+    height: auto;
+    gap: 16px;
   }
 
   .biomarker-result-row {
-    min-height: 0;
+    padding: 14px;
+  }
+
+  .overview-legend {
+    grid-template-columns: 1fr;
+  }
+
+  .overview-footnote {
+    font-size: 0.8rem;
   }
 }
