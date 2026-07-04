@@ -1,14 +1,36 @@
-import { useEffect, useMemo, useState } from "react";
-import { Check } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Check,
+  CircleSlash,
+  Dna,
+  File as FileIcon,
+  FileText,
+  FlaskConical,
+  FolderOpen,
+  Image as ImageIcon,
+  Paperclip,
+  Table as TableIcon,
+  X,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import {
   ALCOHOL_OPTIONS,
   DIET_OPTIONS,
   EXERCISE_OPTIONS,
+  REPORT_CATEGORY_LABELS,
+  REPORT_OPTIONS,
   SMOKING_OPTIONS,
   STEPS,
   STEP_COUNT,
 } from "./profileQuestions";
-import type { ProfileAnswers, StepDef } from "./profileQuestions";
+import type {
+  ProfileAnswers,
+  ReportSelection,
+  ReportUploadCategory,
+  StepDef,
+  UploadedReport,
+  UploadedReportKind,
+} from "./profileQuestions";
 
 export type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements";
 
@@ -17,10 +39,39 @@ type ProfileFlowProps = {
   startAt?: number;
   onPatch: (patch: Partial<ProfileAnswers>) => void;
   onToggle: (key: ToggleListKey, option: string) => void;
+  onToggleReport: (selection: ReportSelection) => void;
+  onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
+  onRemoveReport: (id: string) => void;
   onReachStep: (step: number) => void;
   onComplete: () => void;
   onClose: () => void;
 };
+
+const REPORT_STEP_INDEX = STEPS.findIndex((step) => step.id === "reports");
+const REPORT_UPLOAD_STEP_INDEX = STEPS.findIndex((step) => step.id === "reportUpload");
+const ACCEPT_REPORTS =
+  ".pdf,.png,.jpg,.jpeg,.heic,.webp,.csv,.xls,.xlsx,.doc,.docx,.txt,application/pdf,image/*,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+const REPORT_ICONS: Record<ReportSelection, LucideIcon> = {
+  health_screening: FlaskConical,
+  genetic_tests: Dna,
+  other_tests: FolderOpen,
+  no_tests: CircleSlash,
+};
+
+const REPORT_FILE_ICONS: Record<UploadedReportKind, LucideIcon> = {
+  pdf: FileText,
+  image: ImageIcon,
+  sheet: TableIcon,
+  doc: FileIcon,
+  other: Paperclip,
+};
+
+function uploadCategories(answers: ProfileAnswers): ReportUploadCategory[] {
+  return answers.reportSelections.filter(
+    (selection): selection is ReportUploadCategory => selection !== "no_tests",
+  );
+}
 
 function ChipGrid({
   options,
@@ -126,17 +177,188 @@ function SliderControl({
   );
 }
 
+function ReportSelectionGrid({
+  answers,
+  onToggleReport,
+}: {
+  answers: ProfileAnswers;
+  onToggleReport: (selection: ReportSelection) => void;
+}) {
+  return (
+    <div className="pf-report-grid" role="group" aria-label="Previous test types">
+      {REPORT_OPTIONS.map((option) => {
+        const selected = answers.reportSelections.includes(option.id);
+        const Icon = REPORT_ICONS[option.id];
+        return (
+          <button
+            key={option.id}
+            type="button"
+            className={`pf-report-tile ${selected ? "is-selected" : ""}`}
+            aria-pressed={selected}
+            onClick={() => onToggleReport(option.id)}
+          >
+            <span className="pf-report-tile-label">{option.label}</span>
+            {option.helper && <span className="pf-report-tile-helper">{option.helper}</span>}
+            <span className="pf-report-tile-icon" aria-hidden="true">
+              <Icon strokeWidth={1.8} />
+            </span>
+            <span className="pf-report-tile-check" aria-hidden="true">
+              <Check strokeWidth={2.4} />
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function ReportDropzone({
+  category,
+  onAddReports,
+}: {
+  category: ReportUploadCategory;
+  onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const label = REPORT_CATEGORY_LABELS[category];
+
+  return (
+    <section className="pf-upload-group" aria-label={`Upload ${label}`}>
+      <button
+        type="button"
+        className={`pf-dropzone ${dragOver ? "is-drag" : ""}`}
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(event) => {
+          event.preventDefault();
+          setDragOver(true);
+        }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(event) => {
+          event.preventDefault();
+          setDragOver(false);
+          const files = Array.from(event.dataTransfer.files);
+          if (files.length) onAddReports(files, category);
+        }}
+      >
+        <Paperclip strokeWidth={1.7} aria-hidden="true" />
+        <strong>Upload {label.toLowerCase()}</strong>
+        <span>Drop files here or click to browse</span>
+      </button>
+      <input
+        ref={inputRef}
+        className="pf-visually-hidden"
+        type="file"
+        multiple
+        accept={ACCEPT_REPORTS}
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          if (files.length) onAddReports(files, category);
+          event.target.value = "";
+        }}
+      />
+    </section>
+  );
+}
+
+function UploadedReportTile({
+  report,
+  onRemove,
+}: {
+  report: UploadedReport;
+  onRemove: (id: string) => void;
+}) {
+  const Icon = REPORT_FILE_ICONS[report.kind];
+  const ext = report.name.includes(".") ? report.name.split(".").pop()?.toUpperCase() : report.kind;
+
+  return (
+    <article className={`pf-report-file pf-report-file--${report.kind}`}>
+      <button
+        type="button"
+        className="pf-report-file-remove"
+        aria-label={`Remove ${report.name}`}
+        onClick={() => onRemove(report.id)}
+      >
+        <X strokeWidth={2} aria-hidden="true" />
+      </button>
+      <div className="pf-report-file-thumb" aria-hidden="true">
+        <Icon strokeWidth={1.6} />
+        <span>{ext}</span>
+      </div>
+      <div className="pf-report-file-meta">
+        <strong title={report.name}>{report.name}</strong>
+        <span>{REPORT_CATEGORY_LABELS[report.category]}</span>
+      </div>
+    </article>
+  );
+}
+
+function ReportUploadStep({
+  answers,
+  onAddReports,
+  onRemoveReport,
+}: {
+  answers: ProfileAnswers;
+  onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
+  onRemoveReport: (id: string) => void;
+}) {
+  const categories = uploadCategories(answers);
+  const compactDropzones = categories.length === 3;
+
+  return (
+    <div className="pf-upload-layout">
+      <div className={`pf-upload-dropzones ${compactDropzones ? "is-compact" : ""}`}>
+        {categories.map((category) => (
+          <ReportDropzone key={category} category={category} onAddReports={onAddReports} />
+        ))}
+      </div>
+      <section className="pf-upload-files" aria-label="Files uploaded">
+        <h3>Files uploaded</h3>
+        {answers.uploadedReports.length > 0 ? (
+          <div className="pf-report-file-grid">
+            {answers.uploadedReports.map((report) => (
+              <UploadedReportTile key={report.id} report={report} onRemove={onRemoveReport} />
+            ))}
+          </div>
+        ) : (
+          <p>-</p>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function StepInputs({
   step,
   answers,
   onPatch,
   onToggle,
+  onToggleReport,
+  onAddReports,
+  onRemoveReport,
 }: {
   step: StepDef;
   answers: ProfileAnswers;
   onPatch: (patch: Partial<ProfileAnswers>) => void;
   onToggle: (key: ToggleListKey, option: string) => void;
+  onToggleReport: (selection: ReportSelection) => void;
+  onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
+  onRemoveReport: (id: string) => void;
 }) {
+  if (step.kind === "reports") {
+    return <ReportSelectionGrid answers={answers} onToggleReport={onToggleReport} />;
+  }
+
+  if (step.kind === "reportUpload") {
+    return (
+      <ReportUploadStep
+        answers={answers}
+        onAddReports={onAddReports}
+        onRemoveReport={onRemoveReport}
+      />
+    );
+  }
+
   if (step.kind === "basics") {
     const { basics } = answers;
     return (
@@ -283,6 +505,9 @@ function ProfileFlow({
   startAt,
   onPatch,
   onToggle,
+  onToggleReport,
+  onAddReports,
+  onRemoveReport,
   onReachStep,
   onComplete,
   onClose,
@@ -293,6 +518,9 @@ function ProfileFlow({
   const step = STEPS[stepIndex];
 
   const canContinue = useMemo(() => {
+    if (step.kind === "reports") {
+      return answers.reportSelections.length > 0;
+    }
     if (step.kind === "chips" && step.required) {
       const key = step.id as "reason" | "goals" | "symptoms" | "family";
       return answers[key].length > 0;
@@ -300,14 +528,23 @@ function ProfileFlow({
     return true;
   }, [step, answers]);
 
+  const nextStepIndex = () => {
+    if (stepIndex === REPORT_STEP_INDEX) {
+      return answers.reportSelections.includes("no_tests") ? STEP_COUNT : REPORT_UPLOAD_STEP_INDEX;
+    }
+    return stepIndex + 1;
+  };
+
   const advance = () => {
     if (!canContinue) return;
-    if (stepIndex === STEP_COUNT - 1) {
+    const target = nextStepIndex();
+    if (target >= STEP_COUNT) {
+      onReachStep(STEP_COUNT);
       setComposing(true);
       return;
     }
-    onReachStep(stepIndex + 1);
-    setStepIndex(stepIndex + 1);
+    onReachStep(target);
+    setStepIndex(target);
     setWhyOpen(false);
   };
 
@@ -329,7 +566,8 @@ function ProfileFlow({
       if (composing) return;
       const target = event.target as HTMLElement;
       const inText = target.tagName === "INPUT" && (target as HTMLInputElement).type === "text";
-      if (event.key === "Enter" && !inText) {
+      const inButton = target.tagName === "BUTTON";
+      if (event.key === "Enter" && !inText && !inButton) {
         event.preventDefault();
         advance();
       }
@@ -340,8 +578,13 @@ function ProfileFlow({
       }
       if (event.key === "Escape") onClose();
       if (event.key === "ArrowLeft" && !inText) back();
-      // 1–9 toggles chips on chip steps.
+      // 1–9 toggles chips/report tiles on choice steps.
       if (!inText && /^[1-9]$/.test(event.key)) {
+        if (step.kind === "reports") {
+          const option = REPORT_OPTIONS[Number(event.key) - 1];
+          if (option) onToggleReport(option.id);
+          return;
+        }
         const options = step.options;
         if (!options || (step.kind !== "chips" && step.kind !== "supplements")) return;
         const option = options[Number(event.key) - 1];
@@ -360,6 +603,9 @@ function ProfileFlow({
   }, []);
 
   const progress = ((stepIndex + (composing ? 1 : 0)) / STEP_COUNT) * 100;
+  const willFinish =
+    stepIndex === STEP_COUNT - 1 ||
+    (stepIndex === REPORT_STEP_INDEX && answers.reportSelections.includes("no_tests"));
 
   return (
     <div className="pf-flow" role="dialog" aria-label="Health profile">
@@ -391,13 +637,27 @@ function ProfileFlow({
             {step.promptEm && <em>{step.promptEm}</em>}
           </h2>
           {step.helper && <p className="pf-stage-helper">{step.helper}</p>}
-          <StepInputs step={step} answers={answers} onPatch={onPatch} onToggle={onToggle} />
+          <StepInputs
+            step={step}
+            answers={answers}
+            onPatch={onPatch}
+            onToggle={onToggle}
+            onToggleReport={onToggleReport}
+            onAddReports={onAddReports}
+            onRemoveReport={onRemoveReport}
+          />
           {step.whyWeAsk && (
-            <div className="pf-why">
-              <button type="button" onClick={() => setWhyOpen((open) => !open)}>
+            <div className={`pf-why ${whyOpen ? "is-open" : ""}`}>
+              <button
+                type="button"
+                aria-expanded={whyOpen}
+                onClick={() => setWhyOpen((open) => !open)}
+              >
                 Why we ask
               </button>
-              {whyOpen && <p>{step.whyWeAsk}</p>}
+              <div className="pf-why-panel" aria-hidden={!whyOpen}>
+                <p>{step.whyWeAsk}</p>
+              </div>
             </div>
           )}
         </div>
@@ -417,7 +677,7 @@ function ProfileFlow({
             disabled={!canContinue}
             style={!canContinue ? { opacity: 0.45, cursor: "default" } : undefined}
           >
-            {stepIndex === STEP_COUNT - 1 ? "Finish" : "Continue"}
+            {willFinish ? "Finish" : "Continue"}
           </button>
           <span className="pf-enter-hint">
             press <kbd>Enter ↵</kbd>

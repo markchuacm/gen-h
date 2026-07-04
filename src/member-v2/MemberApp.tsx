@@ -11,11 +11,6 @@ import "./shell/shell.css";
 function ResultsScreen() {
   return (
     <main className="p-page dashboard-content--results">
-      <header className="p-results-heading">
-        <h1 className="p-h1">
-          Your <em>results</em>
-        </h1>
-      </header>
       <ResultsDashboard />
     </main>
   );
@@ -54,6 +49,9 @@ function MemberApp() {
         <ProfileScreen
           flowOpen={profileFlowOpen}
           onFlowOpenChange={setProfileFlowOpen}
+          onExitIncomplete={() => {
+            setActiveTab("home");
+          }}
           onCompleted={() => {
             // Demo continuity: finishing the profile moves the journey along.
             if (journeyState === "PROFILE_INCOMPLETE") setJourneyState("CONSULT_UPCOMING");
