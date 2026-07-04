@@ -121,7 +121,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       image: heroProfileImage,
     },
     steps: [
-      { label: "Profile", statusLabel: "Not started", state: "active" },
+      { label: "Profile", statusLabel: "Pending", state: "active" },
       { label: "Consult", statusLabel: "Upcoming", state: "upcoming" },
       { label: "Blood draw", statusLabel: "Upcoming", state: "upcoming" },
       { label: "Results", statusLabel: "Upcoming", state: "upcoming" },
@@ -179,7 +179,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     steps: [
       { label: "Profile", statusLabel: "Completed", state: "completed" },
       { label: "Consult", statusLabel: "Completed", state: "completed" },
-      { label: "Blood draw", statusLabel: "Next step", state: "active" },
+      { label: "Blood draw", statusLabel: "Upcoming", state: "active" },
       { label: "Results", statusLabel: "Upcoming", state: "upcoming" },
       { label: "Care plan", statusLabel: "Upcoming", state: "upcoming" },
     ],
@@ -216,7 +216,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       { label: "Profile", statusLabel: "Completed", state: "completed" },
       { label: "Consult", statusLabel: "Completed", state: "completed" },
       { label: "Blood draw", statusLabel: "Completed", state: "completed" },
-      { label: "Results", statusLabel: "Processing", state: "active" },
+      { label: "Results", statusLabel: "Upcoming", state: "active" },
       { label: "Care plan", statusLabel: "Upcoming", state: "upcoming" },
     ],
     tip: {
@@ -256,7 +256,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       { label: "Consult", statusLabel: "Completed", state: "completed" },
       { label: "Blood draw", statusLabel: "Completed", state: "completed" },
       { label: "Results", statusLabel: "Completed", state: "completed" },
-      { label: "Care plan", statusLabel: "Ready", state: "active" },
+      { label: "Care plan", statusLabel: "Delivered", state: "active" },
     ],
     tip: {
       title: "Your next step",

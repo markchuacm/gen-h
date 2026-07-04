@@ -237,7 +237,8 @@ function ReportDropzone({
         onDrop={(event) => {
           event.preventDefault();
           setDragOver(false);
-          if (event.dataTransfer.files.length) onAddReports(event.dataTransfer.files, category);
+          const files = Array.from(event.dataTransfer.files);
+          if (files.length) onAddReports(files, category);
         }}
       >
         <Paperclip strokeWidth={1.7} aria-hidden="true" />
@@ -251,7 +252,8 @@ function ReportDropzone({
         multiple
         accept={ACCEPT_REPORTS}
         onChange={(event) => {
-          if (event.target.files?.length) onAddReports(event.target.files, category);
+          const files = Array.from(event.target.files ?? []);
+          if (files.length) onAddReports(files, category);
           event.target.value = "";
         }}
       />
@@ -301,10 +303,11 @@ function ReportUploadStep({
   onRemoveReport: (id: string) => void;
 }) {
   const categories = uploadCategories(answers);
+  const compactDropzones = categories.length === 3;
 
   return (
     <div className="pf-upload-layout">
-      <div className="pf-upload-dropzones">
+      <div className={`pf-upload-dropzones ${compactDropzones ? "is-compact" : ""}`}>
         {categories.map((category) => (
           <ReportDropzone key={category} category={category} onAddReports={onAddReports} />
         ))}
@@ -318,7 +321,7 @@ function ReportUploadStep({
             ))}
           </div>
         ) : (
-          <p>No files yet.</p>
+          <p>-</p>
         )}
       </section>
     </div>

@@ -98,6 +98,7 @@
   z-index: 80;
   display: grid;
   grid-template-rows: auto 1fr auto;
+  overflow: hidden;
   background: #fff;
 }
 
@@ -145,11 +146,19 @@
   align-content: center;
   justify-items: start;
   gap: 20px;
+  min-height: 0;
   width: min(680px, calc(100% - 48px));
   margin-inline: auto;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding-block: 24px;
   animation: pf-step-in 360ms var(--ease-spring);
+}
+
+.pf-stage::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes pf-step-in {
@@ -412,6 +421,10 @@
   gap: 12px;
 }
 
+.pf-upload-dropzones.is-compact {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .pf-upload-group {
   display: grid;
 }
@@ -460,6 +473,27 @@
   font-size: 0.84rem;
   line-height: 1.4;
   text-wrap: pretty;
+}
+
+.pf-upload-dropzones.is-compact .pf-dropzone {
+  gap: 6px;
+  min-height: 122px;
+  padding: 18px 16px;
+}
+
+.pf-upload-dropzones.is-compact .pf-dropzone svg {
+  width: 22px;
+  height: 22px;
+}
+
+.pf-upload-dropzones.is-compact .pf-dropzone strong {
+  font-size: 0.92rem;
+  text-wrap: balance;
+}
+
+.pf-upload-dropzones.is-compact .pf-dropzone span {
+  max-width: 20ch;
+  font-size: 0.78rem;
 }
 
 .pf-upload-files {
@@ -852,6 +886,10 @@
     order: -1;
     aspect-ratio: 16 / 10;
   }
+
+  .pf-upload-dropzones.is-compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -879,6 +917,14 @@
 
   .pf-report-tile {
     min-height: 132px;
+  }
+
+  .pf-upload-dropzones.is-compact {
+    grid-template-columns: 1fr;
+  }
+
+  .pf-upload-dropzones.is-compact .pf-dropzone {
+    min-height: 108px;
   }
 
   .pf-flow-bottom {
