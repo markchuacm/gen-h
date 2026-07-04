@@ -142,7 +142,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       pill: "Upcoming consult",
       titleBefore: "Get ready for ",
       titleEm: "your consult",
-      body: "Meet Dr. Lim Wen Qi at 10:00 AM.",
+      body: "Meet Dr. Lim Wen Qi on 3 July 2026 (Fri) at 10:00 AM.",
       primaryCta: "Join consult",
       primaryAction: { kind: "none" },
       secondaryCta: "View consult details",
