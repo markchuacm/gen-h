@@ -227,6 +227,12 @@ export const DIET_OPTIONS = ["Mostly home-cooked", "Mixed", "Mostly eating out"]
 export const ALCOHOL_OPTIONS = ["Rarely / never", "Socially", "Most days"] as const;
 export const SMOKING_OPTIONS = ["Never", "Former smoker", "Current smoker"] as const;
 
+export const EXCLUSIVE_PROFILE_OPTIONS = {
+  symptoms: "Nothing major — mostly prevention",
+  family: "None that I know of",
+  supplements: "Nothing at the moment",
+} as const;
+
 export type ProfileAnswers = {
   reportSelections: ReportSelection[];
   uploadedReports: UploadedReport[];

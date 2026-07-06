@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { DEFAULT_ANSWERS } from "./profileQuestions";
+import { DEFAULT_ANSWERS, EXCLUSIVE_PROFILE_OPTIONS } from "./profileQuestions";
 import type {
   ProfileAnswers,
   ReportSelection,
@@ -23,6 +23,33 @@ const INITIAL_STATE: ProfileState = {
   completedAt: null,
 };
 
+type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements";
+
+function applyExclusiveSelection(key: ToggleListKey, list: string[], option: string) {
+  const exclusiveOption = EXCLUSIVE_PROFILE_OPTIONS[key as keyof typeof EXCLUSIVE_PROFILE_OPTIONS];
+  const selected = list.includes(option);
+
+  if (selected) return list.filter((item) => item !== option);
+  if (exclusiveOption && option === exclusiveOption) return [option];
+  if (exclusiveOption) return [...list.filter((item) => item !== exclusiveOption), option];
+  return [...list, option];
+}
+
+function sanitizeExclusiveSelections(answers: ProfileAnswers) {
+  return {
+    ...answers,
+    symptoms: answers.symptoms.includes(EXCLUSIVE_PROFILE_OPTIONS.symptoms)
+      ? [EXCLUSIVE_PROFILE_OPTIONS.symptoms]
+      : answers.symptoms,
+    family: answers.family.includes(EXCLUSIVE_PROFILE_OPTIONS.family)
+      ? [EXCLUSIVE_PROFILE_OPTIONS.family]
+      : answers.family,
+    supplements: answers.supplements.includes(EXCLUSIVE_PROFILE_OPTIONS.supplements)
+      ? [EXCLUSIVE_PROFILE_OPTIONS.supplements]
+      : answers.supplements,
+  };
+}
+
 function uid() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
@@ -45,17 +72,19 @@ function load(): ProfileState {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return INITIAL_STATE;
     const parsed = JSON.parse(raw) as ProfileState;
+    const answers = sanitizeExclusiveSelections({
+      ...DEFAULT_ANSWERS,
+      ...parsed.answers,
+      basics: { ...DEFAULT_ANSWERS.basics, ...parsed.answers?.basics },
+      lifestyle: { ...DEFAULT_ANSWERS.lifestyle, ...parsed.answers?.lifestyle },
+      habits: { ...DEFAULT_ANSWERS.habits, ...parsed.answers?.habits },
+    });
+
     return {
       ...INITIAL_STATE,
       ...parsed,
       lastStep: parsed.lastStep ?? 0,
-      answers: {
-        ...DEFAULT_ANSWERS,
-        ...parsed.answers,
-        basics: { ...DEFAULT_ANSWERS.basics, ...parsed.answers?.basics },
-        lifestyle: { ...DEFAULT_ANSWERS.lifestyle, ...parsed.answers?.lifestyle },
-        habits: { ...DEFAULT_ANSWERS.habits, ...parsed.answers?.habits },
-      },
+      answers,
     };
   } catch {
     return INITIAL_STATE;
@@ -82,13 +111,21 @@ export function useProfileAnswers() {
   /** Atomic list toggle — safe against rapid successive presses, where patches
       computed from a stale render would overwrite each other. */
   const toggleListItem = useCallback(
-    (key: "reason" | "goals" | "symptoms" | "family" | "supplements", option: string) =>
+    (key: ToggleListKey, option: string) =>
       save((current) => {
         const list = current.answers[key];
-        const next = list.includes(option)
-          ? list.filter((item) => item !== option)
-          : [...list, option];
-        return { ...current, answers: { ...current.answers, [key]: next } };
+        const next = applyExclusiveSelection(key, list, option);
+        return {
+          ...current,
+          answers: {
+            ...current.answers,
+            [key]: next,
+            ...(key === "supplements" &&
+            next.includes(EXCLUSIVE_PROFILE_OPTIONS.supplements)
+              ? { supplementsOther: "" }
+              : null),
+          },
+        };
       }),
     [save],
   );
