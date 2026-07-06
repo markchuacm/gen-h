@@ -776,124 +776,311 @@
 
 /* ── Doctor brief summary ────────────────────────────────────────────────── */
 
+.pf-profile-page {
+  display: grid;
+  justify-items: stretch;
+}
+
 .pf-brief {
-  max-width: 780px;
+  display: grid;
+  gap: 20px;
+  width: 100%;
   min-width: 0;
+}
+
+.pf-brief-title {
+  display: grid;
+  margin-bottom: 10px;
+}
+
+.pf-brief-title h1 {
+  color: #102039;
+  font-size: clamp(2.15rem, 4vw, 3.1rem);
+  font-weight: 400;
+  line-height: 0.96;
+  text-wrap: balance;
+}
+
+.pf-brief-title h1 em {
+  color: var(--accent);
+  font-style: italic;
+}
+
+.pf-brief-hero {
+  position: relative;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 360px;
   overflow: hidden;
-  border-radius: 28px;
+  padding: 34px 36px 0;
+  border-radius: 12px;
+  background: #111;
+  color: #fff;
+  box-shadow:
+    0 28px 70px rgba(30, 22, 15, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
-.pf-brief-head {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 18px;
-  align-items: center;
-  padding: 26px 32px;
-  background: #f8f6f3;
-}
-
-.pf-brief-head > div {
-  min-width: 0;
-}
-
-.pf-brief-head img {
-  width: 48px;
-  height: 48px;
-  border-radius: 999px;
+.pf-brief-hero-image {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
+  object-position: center;
+  pointer-events: none;
 }
 
-.pf-brief-head strong {
-  display: block;
-  font-weight: 560;
+.pf-brief-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(90deg, rgba(5, 5, 5, 0.74) 0%, rgba(8, 6, 5, 0.42) 48%, rgba(8, 5, 4, 0.58) 100%),
+    linear-gradient(180deg, rgba(4, 4, 4, 0.24) 0%, rgba(4, 4, 4, 0.08) 46%, rgba(4, 4, 4, 0.2) 100%);
+  pointer-events: none;
 }
 
-.pf-brief-head p {
-  margin-top: 2px;
-  font-size: 0.88rem;
-  color: var(--muted);
+.pf-brief-hero > :not(.pf-brief-hero-image) {
+  position: relative;
+  z-index: 2;
 }
 
-.pf-brief-date {
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-
-.pf-brief-body {
+.pf-brief-concern {
   display: grid;
-  min-width: 0;
-  gap: 26px;
-  padding: 30px 32px 34px;
+  align-self: center;
+  gap: 12px;
+  padding-bottom: 10px;
 }
 
-.pf-brief-section {
-  display: grid;
-  min-width: 0;
-  gap: 10px;
+.pf-brief-label {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.96rem;
 }
 
-.pf-brief-section-head {
+.pf-brief-hero h2 {
+  max-width: 20ch;
+  color: #fff;
+  font-size: clamp(2rem, 3.2vw, 2.6rem);
+  font-weight: 400;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.pf-brief-hero-stats {
   display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12px;
   min-width: 0;
-  align-items: baseline;
-  justify-content: space-between;
+  padding-bottom: 34px;
+}
+
+.pf-brief-hero-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  min-width: 0;
+  padding: 0 18px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.93rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.pf-brief-context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
-.pf-brief-section-head h3 {
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+.pf-brief-panel {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 24px;
+  min-width: 0;
+  min-height: 146px;
+  padding: 25px 24px 26px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0 20px 56px rgba(31, 25, 20, 0.08),
+    inset 0 0 0 1px rgba(17, 24, 39, 0.08);
+}
+
+.pf-brief-panel h2,
+.pf-brief-details h2 {
+  color: #102039;
+  font-size: 1.34rem;
+  font-weight: 400;
+  line-height: 1.1;
+  text-wrap: balance;
+}
+
+.pf-brief-facts {
+  display: grid;
+  align-items: start;
+  grid-template-columns: minmax(58px, 0.85fr) minmax(104px, 1.25fr) minmax(62px, 0.85fr) minmax(76px, 1fr);
+  height: 100%;
+}
+
+.pf-brief-panel:nth-child(2) .pf-brief-facts {
+  grid-template-columns: minmax(76px, 0.9fr) minmax(86px, 0.9fr) minmax(116px, 1.2fr);
+}
+
+.pf-brief-fact {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding-inline: clamp(14px, 2vw, 21px);
+  border-left: 1px solid rgba(17, 24, 39, 0.08);
+}
+
+.pf-brief-fact:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.pf-brief-fact span {
+  overflow: hidden;
   color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pf-brief-fact strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 520;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.pf-brief-details {
+  display: grid;
+  gap: 12px;
+  padding: 10px 4px 0;
+}
+
+.pf-brief-details dl {
+  display: grid;
+  margin: 0;
+}
+
+.pf-brief-detail-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.26fr) minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  min-width: 0;
+  min-height: 50px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.09);
+}
+
+.pf-brief-detail-row dt {
+  color: #111827;
+  font-size: 0.94rem;
+  font-weight: 560;
+  line-height: 1.45;
+}
+
+.pf-brief-detail-row dd {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 7px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
+}
+
+.pf-brief-detail-row dd svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.pf-brief-concern-list {
+  display: grid;
+  gap: 7px;
+}
+
+.pf-brief-concern-list > span {
+  display: block;
+  line-height: 1.45;
+  text-wrap: pretty;
 }
 
 .pf-brief-edit {
   min-height: 40px;
   padding-inline: 8px;
   margin-block: -9px;
-  font-size: 0.82rem;
   color: var(--accent-dark);
-  transition: color 180ms var(--ease-ui);
+  font-size: 0.82rem;
+  transition:
+    color 180ms var(--ease-ui),
+    scale 180ms var(--ease-ui);
 }
 
 .pf-brief-edit:hover {
   color: var(--accent);
 }
 
-.pf-brief-sentence {
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-.pf-brief-chips {
-  display: flex;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.pf-brief-chips .p-chip {
-  max-width: 100%;
-  min-height: 30px;
-  height: auto;
-  white-space: normal;
-  overflow-wrap: anywhere;
-  text-wrap: pretty;
-}
-
-.pf-brief-foot {
-  padding: 18px 32px;
-  background: var(--accent-tint);
-  color: var(--accent-dark);
-  font-size: 0.88rem;
+.pf-brief-edit:active {
+  scale: 0.96;
 }
 
 .pf-summary-actions {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-top: 24px;
+  gap: 22px;
+  width: 100%;
+  margin-top: 30px;
+}
+
+.pf-summary-confirm {
+  min-width: 180px;
+  justify-content: center;
+  border-radius: 9px;
+  background: #111;
+}
+
+.pf-summary-confirm:hover {
+  background: #242424;
+}
+
+.pf-summary-edit {
+  min-height: 40px;
+  color: var(--accent-dark);
+  font-size: 0.93rem;
+  font-weight: 560;
+  transition:
+    color 180ms var(--ease-ui),
+    scale 180ms var(--ease-ui);
+}
+
+.pf-summary-edit:hover {
+  color: var(--accent);
+}
+
+.pf-summary-edit:active {
+  scale: 0.96;
 }
 
 /* ── Breakpoints ─────────────────────────────────────────────────────────── */
@@ -910,6 +1097,10 @@
 
   .pf-upload-dropzones.is-compact {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pf-brief-context-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -952,68 +1143,104 @@
     flex-wrap: wrap;
   }
 
-  .pf-brief-head {
-    grid-template-columns: auto 1fr;
-    padding: 22px 24px;
+  .pf-brief {
+    gap: 16px;
   }
 
-  .pf-brief-date {
-    display: none;
+  .pf-brief-hero {
+    min-height: 330px;
+    padding: 28px 24px 0;
   }
 
-  .pf-brief-body {
-    gap: 24px;
-    padding: 26px 24px 30px;
+  .pf-brief-hero h2 {
+    max-width: 18ch;
   }
 
-  .pf-brief-section-head {
-    align-items: start;
+  .pf-brief-hero-stats {
+    padding-bottom: 28px;
   }
 
-  .pf-brief-section-head h3 {
-    min-width: 0;
-    line-height: 1.35;
+  .pf-brief-hero-pill {
+    min-height: 36px;
+    padding-inline: 15px;
+    font-size: 0.88rem;
   }
 
-  .pf-brief-foot {
-    padding: 16px 24px;
+  .pf-brief-panel {
+    padding: 22px;
   }
 
-  .pf-summary-actions .p-btn-ghost {
-    justify-content: center;
-    width: 100%;
+  .pf-brief-detail-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 14px;
+    padding: 16px 0;
+  }
+
+  .pf-brief-detail-row dt {
+    grid-column: 1 / -1;
+  }
+
+  .pf-brief-detail-row dd {
+    grid-column: 1;
+  }
+
+  .pf-brief-detail-row > div {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .pf-summary-actions {
+    gap: 14px;
+  }
+
+  .pf-summary-confirm {
+    min-width: 170px;
   }
 }
 
 @media (max-width: 460px) {
-  .pf-brief {
-    border-radius: 22px;
+  .pf-brief-title h1 {
+    font-size: 2.05rem;
   }
 
-  .pf-brief-head {
-    gap: 14px;
+  .pf-brief-hero {
+    min-height: 0;
+    padding: 24px 20px 0;
+  }
+
+  .pf-brief-concern {
+    min-height: 220px;
+  }
+
+  .pf-brief-hero-stats {
+    gap: 9px;
+    padding-bottom: 24px;
+  }
+
+  .pf-brief-panel {
     padding: 20px;
   }
 
-  .pf-brief-body {
-    gap: 22px;
-    padding: 24px 20px 28px;
+  .pf-brief-facts,
+  .pf-brief-panel:nth-child(2) .pf-brief-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 20px;
   }
 
-  .pf-brief-section-head {
-    gap: 12px;
+  .pf-brief-fact {
+    padding: 0;
+    border-left: 0;
   }
 
-  .pf-brief-section-head h3 {
-    font-size: 0.72rem;
-    letter-spacing: 0.16em;
+  .pf-summary-actions {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
   }
 
-  .pf-brief-sentence {
-    font-size: 0.95rem;
-  }
-
-  .pf-brief-foot {
-    padding: 15px 20px;
+  .pf-summary-confirm,
+  .pf-summary-edit {
+    justify-content: center;
+    width: 100%;
   }
 }

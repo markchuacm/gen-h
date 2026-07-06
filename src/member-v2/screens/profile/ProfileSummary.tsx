@@ -1,12 +1,10 @@
-import { File as FileIcon, FileText, Image as ImageIcon, Paperclip, Table as TableIcon } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import farheenAvatarImage from "../../../../assets/dashboard/doctors/farheen-nafisa-avatar.png";
+import { FileText } from "lucide-react";
+import profileBriefHeroImage from "../../../../assets/dashboard/profile-brief-hero.png";
 import { REPORT_CATEGORY_LABELS, STEPS } from "./profileQuestions";
-import type { ProfileAnswers, StepId, UploadedReport, UploadedReportKind } from "./profileQuestions";
+import type { ProfileAnswers, StepId } from "./profileQuestions";
 
 type ProfileSummaryProps = {
   answers: ProfileAnswers;
-  completedAt: string | null;
   onEditStep: (stepId: StepId) => void;
 };
 
@@ -14,164 +12,190 @@ function stepIndexOf(stepId: StepId) {
   return STEPS.findIndex((step) => step.id === stepId);
 }
 
-function formatDate(iso: string | null) {
-  if (!iso) return "";
-  return new Intl.DateTimeFormat("en", { day: "numeric", month: "long", year: "numeric" }).format(
-    new Date(iso),
-  );
+function sleepLabel(hours: number) {
+  return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}h`;
 }
 
-function ChipList({ items }: { items: string[] }) {
-  if (items.length === 0) return <p className="pf-brief-sentence">Nothing selected.</p>;
-  return (
-    <div className="pf-brief-chips">
-      {items.map((item) => (
-        <span key={item} className="p-chip p-chip--neutral">
-          {item}
-        </span>
-      ))}
-    </div>
-  );
+function exerciseLabel(days: string) {
+  if (days === "0") return "Rarely";
+  return `${days} / week`;
 }
 
-const REPORT_FILE_ICONS: Record<UploadedReportKind, LucideIcon> = {
-  pdf: FileText,
-  image: ImageIcon,
-  sheet: TableIcon,
-  doc: FileIcon,
-  other: Paperclip,
-};
-
-function ReportFileTile({ report }: { report: UploadedReport }) {
-  const Icon = REPORT_FILE_ICONS[report.kind];
-  const ext = report.name.includes(".") ? report.name.split(".").pop()?.toUpperCase() : report.kind;
-
-  return (
-    <article className={`pf-report-file pf-report-file--summary pf-report-file--${report.kind}`}>
-      <div className="pf-report-file-thumb" aria-hidden="true">
-        <Icon strokeWidth={1.6} />
-        <span>{ext}</span>
-      </div>
-      <div className="pf-report-file-meta">
-        <strong title={report.name}>{report.name}</strong>
-        <span>{REPORT_CATEGORY_LABELS[report.category]}</span>
-      </div>
-    </article>
-  );
+function conciseHabit(value: string) {
+  return value.split(" / ")[0];
 }
 
-function ReportSummary({ answers }: { answers: ProfileAnswers }) {
-  if (answers.uploadedReports.length > 0) {
-    return (
-      <div className="pf-report-file-grid pf-report-file-grid--summary">
-        {answers.uploadedReports.map((report) => (
-          <ReportFileTile key={report.id} report={report} />
-        ))}
-      </div>
-    );
-  }
+function listSummary(items: string[], empty = "Nothing selected") {
+  return items.length > 0 ? items.join(" / ") : empty;
+}
 
-  if (answers.reportSelections.includes("no_tests")) {
-    return <p className="pf-brief-sentence">No previous tests shared.</p>;
-  }
+function reportSummary(answers: ProfileAnswers) {
+  const count = answers.uploadedReports.length;
+  if (count > 0) return `${count} report${count === 1 ? "" : "s"} uploaded`;
+  if (answers.reportSelections.includes("no_tests")) return "No previous tests shared";
 
   const selectedLabels = answers.reportSelections
     .filter((selection): selection is keyof typeof REPORT_CATEGORY_LABELS => selection !== "no_tests")
     .map((selection) => REPORT_CATEGORY_LABELS[selection]);
 
-  if (selectedLabels.length > 0) {
-    return (
-      <>
-        <ChipList items={selectedLabels} />
-        <p className="pf-brief-sentence pf-brief-muted">No files uploaded yet.</p>
-      </>
-    );
-  }
-
-  return <p className="pf-brief-sentence">No previous tests shared.</p>;
+  if (selectedLabels.length > 0) return `${selectedLabels.join(" / ")} selected; no files uploaded`;
+  return "None uploaded";
 }
 
-function Section({
+function contextReportSummary(answers: ProfileAnswers) {
+  if (answers.uploadedReports.length > 0) return reportSummary(answers);
+  if (answers.reportSelections.includes("no_tests")) return "None shared";
+  return "None uploaded";
+}
+
+function BriefFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="pf-brief-fact">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function HeroPill({ value }: { value: string }) {
+  return <span className="pf-brief-hero-pill">{value}</span>;
+}
+
+function ConcernList({ items }: { items: string[] }) {
+  if (items.length === 0) return <span>Nothing selected</span>;
+  return (
+    <span className="pf-brief-concern-list">
+      {items.map((item) => (
+        <span key={item}>{item}</span>
+      ))}
+    </span>
+  );
+}
+
+function DetailRow({
   stepId,
-  title,
+  label,
+  value,
+  icon,
   onEditStep,
-  children,
 }: {
   stepId: StepId;
-  title: string;
+  label: string;
+  value: React.ReactNode;
+  icon?: React.ReactNode;
   onEditStep: (stepId: StepId) => void;
-  children: React.ReactNode;
 }) {
   return (
-    <section className="pf-brief-section">
-      <div className="pf-brief-section-head">
-        <h3>{title}</h3>
+    <div className="pf-brief-detail-row">
+      <dt>{label}</dt>
+      <dd>
+        {icon}
+        <span>{value}</span>
+      </dd>
+      <div>
         <button className="pf-brief-edit" type="button" onClick={() => onEditStep(stepId)}>
           Edit
         </button>
       </div>
-      {children}
-    </section>
+    </div>
   );
 }
 
-function ProfileSummary({ answers, completedAt, onEditStep }: ProfileSummaryProps) {
+function ProfileSummary({ answers, onEditStep }: ProfileSummaryProps) {
   const { basics, lifestyle, habits } = answers;
-
-  const aboutSentence = `Mark, ${basics.age} — ${basics.sex.toLowerCase()}, ${basics.heightCm} cm, ${basics.weightKg} kg.`;
-
-  const lifestyleSentence = `Sleeps around ${lifestyle.sleepHours} hours on weekdays, exercises ${
-    lifestyle.exerciseDays === "0" ? "rarely" : `${lifestyle.exerciseDays} days a week`
-  }, meals are ${lifestyle.diet.toLowerCase()}, and stress lately sits at ${lifestyle.stress} out of 5.`;
-
-  const habitsSentence = `Alcohol: ${habits.alcohol.toLowerCase()} · Smoking: ${habits.smoking.toLowerCase()}.`;
 
   const supplements = answers.supplementsOther.trim()
     ? [...answers.supplements, answers.supplementsOther.trim()]
     : answers.supplements;
+  const mainConcern =
+    answers.reason[0] || "A doctor review of my goals, lifestyle, history and previous results.";
 
   return (
-    <article className="p-card pf-brief" aria-label="What your doctor will see">
-      <header className="pf-brief-head">
-        <img src={farheenAvatarImage} alt="" />
-        <div>
-          <strong>Prepared for your doctor</strong>
-          <p>Reviewed before your consult — you can edit any section until then.</p>
-        </div>
-        {completedAt && <span className="pf-brief-date">{formatDate(completedAt)}</span>}
+    <article className="pf-brief" aria-label="Your health profile">
+      <header className="pf-brief-title">
+        <span className="p-eyebrow">PROFILE</span>
+        <h1>
+          A <em>short brief</em> for your doctor
+        </h1>
       </header>
-      <div className="pf-brief-body">
-        <Section stepId="reports" title="Previous reports" onEditStep={onEditStep}>
-          <ReportSummary answers={answers} />
-        </Section>
-        <Section stepId="basics" title="About you" onEditStep={onEditStep}>
-          <p className="pf-brief-sentence">{aboutSentence}</p>
-        </Section>
-        <Section stepId="reason" title="Why I'm here" onEditStep={onEditStep}>
-          <ChipList items={answers.reason} />
-        </Section>
-        <Section stepId="goals" title="Main goals" onEditStep={onEditStep}>
-          <ChipList items={answers.goals} />
-        </Section>
-        <Section stepId="symptoms" title="What feels off" onEditStep={onEditStep}>
-          <ChipList items={answers.symptoms} />
-        </Section>
-        <Section stepId="lifestyle" title="Lifestyle" onEditStep={onEditStep}>
-          <p className="pf-brief-sentence">{lifestyleSentence}</p>
-        </Section>
-        <Section stepId="habits" title="Habits" onEditStep={onEditStep}>
-          <p className="pf-brief-sentence">{habitsSentence}</p>
-        </Section>
-        <Section stepId="family" title="Family history" onEditStep={onEditStep}>
-          <ChipList items={answers.family} />
-        </Section>
-        <Section stepId="supplements" title="Supplements & medications" onEditStep={onEditStep}>
-          <ChipList items={supplements} />
-        </Section>
+
+      <section className="pf-brief-hero" aria-label="Main concern">
+        <img className="pf-brief-hero-image" src={profileBriefHeroImage} alt="" aria-hidden="true" />
+        <div className="pf-brief-concern">
+          <p className="pf-brief-label">Mark&apos;s main concern</p>
+          <h2>{mainConcern}</h2>
+        </div>
+        <div className="pf-brief-hero-stats" aria-label="Profile basics">
+          <HeroPill value={`${basics.age}`} />
+          <HeroPill value={basics.sex.toLowerCase()} />
+          <HeroPill value={`${basics.heightCm} cm`} />
+          <HeroPill value={`${basics.weightKg} kg`} />
+        </div>
+      </section>
+
+      <div className="pf-brief-context-grid">
+        <section className="pf-brief-panel" aria-labelledby="profile-lifestyle">
+          <h2 id="profile-lifestyle">Lifestyle</h2>
+          <div className="pf-brief-facts">
+            <BriefFact label="Sleep" value={sleepLabel(lifestyle.sleepHours)} />
+            <BriefFact label="Exercise" value={exerciseLabel(lifestyle.exerciseDays)} />
+            <BriefFact label="Stress" value={`${lifestyle.stress} / 5`} />
+            <BriefFact label="Meals" value={lifestyle.diet.replace("Mostly ", "")} />
+          </div>
+        </section>
+
+        <section className="pf-brief-panel" aria-labelledby="profile-health-context">
+          <h2 id="profile-health-context">Health context</h2>
+          <div className="pf-brief-facts">
+            <BriefFact label="Alcohol" value={conciseHabit(habits.alcohol)} />
+            <BriefFact label="Smoking" value={habits.smoking} />
+            <BriefFact label="Reports" value={contextReportSummary(answers)} />
+          </div>
+        </section>
       </div>
-      <footer className="pf-brief-foot">
-        Dr. Farheen Nafisa reviews this brief before your consult, alongside any reports you share.
-      </footer>
+
+      <section className="pf-brief-details" aria-labelledby="profile-more-details">
+        <h2 id="profile-more-details">More details</h2>
+        <dl>
+          <DetailRow
+            stepId="reason"
+            label="All Concerns"
+            value={<ConcernList items={answers.reason} />}
+            onEditStep={onEditStep}
+          />
+          <DetailRow
+            stepId="goals"
+            label="Goals"
+            value={listSummary(answers.goals)}
+            onEditStep={onEditStep}
+          />
+          <DetailRow
+            stepId="symptoms"
+            label="What feels off"
+            value={listSummary(answers.symptoms)}
+            onEditStep={onEditStep}
+          />
+          <DetailRow
+            stepId="family"
+            label="Family history"
+            value={listSummary(answers.family)}
+            onEditStep={onEditStep}
+          />
+          <DetailRow
+            stepId="supplements"
+            label="Supplements & medications"
+            value={listSummary(supplements)}
+            onEditStep={onEditStep}
+          />
+          <DetailRow
+            stepId="reports"
+            label="Previous reports"
+            value={reportSummary(answers)}
+            icon={<FileText aria-hidden="true" />}
+            onEditStep={onEditStep}
+          />
+        </dl>
+      </section>
     </article>
   );
 }

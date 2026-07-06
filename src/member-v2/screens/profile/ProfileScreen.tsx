@@ -27,7 +27,6 @@ function ProfileScreen({
     removeUploadedReport,
     setLastStep,
     markCompleted,
-    reset,
   } = useProfileAnswers();
   const [startAt, setStartAt] = useState(0);
 
@@ -66,32 +65,21 @@ function ProfileScreen({
   if (!completed) return flow;
 
   return (
-    <main className="p-page">
-      <header className="home-head">
-        <span className="p-eyebrow">YOUR PROFILE</span>
-        <h1 className="p-h1">
-          What your doctor <em>will see</em>
-        </h1>
-      </header>
-
+    <main className="p-page pf-profile-page">
       <ProfileSummary
         answers={state.answers}
-        completedAt={state.completedAt}
         onEditStep={handleEditStep}
       />
       <div className="pf-summary-actions">
-        <button className="p-btn-ghost" type="button" onClick={() => openFlow(0)}>
-          Review answers
+        <button className="p-btn pf-summary-confirm" type="button" onClick={onCompleted}>
+          Confirm profile
         </button>
         <button
-          className="p-btn-ghost"
+          className="pf-summary-edit"
           type="button"
-          onClick={() => {
-            reset();
-            onFlowOpenChange(false);
-          }}
+          onClick={() => openFlow(0)}
         >
-          Start over
+          Edit answers
         </button>
       </div>
 
