@@ -72,21 +72,27 @@ function ConcernList({ items }: { items: string[] }) {
   );
 }
 
+function shouldTopAlignList(items: string[]) {
+  return items.length > 1 || listSummary(items).length > 72;
+}
+
 function DetailRow({
   stepId,
   label,
   value,
   icon,
+  topAlign = false,
   onEditStep,
 }: {
   stepId: StepId;
   label: string;
   value: React.ReactNode;
   icon?: React.ReactNode;
+  topAlign?: boolean;
   onEditStep: (stepId: StepId) => void;
 }) {
   return (
-    <div className="pf-brief-detail-row">
+    <div className={`pf-brief-detail-row ${topAlign ? "is-top-aligned" : ""}`}>
       <dt>{label}</dt>
       <dd>
         {icon}
@@ -161,30 +167,35 @@ function ProfileSummary({ answers, onEditStep }: ProfileSummaryProps) {
             stepId="reason"
             label="All Concerns"
             value={<ConcernList items={answers.reason} />}
+            topAlign={shouldTopAlignList(answers.reason)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="goals"
             label="Goals"
             value={listSummary(answers.goals)}
+            topAlign={shouldTopAlignList(answers.goals)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="symptoms"
             label="What feels off"
             value={listSummary(answers.symptoms)}
+            topAlign={shouldTopAlignList(answers.symptoms)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="family"
             label="Family history"
             value={listSummary(answers.family)}
+            topAlign={shouldTopAlignList(answers.family)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="supplements"
             label="Supplements & medications"
             value={listSummary(supplements)}
+            topAlign={shouldTopAlignList(supplements)}
             onEditStep={onEditStep}
           />
           <DetailRow

@@ -988,6 +988,12 @@
   border-bottom: 1px solid rgba(17, 24, 39, 0.09);
 }
 
+.pf-brief-detail-row.is-top-aligned {
+  align-items: start;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
 .pf-brief-detail-row dt {
   color: #111827;
   font-size: 0.94rem;
@@ -1006,6 +1012,10 @@
   line-height: 1.45;
   overflow-wrap: anywhere;
   text-wrap: pretty;
+}
+
+.pf-brief-detail-row.is-top-aligned dd {
+  align-items: flex-start;
 }
 
 .pf-brief-detail-row dd svg {
@@ -1035,6 +1045,10 @@
   transition:
     color 180ms var(--ease-ui),
     scale 180ms var(--ease-ui);
+}
+
+.pf-brief-detail-row.is-top-aligned .pf-brief-edit {
+  margin-block: -9px 0;
 }
 
 .pf-brief-edit:hover {
