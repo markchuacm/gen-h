@@ -153,7 +153,12 @@
   overscroll-behavior: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding-block: 24px;
+  /* Horizontal padding matters here, not just visually: overflow-y: auto
+     implicitly promotes overflow-x to auto too (an edge case in the overflow
+     spec), so any focus outline on an edge-touching child (inputs, sliders,
+     dropzones, the last chip in a wrapped row) gets clipped without room to
+     render outside the child's own box. */
+  padding: 24px 6px;
   animation: pf-step-in 360ms var(--ease-spring);
 }
 

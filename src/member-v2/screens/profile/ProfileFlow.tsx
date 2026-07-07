@@ -393,8 +393,22 @@ function StepInputs({
     const { basics } = answers;
     return (
       <div className="pf-controls">
+        <div className="pf-control">
+          <div className="pf-control-head">
+            <label htmlFor="pf-preferred-name">Preferred name</label>
+          </div>
+          <input
+            id="pf-preferred-name"
+            className="pf-other-input"
+            type="text"
+            value={basics.preferredName}
+            onChange={(event) =>
+              onPatch({ basics: { ...basics, preferredName: event.target.value } })
+            }
+          />
+        </div>
         <Segment
-          label="Sex"
+          label="Gender"
           options={["Male", "Female"]}
           value={basics.sex}
           onSelect={(sex) => onPatch({ basics: { ...basics, sex: sex as "Male" | "Female" } })}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import TopNav from "./shell/TopNav";
 import { useAuth } from "../auth/AuthProvider";
 import { fetchMemberProfile } from "../lib/api/memberProfile";
@@ -23,17 +23,29 @@ function MemberApp() {
   const [activeTab, setActiveTab] = useState<MemberTab>("home");
   const [journeyState, setJourneyState] = useState<JourneyStateId | null>(null);
   const [profileFlowOpen, setProfileFlowOpen] = useState(false);
+  const [preferredName, setPreferredName] = useState<string | null>(null);
+  const hasAutoOpenedProfile = useRef(false);
 
-  const firstName =
+  const fallbackName =
     profile?.full_name?.trim().split(/\s+/)[0] || profile?.email?.split("@")[0] || "there";
+  const firstName = preferredName?.trim() || fallbackName;
 
   // The journey stage lives in member_profiles.current_stage; the dev
   // switcher in TopNav can still override it locally for previewing states.
+  // A member who hasn't finished onboarding lands straight in the profile
+  // flow instead of Home, until they complete it.
   useEffect(() => {
     let cancelled = false;
     fetchMemberProfile().then(({ data }) => {
       if (cancelled) return;
-      setJourneyState(STAGE_TO_JOURNEY[data?.current_stage ?? ""] ?? "PROFILE_INCOMPLETE");
+      const stage = STAGE_TO_JOURNEY[data?.current_stage ?? ""] ?? "PROFILE_INCOMPLETE";
+      setJourneyState(stage);
+      setPreferredName(data?.preferred_name ?? null);
+      if (stage === "PROFILE_INCOMPLETE" && !hasAutoOpenedProfile.current) {
+        hasAutoOpenedProfile.current = true;
+        setActiveTab("profile");
+        setProfileFlowOpen(true);
+      }
     });
     return () => {
       cancelled = true;
@@ -88,9 +100,11 @@ function MemberApp() {
           onExitIncomplete={() => {
             setActiveTab("home");
           }}
-          onCompleted={() => {
-            // Demo continuity: finishing the profile moves the journey along.
+          onCompleted={(name) => {
+            // Finishing the profile moves the journey along; update the
+            // greeting immediately rather than waiting on a DB round-trip.
             if (journeyState === "PROFILE_INCOMPLETE") setJourneyState("CONSULT_UPCOMING");
+            if (name.trim()) setPreferredName(name.trim());
           }}
         />
       ) : activeTab === "carePlan" ? (
