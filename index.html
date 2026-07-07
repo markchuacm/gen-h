@@ -8,6 +8,18 @@
       content="Gen-H is a doctor-led preventive health program for Malaysians who want to understand their health before it becomes urgent."
     />
     <title>Gen-H | Know your health before it becomes urgent</title>
+    <script>
+      // Supabase auth links (email confirmation, OAuth) can land on the site
+      // root when the redirect target falls back to the Site URL. The landing
+      // bundle has no Supabase client, so forward auth callbacks to the
+      // portal, which does. Keep this before the app script.
+      (function () {
+        var params = window.location.search + window.location.hash;
+        if (/[?&#](code|access_token|token_hash|error_code|type)=/.test(params)) {
+          window.location.replace("/member.html" + window.location.search + window.location.hash);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="landing-root"></div>
