@@ -12,7 +12,8 @@ import lifestyleImpactsImage from "../../../../assets/future-health/lifestyle-im
 import morningMountainImage from "../../../../assets/genh-hero-mountain.jpg";
 
 export type LifestyleCategory = "Nutrition" | "Exercise" | "Supplements" | "Sleep";
-export type FocusAreaId = "glucose-stability" | "cholesterol-support" | "vitamin-d-repletion" | "recovery-rhythm";
+// Section ids are DB uuids at runtime; the demo constants below use slugs.
+export type FocusAreaId = string;
 
 export type CarePlanAction = {
   id: string;
