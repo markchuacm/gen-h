@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import TopNav from "./shell/TopNav";
-import { JOURNEY_STATES } from "./journey/journeyState";
+import { useAuth } from "../auth/AuthProvider";
+import { fetchMemberProfile } from "../lib/api/memberProfile";
+import { JOURNEY_STATES, STAGE_TO_JOURNEY } from "./journey/journeyState";
 import type { JourneyStateId, MemberTab } from "./journey/journeyState";
 import HomeScreen from "./screens/home/HomeScreen";
 import ProfileScreen from "./screens/profile/ProfileScreen";
@@ -17,10 +19,26 @@ function ResultsScreen() {
 }
 
 function MemberApp() {
+  const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState<MemberTab>("home");
-  const [journeyState, setJourneyState] = useState<JourneyStateId>("PROFILE_INCOMPLETE");
+  const [journeyState, setJourneyState] = useState<JourneyStateId | null>(null);
   const [profileFlowOpen, setProfileFlowOpen] = useState(false);
-  const config = JOURNEY_STATES[journeyState];
+
+  const firstName =
+    profile?.full_name?.trim().split(/\s+/)[0] || profile?.email?.split("@")[0] || "there";
+
+  // The journey stage lives in member_profiles.current_stage; the dev
+  // switcher in TopNav can still override it locally for previewing states.
+  useEffect(() => {
+    let cancelled = false;
+    fetchMemberProfile().then(({ data }) => {
+      if (cancelled) return;
+      setJourneyState(STAGE_TO_JOURNEY[data?.current_stage ?? ""] ?? "PROFILE_INCOMPLETE");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Results scrolls internally on larger viewports; mobile uses normal document scroll.
   useEffect(() => {
@@ -41,6 +59,10 @@ function MemberApp() {
     };
   }, [activeTab]);
 
+  // Journey stage still loading from the DB.
+  if (!journeyState) return null;
+  const config = JOURNEY_STATES[journeyState];
+
   return (
     <>
       <TopNav
@@ -52,6 +74,7 @@ function MemberApp() {
       {activeTab === "home" ? (
         <HomeScreen
           config={config}
+          firstName={firstName}
           onNav={setActiveTab}
           onStartProfile={() => {
             setActiveTab("profile");

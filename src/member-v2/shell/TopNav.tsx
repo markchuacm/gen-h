@@ -38,9 +38,11 @@ function TopNav({ activeTab, onNav, journeyState, onJourneyStateChange }: TopNav
           </button>
         ))}
       </nav>
-      <div className="p-nav-right">
-        <DevStateSwitcher value={journeyState} onChange={onJourneyStateChange} />
-      </div>
+      {import.meta.env.DEV && (
+        <div className="p-nav-right">
+          <DevStateSwitcher value={journeyState} onChange={onJourneyStateChange} />
+        </div>
+      )}
     </header>
   );
 }

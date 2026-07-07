@@ -12,7 +12,18 @@ export type JourneyStateId =
   | "CONSULT_UPCOMING"
   | "BLOOD_FORM_READY"
   | "RESULTS_PENDING"
+  | "RESULTS_READY"
   | "CARE_PLAN_READY";
+
+/** DB `member_profiles.current_stage` values mapped to journey states. */
+export const STAGE_TO_JOURNEY: Record<string, JourneyStateId> = {
+  profile_incomplete: "PROFILE_INCOMPLETE",
+  consult_upcoming: "CONSULT_UPCOMING",
+  blood_form_ready: "BLOOD_FORM_READY",
+  results_pending: "RESULTS_PENDING",
+  results_ready: "RESULTS_READY",
+  care_plan_ready: "CARE_PLAN_READY",
+};
 
 export type MemberTab = "home" | "profile" | "results" | "carePlan";
 
@@ -76,7 +87,8 @@ export type JourneyStateConfig = {
   id: JourneyStateId;
   switcherLabel: string;
   stageLabel: string;
-  greeting: string;
+  /** Rendered as `${greetingPrefix}, ${firstName}` on the home screen. */
+  greetingPrefix: string;
   hero: {
     pill: string;
     titleBefore: string;
@@ -109,7 +121,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "PROFILE_INCOMPLETE",
     switcherLabel: "Profile incomplete",
     stageLabel: "Step 1 of 5 · Profile",
-    greeting: "Welcome to Gen-H, Mark",
+    greetingPrefix: "Welcome to Gen-H",
     hero: {
       pill: "Health profile",
       titleBefore: "Complete your ",
@@ -137,7 +149,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "CONSULT_UPCOMING",
     switcherLabel: "Consult upcoming",
     stageLabel: "Step 2 of 5 · Consult",
-    greeting: "Welcome back, Mark",
+    greetingPrefix: "Welcome back",
     hero: {
       pill: "Upcoming consult",
       titleBefore: "Get ready for ",
@@ -165,7 +177,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "BLOOD_FORM_READY",
     switcherLabel: "Blood draw",
     stageLabel: "Step 3 of 5 · Blood draw",
-    greeting: "Welcome back, Mark",
+    greetingPrefix: "Welcome back",
     hero: {
       pill: "Blood draw",
       titleBefore: "Your blood test form ",
@@ -201,7 +213,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "RESULTS_PENDING",
     switcherLabel: "Results pending",
     stageLabel: "Step 4 of 5 · Results",
-    greeting: "Welcome back, Mark",
+    greetingPrefix: "Welcome back",
     hero: {
       pill: "Results",
       titleBefore: "Your results are ",
@@ -236,11 +248,50 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       primaryCta: "View past results",
     },
   },
+  RESULTS_READY: {
+    id: "RESULTS_READY",
+    switcherLabel: "Results ready",
+    stageLabel: "Step 4 of 5 · Results",
+    greetingPrefix: "Welcome back",
+    hero: {
+      pill: "Results",
+      titleBefore: "Your results ",
+      titleEm: "are in",
+      body: "Explore them by health area while your doctor prepares your care plan.",
+      primaryCta: "View results",
+      primaryAction: { kind: "tab", tab: "results" },
+      secondaryCta: "View timeline",
+      image: heroResultsImage,
+    },
+    steps: [
+      { label: "Profile", statusLabel: "Completed", state: "completed" },
+      { label: "Consult", statusLabel: "Completed", state: "completed" },
+      { label: "Blood draw", statusLabel: "Completed", state: "completed" },
+      { label: "Results", statusLabel: "Ready", state: "active" },
+      { label: "Care plan", statusLabel: "In progress", state: "upcoming" },
+    ],
+    tip: {
+      title: "What happens next",
+      body: "Your doctor is reviewing your results and will build your personalised care plan next.",
+    },
+    contextCard: {
+      type: "resultsTimeline",
+      testName: "Advanced Blood Baseline",
+      expectedTiming: "Care plan in progress",
+      stages: [
+        { label: "Blood drawn", state: "completed" },
+        { label: "At the lab", state: "completed" },
+        { label: "Results ready", state: "completed" },
+        { label: "Doctor review", state: "active" },
+      ],
+      primaryCta: "View results",
+    },
+  },
   CARE_PLAN_READY: {
     id: "CARE_PLAN_READY",
     switcherLabel: "Care plan ready",
     stageLabel: "Step 5 of 5 · Care plan",
-    greeting: "Welcome back, Mark",
+    greetingPrefix: "Welcome back",
     hero: {
       pill: "Care plan",
       titleBefore: "Your care plan ",

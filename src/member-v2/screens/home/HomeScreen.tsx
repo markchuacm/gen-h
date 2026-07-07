@@ -20,6 +20,7 @@ import "./home.css";
 
 type HomeScreenProps = {
   config: JourneyStateConfig;
+  firstName: string;
   onNav: (tab: MemberTab) => void;
   onStartProfile: () => void;
 };
@@ -284,7 +285,7 @@ function DetailDialog({
   );
 }
 
-function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
+function HomeScreen({ config, firstName, onNav, onStartProfile }: HomeScreenProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const handleHeroAction = (action: HeroAction) => {
@@ -297,7 +298,7 @@ function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
       <header className="home-head">
         <span className="p-eyebrow">HOME</span>
         <div className="home-title-row">
-          <h1 className="p-h1">{config.greeting}</h1>
+          <h1 className="p-h1">{`${config.greetingPrefix}, ${firstName}`}</h1>
           <JourneyRail steps={config.steps} />
         </div>
       </header>

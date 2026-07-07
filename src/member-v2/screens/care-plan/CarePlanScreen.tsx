@@ -1,7 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
-import { focusAreas, lifestyleCategoryOrder } from "./carePlanData";
+import { lifestyleCategoryOrder } from "./carePlanData";
 import type { CarePlanAction, FocusArea, LifestyleCategory } from "./carePlanData";
+import { CATEGORY_THUMBNAILS, defaultDoctorAvatar, sectionImage } from "./carePlanAssets";
+import { fetchCarePlan } from "../../../lib/api/carePlan";
+import type { CarePlanRow } from "../../../lib/api/carePlan";
+import { fetchDoctorProfile } from "../../../lib/api/memberProfile";
 import type { MemberTab } from "../../journey/journeyState";
 import "./care-plan.css";
 
@@ -15,11 +19,30 @@ function loadDone(): Record<string, boolean> {
   }
 }
 
-const ALL_ACTIONS = focusAreas.flatMap((area) => area.actions);
+type DoctorIdentity = { doctorName: string; avatarUrl: string };
 
-const AREA_TITLE_BY_ID = new Map(focusAreas.map((area) => [area.id, area.title]));
-
-const PLAN_MARKERS = focusAreas.flatMap((area) => area.markers);
+/** Map DB plan rows into the FocusArea shape the screen renders. Images are
+    resolved here (frontend-owned); doctor identity comes from the profile. */
+function toFocusAreas(plan: CarePlanRow, doctor: DoctorIdentity): FocusArea[] {
+  return plan.care_plan_sections.map((section) => ({
+    id: section.id,
+    title: section.title ?? "Focus area",
+    overviewImageUrl: sectionImage(section.sort_order),
+    detailImageUrl: sectionImage(section.sort_order),
+    summary: section.summary ?? "",
+    markers: section.markers ?? [],
+    doctorNote: {
+      doctorName: doctor.doctorName,
+      avatarUrl: doctor.avatarUrl,
+      note: section.doctor_note ?? "",
+    },
+    actions: (section.actions ?? []).map((action) => ({
+      ...action,
+      focusAreaId: section.id,
+      thumbnailUrl: CATEGORY_THUMBNAILS[action.lifestyleCategory] ?? CATEGORY_THUMBNAILS.Nutrition,
+    })) as CarePlanAction[],
+  }));
+}
 
 function DoctorNote({ area }: { area: FocusArea }) {
   const firstSentenceEnd = area.doctorNote.note.indexOf(". ") + 1;
@@ -43,14 +66,15 @@ function ActionRow({
   action,
   done,
   open,
-  showAreaChip,
+  areaTitle,
   onToggleDone,
   onToggleOpen,
 }: {
   action: CarePlanAction;
   done: boolean;
   open: boolean;
-  showAreaChip: boolean;
+  /** When set, renders the focus-area chip on the row. */
+  areaTitle?: string;
   onToggleDone: () => void;
   onToggleOpen: () => void;
 }) {
@@ -79,9 +103,7 @@ function ActionRow({
           <span>{action.instruction}</span>
         </button>
         <span className="cp-row-side">
-          {showAreaChip && (
-            <span className="cp-marker-chip">{AREA_TITLE_BY_ID.get(action.focusAreaId)}</span>
-          )}
+          {areaTitle && <span className="cp-marker-chip">{areaTitle}</span>}
           <ChevronDown strokeWidth={1.8} aria-hidden="true" />
         </span>
       </div>
@@ -141,7 +163,6 @@ function FocusAreaPanel({
                   action={action}
                   done={!!done[action.id]}
                   open={openAction === action.id}
-                  showAreaChip={false}
                   onToggleDone={() => onToggleDone(action.id)}
                   onToggleOpen={() =>
                     setOpenAction((current) => (current === action.id ? null : action.id))
@@ -156,10 +177,55 @@ function FocusAreaPanel({
   );
 }
 
-function CarePlanScreen({ onNav }: { onNav: (tab: MemberTab) => void }) {
+function CarePlanScreen({
+  onNav,
+  memberId,
+}: {
+  onNav: (tab: MemberTab) => void;
+  /** Set when a doctor is previewing an assigned member's plan. */
+  memberId?: string;
+}) {
   const [done, setDone] = useState<Record<string, boolean>>(loadDone);
   const [openArea, setOpenArea] = useState<FocusArea | null>(null);
   const [openAction, setOpenAction] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [focusAreas, setFocusAreas] = useState<FocusArea[]>([]);
+  const [doctor, setDoctor] = useState<DoctorIdentity>({
+    doctorName: "Your Gen-H doctor",
+    avatarUrl: defaultDoctorAvatar,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCarePlan(memberId).then(async ({ data: plan }) => {
+      if (cancelled || !plan) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+      const doctorProfile = await fetchDoctorProfile(plan.doctor_id);
+      const identity: DoctorIdentity = {
+        doctorName: doctorProfile.data?.full_name ?? "Your Gen-H doctor",
+        avatarUrl: doctorProfile.data?.avatar_url ?? defaultDoctorAvatar,
+      };
+      if (cancelled) return;
+      setDoctor(identity);
+      setFocusAreas(toFocusAreas(plan, identity));
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [memberId]);
+
+  const allActions = useMemo(() => focusAreas.flatMap((area) => area.actions), [focusAreas]);
+  const areaTitleById = useMemo(
+    () => new Map(focusAreas.map((area) => [area.id, area.title])),
+    [focusAreas],
+  );
+  const planMarkers = useMemo(
+    () => [...new Set(focusAreas.flatMap((area) => area.markers))],
+    [focusAreas],
+  );
 
   const toggleDone = (id: string) => {
     setDone((current) => {
@@ -169,7 +235,28 @@ function CarePlanScreen({ onNav }: { onNav: (tab: MemberTab) => void }) {
     });
   };
 
-  const doneCount = ALL_ACTIONS.filter((action) => done[action.id]).length;
+  const doneCount = allActions.filter((action) => done[action.id]).length;
+
+  if (loading) return null;
+
+  if (focusAreas.length === 0) {
+    return (
+      <main className="p-page">
+        <header className="cp-head">
+          <span className="p-eyebrow">YOUR CARE PLAN</span>
+          <h1 className="p-h1">
+            Your plan is <em>on the way</em>
+          </h1>
+        </header>
+        <section className="p-card cp-attribution">
+          <div className="cp-attribution-copy">
+            <strong>Your doctor is preparing your care plan</strong>
+            <p>Once it's released, your focus areas and weekly actions will appear here.</p>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="p-page">
@@ -181,12 +268,12 @@ function CarePlanScreen({ onNav }: { onNav: (tab: MemberTab) => void }) {
       </header>
 
       <section className="p-card cp-attribution">
-        <img src={focusAreas[0].doctorNote.avatarUrl} alt="Dr. Farheen Nafisa" />
+        <img src={doctor.avatarUrl} alt={doctor.doctorName} />
         <div className="cp-attribution-copy">
-          <strong>Prepared by {focusAreas[0].doctorNote.doctorName}</strong>
-          <p>Based on your June results and consult · Next review in 12 weeks</p>
+          <strong>Prepared by {doctor.doctorName}</strong>
+          <p>Based on your results and consult · Next review in 12 weeks</p>
           <div className="cp-markers" aria-label="Markers this plan works on">
-            {PLAN_MARKERS.map((marker) => (
+            {planMarkers.map((marker) => (
               <button
                 key={marker}
                 className="cp-marker-chip"
@@ -243,12 +330,12 @@ function CarePlanScreen({ onNav }: { onNav: (tab: MemberTab) => void }) {
           </h2>
           <p>
             {doneCount > 0
-              ? `${doneCount} of ${ALL_ACTIONS.length} actions checked off — small, repeatable moves.`
-              : `${ALL_ACTIONS.length} small, repeatable actions across food, movement, supplements and sleep.`}
+              ? `${doneCount} of ${allActions.length} actions checked off — small, repeatable moves.`
+              : `${allActions.length} small, repeatable actions across food, movement, supplements and sleep.`}
           </p>
         </div>
         {lifestyleCategoryOrder.map((category: LifestyleCategory) => {
-          const actions = ALL_ACTIONS.filter((action) => action.lifestyleCategory === category);
+          const actions = allActions.filter((action) => action.lifestyleCategory === category);
           if (actions.length === 0) return null;
           return (
             <div className="cp-group" key={category}>
@@ -260,7 +347,7 @@ function CarePlanScreen({ onNav }: { onNav: (tab: MemberTab) => void }) {
                     action={action}
                     done={!!done[action.id]}
                     open={openAction === action.id}
-                    showAreaChip
+                    areaTitle={areaTitleById.get(action.focusAreaId)}
                     onToggleDone={() => toggleDone(action.id)}
                     onToggleOpen={() =>
                       setOpenAction((current) => (current === action.id ? null : action.id))

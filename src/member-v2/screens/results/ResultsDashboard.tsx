@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { ChevronRight, Search, Stethoscope, X } from "lucide-react";
-import { BIOMARKER_CATEGORIES, BIOMARKERS } from "./biomarkerData";
-import type { Biomarker, BiomarkerStatus, HistoricalValue } from "./types";
+import { useMemberResults } from "./useMemberResults";
+import type { Biomarker, BiomarkerCategory, BiomarkerStatus, HistoricalValue } from "./types";
 import "./results.css";
 
 type FilterId = "all" | "optimal" | "at_risk" | "needs_attention" | "not_tested";
@@ -76,14 +76,16 @@ const FILTERS: Array<{ id: FilterId; label: string }> = [
   { id: "not_tested", label: "Not tested" },
 ];
 
-const biomarkerById = new Map(BIOMARKERS.map((biomarker) => [biomarker.id, biomarker]));
-
-const DEMO_RANGE_CONTEXT: PatientRangeContext = {
+const DEFAULT_RANGE_CONTEXT: PatientRangeContext = {
   sex: "male",
   age: 36,
   sampleTiming: "am",
   cyclePhase: "follicular",
 };
+
+// Sex/age come from member_profiles once loaded; components below read the
+// member's context from here instead of prop-threading through every level.
+const RangeContext = createContext<PatientRangeContext>(DEFAULT_RANGE_CONTEXT);
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -183,21 +185,25 @@ function matchesSearch(biomarker: Biomarker, query: string) {
   return haystack.includes(query.toLowerCase());
 }
 
-function panelEntries() {
-  return BIOMARKER_CATEGORIES.flatMap((category) =>
+function panelEntries(categories: BiomarkerCategory[]) {
+  return categories.flatMap((category) =>
     category.biomarkerIds.map((biomarkerId) => ({ category: category.name, biomarkerId })),
   );
 }
 
-function statusCounts(): OverviewCounts {
-  return panelEntries().reduce<OverviewCounts>(
+function statusCounts(
+  categories: BiomarkerCategory[],
+  biomarkerById: Map<string, Biomarker>,
+  context: PatientRangeContext,
+): OverviewCounts {
+  return panelEntries(categories).reduce<OverviewCounts>(
     (acc, entry) => {
       const biomarker = biomarkerById.get(entry.biomarkerId);
       if (!biomarker) {
         acc.awaiting += 1;
         return acc;
       }
-      const rangeContext = resolveRangeContext(biomarker, DEMO_RANGE_CONTEXT);
+      const rangeContext = resolveRangeContext(biomarker, context);
       if (rangeContext.kind === "contextual") acc.contextual += 1;
       else if (
         rangeContext.kind === "measured" &&
@@ -362,9 +368,13 @@ function resolveRangeContext(biomarker: Biomarker, context: PatientRangeContext)
     upperReference = null;
   }
 
+  // Admin-entered status is authoritative for real results (plan §9); the
+  // range parser only decides for entries without a stored status.
   const status: BiomarkerStatus =
     kind === "measured"
-      ? statusFromResolvedRange(biomarker.latestValue, optimal, outOfRange, directionality, biomarker.status)
+      ? biomarker.status !== "not_available"
+        ? biomarker.status
+        : statusFromResolvedRange(biomarker.latestValue, optimal, outOfRange, directionality, biomarker.status)
       : "not_available";
 
   return {
@@ -596,7 +606,7 @@ function TrendChart({ biomarker, rangeContext }: { biomarker: Biomarker; rangeCo
 }
 
 function BiomarkerDrawer({ biomarker, onClose }: { biomarker: Biomarker; onClose: () => void }) {
-  const rangeContext = resolveRangeContext(biomarker, DEMO_RANGE_CONTEXT);
+  const rangeContext = resolveRangeContext(biomarker, useContext(RangeContext));
   const statusMeta = STATUS_META[rangeContext.status];
   const kind = rangeContext.kind;
   const [isClosing, setIsClosing] = useState(false);
@@ -751,7 +761,7 @@ function BiomarkerDrawer({ biomarker, onClose }: { biomarker: Biomarker; onClose
 }
 
 function BiomarkerRow({ biomarker, onOpen }: { biomarker: Biomarker; onOpen: (biomarker: Biomarker) => void }) {
-  const rangeContext = resolveRangeContext(biomarker, DEMO_RANGE_CONTEXT);
+  const rangeContext = resolveRangeContext(biomarker, useContext(RangeContext));
   const kind = rangeContext.kind;
   const rowClass = [
     "biomarker-result-row",
@@ -810,8 +820,27 @@ export default function ResultsDashboard() {
   const [query, setQuery] = useState("");
   const [selectedBiomarker, setSelectedBiomarker] = useState<Biomarker | null>(null);
 
-  const counts = useMemo(statusCounts, []);
-  const total = useMemo(() => panelEntries().length, []);
+  const { loading, error, biomarkers, categories, age, sex } = useMemberResults();
+
+  const rangeContext = useMemo<PatientRangeContext>(
+    () => ({
+      ...DEFAULT_RANGE_CONTEXT,
+      ...(sex ? { sex } : null),
+      ...(age !== null ? { age } : null),
+    }),
+    [age, sex],
+  );
+
+  const biomarkerById = useMemo(
+    () => new Map(biomarkers.map((biomarker) => [biomarker.id, biomarker])),
+    [biomarkers],
+  );
+
+  const counts = useMemo(
+    () => statusCounts(categories, biomarkerById, rangeContext),
+    [categories, biomarkerById, rangeContext],
+  );
+  const total = useMemo(() => panelEntries(categories).length, [categories]);
   const measured = total - counts.awaiting;
 
   const filterCount = (id: FilterId) => {
@@ -822,23 +851,33 @@ export default function ResultsDashboard() {
 
   const filteredCategories = useMemo(
     () =>
-      BIOMARKER_CATEGORIES.map((category) => ({
+      categories.map((category) => ({
         ...category,
         biomarkers: category.biomarkerIds
           .map((biomarkerId) => biomarkerById.get(biomarkerId))
           .filter((biomarker): biomarker is Biomarker => Boolean(biomarker))
           .filter((biomarker) => {
             if (activeFilter === "all") return true;
-            const rangeContext = resolveRangeContext(biomarker, DEMO_RANGE_CONTEXT);
-            if (activeFilter === "not_tested") return rangeContext.kind === "awaiting";
-            return rangeContext.kind === "measured" && rangeContext.status === activeFilter;
+            const resolved = resolveRangeContext(biomarker, rangeContext);
+            if (activeFilter === "not_tested") return resolved.kind === "awaiting";
+            return resolved.kind === "measured" && resolved.status === activeFilter;
           })
           .filter((biomarker) => matchesSearch(biomarker, query.trim())),
       })).filter((category) => category.biomarkers.length > 0),
-    [activeFilter, query],
+    [activeFilter, query, categories, biomarkerById, rangeContext],
   );
 
+  if (loading) return null;
+  if (error) {
+    return (
+      <section className="results-dashboard">
+        <p role="alert">We couldn't load your results ({error}). Try again in a moment.</p>
+      </section>
+    );
+  }
+
   return (
+    <RangeContext.Provider value={rangeContext}>
     <section className="results-dashboard" aria-labelledby="results-dashboard-title">
       <header className="p-heading-row results-heading">
         <span className="p-eyebrow">YOUR RESULTS</span>
@@ -958,5 +997,6 @@ export default function ResultsDashboard() {
         <BiomarkerDrawer biomarker={selectedBiomarker} onClose={() => setSelectedBiomarker(null)} />
       )}
     </section>
+    </RangeContext.Provider>
   );
 }

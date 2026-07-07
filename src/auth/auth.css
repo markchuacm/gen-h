@@ -1,0 +1,137 @@
+/* Auth screens — same white/terracotta language as the portal (tokens.css). */
+
+.auth-screen {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--cream);
+}
+
+.auth-card {
+  width: min(420px, 100%);
+  padding: clamp(28px, 5vw, 40px);
+  border-radius: 20px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-brand {
+  font-size: 0.95rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.auth-title {
+  font-size: clamp(1.6rem, 4vw, 2rem);
+}
+
+.auth-copy {
+  color: var(--muted);
+  font-size: 0.98rem;
+}
+
+.auth-google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-border);
+  font-size: 0.98rem;
+  transition: box-shadow 0.2s var(--ease-ui);
+}
+
+.auth-google:hover {
+  box-shadow: var(--shadow-border-hover);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.auth-field input {
+  padding: 11px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  color: var(--ink);
+  background: #fff;
+}
+
+.auth-field input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.auth-error {
+  color: #b3261e;
+  font-size: 0.9rem;
+}
+
+.auth-submit {
+  padding: 12px 16px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.98rem;
+  transition: background 0.2s var(--ease-ui);
+}
+
+.auth-submit:hover {
+  background: var(--accent-dark);
+}
+
+.auth-submit:disabled,
+.auth-google:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.auth-switch {
+  font-size: 0.92rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.auth-link {
+  color: var(--accent);
+  font-size: inherit;
+}
+
+.auth-link:hover {
+  color: var(--accent-dark);
+}

@@ -36,6 +36,7 @@ export type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supple
 
 type ProfileFlowProps = {
   answers: ProfileAnswers;
+  uploadErrors: string[];
   startAt?: number;
   onPatch: (patch: Partial<ProfileAnswers>) => void;
   onToggle: (key: ToggleListKey, option: string) => void;
@@ -49,8 +50,9 @@ type ProfileFlowProps = {
 
 const REPORT_STEP_INDEX = STEPS.findIndex((step) => step.id === "reports");
 const REPORT_UPLOAD_STEP_INDEX = STEPS.findIndex((step) => step.id === "reportUpload");
+// Must stay in sync with the health-documents bucket config (6 types, 10MB).
 const ACCEPT_REPORTS =
-  ".pdf,.png,.jpg,.jpeg,.heic,.webp,.csv,.xls,.xlsx,.doc,.docx,.txt,application/pdf,image/*,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  ".pdf,.png,.jpg,.jpeg,.csv,.doc,.docx,application/pdf,image/png,image/jpeg,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 const REPORT_ICONS: Record<ReportSelection, LucideIcon> = {
   health_screening: FlaskConical,
@@ -270,6 +272,14 @@ function UploadedReportTile({
 }) {
   const Icon = REPORT_FILE_ICONS[report.kind];
   const ext = report.name.includes(".") ? report.name.split(".").pop()?.toUpperCase() : report.kind;
+  const uploading = report.status === "uploading";
+
+  const openDocument = async () => {
+    if (!report.storagePath) return;
+    const { createDocumentSignedUrl } = await import("../../../lib/api/healthDocuments");
+    const { url } = await createDocumentSignedUrl(report.storagePath);
+    if (url) window.open(url, "_blank", "noopener");
+  };
 
   return (
     <article className={`pf-report-file pf-report-file--${report.kind}`}>
@@ -286,8 +296,16 @@ function UploadedReportTile({
         <span>{ext}</span>
       </div>
       <div className="pf-report-file-meta">
-        <strong title={report.name}>{report.name}</strong>
-        <span>{REPORT_CATEGORY_LABELS[report.category]}</span>
+        {report.storagePath ? (
+          <strong title={`Open ${report.name}`}>
+            <button type="button" className="pf-report-file-open" onClick={() => void openDocument()}>
+              {report.name}
+            </button>
+          </strong>
+        ) : (
+          <strong title={report.name}>{report.name}</strong>
+        )}
+        <span>{uploading ? "Uploading…" : REPORT_CATEGORY_LABELS[report.category]}</span>
       </div>
     </article>
   );
@@ -295,10 +313,12 @@ function UploadedReportTile({
 
 function ReportUploadStep({
   answers,
+  uploadErrors,
   onAddReports,
   onRemoveReport,
 }: {
   answers: ProfileAnswers;
+  uploadErrors: string[];
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
   onRemoveReport: (id: string) => void;
 }) {
@@ -312,6 +332,13 @@ function ReportUploadStep({
           <ReportDropzone key={category} category={category} onAddReports={onAddReports} />
         ))}
       </div>
+      {uploadErrors.length > 0 && (
+        <ul className="pf-upload-errors" role="alert">
+          {uploadErrors.map((message) => (
+            <li key={message}>{message}</li>
+          ))}
+        </ul>
+      )}
       <section className="pf-upload-files" aria-label="Files uploaded">
         <h3>Files uploaded</h3>
         {answers.uploadedReports.length > 0 ? (
@@ -331,6 +358,7 @@ function ReportUploadStep({
 function StepInputs({
   step,
   answers,
+  uploadErrors,
   onPatch,
   onToggle,
   onToggleReport,
@@ -339,6 +367,7 @@ function StepInputs({
 }: {
   step: StepDef;
   answers: ProfileAnswers;
+  uploadErrors: string[];
   onPatch: (patch: Partial<ProfileAnswers>) => void;
   onToggle: (key: ToggleListKey, option: string) => void;
   onToggleReport: (selection: ReportSelection) => void;
@@ -353,6 +382,7 @@ function StepInputs({
     return (
       <ReportUploadStep
         answers={answers}
+        uploadErrors={uploadErrors}
         onAddReports={onAddReports}
         onRemoveReport={onRemoveReport}
       />
@@ -502,6 +532,7 @@ function StepInputs({
 
 function ProfileFlow({
   answers,
+  uploadErrors,
   startAt,
   onPatch,
   onToggle,
@@ -640,6 +671,7 @@ function ProfileFlow({
           <StepInputs
             step={step}
             answers={answers}
+            uploadErrors={uploadErrors}
             onPatch={onPatch}
             onToggle={onToggle}
             onToggleReport={onToggleReport}
