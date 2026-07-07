@@ -39,6 +39,10 @@ export type UploadedReport = {
   uploadedAt: string;
   category: ReportUploadCategory;
   kind: UploadedReportKind;
+  /** Supabase persistence — absent while the upload is still in flight. */
+  documentId?: string;
+  storagePath?: string;
+  status?: "uploading" | "uploaded";
 };
 
 export const REPORT_OPTIONS: Array<{

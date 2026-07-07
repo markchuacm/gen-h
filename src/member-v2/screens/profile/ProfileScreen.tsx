@@ -20,6 +20,7 @@ function ProfileScreen({
 }: ProfileScreenProps) {
   const {
     state,
+    uploadErrors,
     setAnswers,
     toggleListItem,
     toggleReportSelection,
@@ -46,6 +47,7 @@ function ProfileScreen({
   const flow = (
     <ProfileFlow
       answers={state.answers}
+      uploadErrors={uploadErrors}
       startAt={completed ? startAt : Math.max(0, state.lastStep)}
       onPatch={setAnswers}
       onToggle={toggleListItem}
