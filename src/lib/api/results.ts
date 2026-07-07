@@ -1,0 +1,37 @@
+import { supabase } from "../supabaseClient";
+
+export type BiomarkerResultRow = {
+  id: string;
+  biomarker_code: string;
+  biomarker_name: string | null;
+  category: string | null;
+  value_numeric: number | null;
+  value_text: string | null;
+  unit: string | null;
+  ref_low: number | null;
+  ref_high: number | null;
+  optimal_low: number | null;
+  optimal_high: number | null;
+  status: "optimal" | "at_risk" | "needs_attention";
+  notes: string | null;
+};
+
+export type LabReportRow = {
+  id: string;
+  lab_name: string | null;
+  panel_name: string | null;
+  collected_at: string | null;
+  released_at: string | null;
+  biomarker_results: BiomarkerResultRow[];
+};
+
+/** Released reports only — drafts are filtered out by RLS, not by us. */
+export async function fetchReleasedReports() {
+  return supabase
+    .from("lab_reports")
+    .select(
+      "id, lab_name, panel_name, collected_at, released_at, biomarker_results(*)",
+    )
+    .order("collected_at", { ascending: true })
+    .returns<LabReportRow[]>();
+}
