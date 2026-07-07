@@ -3,12 +3,13 @@ import ProfileFlow from "./ProfileFlow";
 import ProfileSummary, { stepIndexOf } from "./ProfileSummary";
 import type { StepId } from "./profileQuestions";
 import { useProfileAnswers } from "./useProfileAnswers";
+import { useAuth } from "../../../auth/AuthProvider";
 import "./profile.css";
 
 type ProfileScreenProps = {
   flowOpen: boolean;
   onFlowOpenChange: (open: boolean) => void;
-  onCompleted: () => void;
+  onCompleted: (preferredName: string) => void;
   onExitIncomplete: () => void;
 };
 
@@ -18,6 +19,8 @@ function ProfileScreen({
   onCompleted,
   onExitIncomplete,
 }: ProfileScreenProps) {
+  // profile is always loaded before ProfileScreen mounts (see main.tsx Gate).
+  const { profile } = useAuth();
   const {
     state,
     uploadErrors,
@@ -28,7 +31,7 @@ function ProfileScreen({
     removeUploadedReport,
     setLastStep,
     markCompleted,
-  } = useProfileAnswers();
+  } = useProfileAnswers(profile!.id);
   const [startAt, setStartAt] = useState(0);
 
   const completed = !!state.completedAt;
@@ -58,7 +61,7 @@ function ProfileScreen({
       onComplete={() => {
         markCompleted();
         onFlowOpenChange(false);
-        onCompleted();
+        onCompleted(state.answers.basics.preferredName);
       }}
       onClose={handleFlowClose}
     />
@@ -73,7 +76,11 @@ function ProfileScreen({
         onEditStep={handleEditStep}
       />
       <div className="pf-summary-actions">
-        <button className="p-btn pf-summary-confirm" type="button" onClick={onCompleted}>
+        <button
+          className="p-btn pf-summary-confirm"
+          type="button"
+          onClick={() => onCompleted(state.answers.basics.preferredName)}
+        >
           Confirm profile
         </button>
         <button

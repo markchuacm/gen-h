@@ -83,8 +83,8 @@ export const STEPS: StepDef[] = [
     kind: "basics",
     prompt: "First, the ",
     promptEm: "basics",
-    helper: "Slide to set — no typing needed.",
-    whyWeAsk: "Age, sex and body measurements anchor every reference range your doctor uses.",
+    whyWeAsk:
+      "Your name helps us address you correctly; age, gender and body measurements anchor every reference range your doctor uses.",
     summaryLabel: "About you",
   },
   {
@@ -240,7 +240,7 @@ export const EXCLUSIVE_PROFILE_OPTIONS = {
 export type ProfileAnswers = {
   reportSelections: ReportSelection[];
   uploadedReports: UploadedReport[];
-  basics: { age: number; sex: "Male" | "Female"; heightCm: number; weightKg: number };
+  basics: { preferredName: string; age: number; sex: "Male" | "Female"; heightCm: number; weightKg: number };
   reason: string[];
   goals: string[];
   symptoms: string[];
@@ -262,7 +262,7 @@ export type ProfileAnswers = {
 export const DEFAULT_ANSWERS: ProfileAnswers = {
   reportSelections: [],
   uploadedReports: [],
-  basics: { age: 36, sex: "Male", heightCm: 173, weightKg: 76 },
+  basics: { preferredName: "", age: 36, sex: "Male", heightCm: 173, weightKg: 76 },
   reason: [],
   goals: [],
   symptoms: [],

@@ -115,6 +115,9 @@ function ProfileSummary({ answers, onEditStep }: ProfileSummaryProps) {
     : answers.supplements;
   const mainConcern =
     answers.reason[0] || "A doctor review of my goals, lifestyle, history and previous results.";
+  const concernLabel = basics.preferredName.trim()
+    ? `${basics.preferredName.trim()}'s main concern`
+    : "Main concern";
 
   return (
     <article className="pf-brief" aria-label="Your health profile">
@@ -128,7 +131,7 @@ function ProfileSummary({ answers, onEditStep }: ProfileSummaryProps) {
       <section className="pf-brief-hero" aria-label="Main concern">
         <img className="pf-brief-hero-image" src={profileBriefHeroImage} alt="" aria-hidden="true" />
         <div className="pf-brief-concern">
-          <p className="pf-brief-label">Mark&apos;s main concern</p>
+          <p className="pf-brief-label">{concernLabel}</p>
           <h2>{mainConcern}</h2>
         </div>
         <div className="pf-brief-hero-stats" aria-label="Profile basics">

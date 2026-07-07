@@ -18,7 +18,14 @@ import type {
   UploadedReportKind,
 } from "./profileQuestions";
 
-const STORAGE_KEY = "genh-v2-profile";
+const STORAGE_KEY_PREFIX = "genh-v2-profile";
+
+// Scoped per member so switching accounts in the same browser (shared test
+// devices, multiple family members) never shows one member's cached draft
+// answers to another before the DB hydrate completes.
+function storageKey(memberId: string): string {
+  return `${STORAGE_KEY_PREFIX}:${memberId}`;
+}
 
 export type ProfileState = {
   answers: ProfileAnswers;
@@ -77,9 +84,9 @@ function reportKind(file: File): UploadedReportKind {
   return "other";
 }
 
-function load(): ProfileState {
+function load(memberId: string): ProfileState {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(memberId));
     if (!raw) return INITIAL_STATE;
     const parsed = JSON.parse(raw) as ProfileState;
     const answers = sanitizeExclusiveSelections({
@@ -101,14 +108,16 @@ function load(): ProfileState {
   }
 }
 
-export function useProfileAnswers() {
-  const [state, setState] = useState<ProfileState>(load);
+export function useProfileAnswers(memberId: string) {
+  const [state, setState] = useState<ProfileState>(() => load(memberId));
 
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Hydrate from the DB once per mount. The DB is the source of truth;
-  // localStorage is only an offline draft cache.
+  // Hydrate from the DB once per mount. The DB is the source of truth; a
+  // member with zero saved rows has genuinely never submitted anything, so
+  // that response resets local state even if a stale/foreign draft was
+  // cached under this key. localStorage is only an offline draft cache.
   useEffect(() => {
     let cancelled = false;
     fetchOnboardingResponses().then(({ data, error }) => {
@@ -117,7 +126,11 @@ export function useProfileAnswers() {
         console.warn("Failed to load onboarding answers:", error);
         return;
       }
-      if (!data) return;
+      if (!data) {
+        localStorage.removeItem(storageKey(memberId));
+        setState(INITIAL_STATE);
+        return;
+      }
       setState((current) => {
         const { meta, ...sections } = data as Partial<ProfileAnswers> & {
           meta?: { lastStep?: number; completedAt?: string | null };
@@ -134,42 +147,45 @@ export function useProfileAnswers() {
           lastStep: meta?.lastStep ?? current.lastStep,
           completedAt: meta?.completedAt ?? current.completedAt,
         };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(storageKey(memberId), JSON.stringify(next));
         return next;
       });
     });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [memberId]);
 
   // Debounced write-through: one onboarding_responses row per section plus a
   // meta row for flow progress. Failures only warn — the local cache keeps the
   // draft, and the next edit retries.
   const syncTimer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => () => clearTimeout(syncTimer.current), []);
-  const scheduleSync = useCallback((next: ProfileState) => {
-    clearTimeout(syncTimer.current);
-    syncTimer.current = setTimeout(() => {
-      void upsertOnboardingResponses({
-        ...next.answers,
-        meta: { lastStep: next.lastStep, completedAt: next.completedAt },
-      }).then(({ error }) => {
-        if (error) console.warn("Failed to save onboarding answers:", error);
-      });
-    }, 600);
-  }, []);
+  const scheduleSync = useCallback(
+    (next: ProfileState) => {
+      clearTimeout(syncTimer.current);
+      syncTimer.current = setTimeout(() => {
+        void upsertOnboardingResponses(
+          { ...next.answers, meta: { lastStep: next.lastStep, completedAt: next.completedAt } },
+          memberId,
+        ).then(({ error }) => {
+          if (error) console.warn("Failed to save onboarding answers:", error);
+        });
+      }, 600);
+    },
+    [memberId],
+  );
 
   const save = useCallback(
     (updater: (current: ProfileState) => ProfileState) => {
       setState((current) => {
         const next = updater(current);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(storageKey(memberId), JSON.stringify(next));
         scheduleSync(next);
         return next;
       });
     },
-    [scheduleSync],
+    [scheduleSync, memberId],
   );
 
   const setAnswers = useCallback(
@@ -341,15 +357,15 @@ export function useProfileAnswers() {
   const markCompleted = useCallback(() => {
     save((current) => ({ ...current, completedAt: new Date().toISOString() }));
     // Persist basics + advance the journey (profile_incomplete → consult_upcoming).
-    void completeOnboarding(stateRef.current.answers.basics).then(({ error }) => {
+    void completeOnboarding(stateRef.current.answers.basics, memberId).then(({ error }) => {
       if (error) console.warn("Failed to complete onboarding:", error);
     });
-  }, [save]);
+  }, [save, memberId]);
 
   const reset = useCallback(() => {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(storageKey(memberId));
     setState(INITIAL_STATE);
-  }, []);
+  }, [memberId]);
 
   return {
     state,
