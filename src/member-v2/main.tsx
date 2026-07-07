@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import MemberApp from "./MemberApp";
 import DoctorApp from "../doctor/DoctorApp";
+import AdminApp from "../admin/AdminApp";
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
 import LoginScreen from "../auth/LoginScreen";
 import "./tokens.css";
@@ -34,8 +35,9 @@ function Gate() {
   // Session live, profile still loading.
   if (!profile) return null;
 
-  // Doctors and admins get the doctor console; members get the portal.
-  if (profile.role === "doctor" || profile.role === "admin") return <DoctorApp />;
+  // Admins get the ops console; doctors get the doctor console; members the portal.
+  if (profile.role === "admin") return <AdminApp />;
+  if (profile.role === "doctor") return <DoctorApp />;
 
   return <MemberApp />;
 }

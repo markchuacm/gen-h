@@ -5,12 +5,14 @@
 -- JWT claims GUC (which auth.uid() reads), runs a query, and asserts the
 -- result. Any failed assertion raises an exception and aborts.
 --
--- Requires two real member ids and one doctor id assigned to member A. Fill in
--- the three ids below (get them from: select id, email, role from profiles).
+-- Requires two real member ids, one doctor id assigned to member A, and one
+-- admin id. Fill in the four ids below (get them from:
+-- select id, email, role from profiles).
 
 \set MEMBER_A  '00000000-0000-0000-0000-000000000000'
 \set MEMBER_B  '00000000-0000-0000-0000-000000000000'
 \set DOCTOR    '00000000-0000-0000-0000-000000000000'
+\set ADMIN     '00000000-0000-0000-0000-000000000000'
 
 -- Helper to become a given auth user for the following statements.
 create or replace function pg_temp.become(uid uuid) returns void
@@ -120,6 +122,65 @@ begin
   end;
   reset role;
   raise notice 'audit-logs-private check passed';
+end $$;
+
+-- 7) Admin visibility + admin-only RPC guards.
+--    Seed a DRAFT report for member A: admins must see it (members can't, per
+--    check 4). Non-admins calling admin RPCs must be rejected.
+do $$
+declare
+  member_a uuid := :'MEMBER_A';
+  member_b uuid := :'MEMBER_B';
+  admin    uuid := :'ADMIN';
+  draft_id uuid;
+  n int;
+begin
+  insert into public.lab_reports (member_id, status) values (member_a, 'draft')
+    returning id into draft_id;
+
+  -- Admin sees any member's data, including drafts.
+  perform pg_temp.become(admin);
+  select count(*) into n from public.member_profiles where member_id = member_b;
+  if n <> 1 then raise exception 'FAIL: admin could not see member B profile'; end if;
+  select count(*) into n from public.lab_reports where id = draft_id;
+  if n <> 1 then raise exception 'FAIL: admin could not see a DRAFT report'; end if;
+
+  -- Admin overview RPC returns rows for the admin.
+  select count(*) into n from public.admin_case_overview();
+  if n < 1 then raise exception 'FAIL: admin_case_overview returned nothing for admin'; end if;
+  reset role;
+
+  -- A member cannot call the admin overview RPC.
+  perform pg_temp.become(member_a);
+  begin
+    perform 1 from public.admin_case_overview();
+    raise exception 'FAIL: member called admin_case_overview';
+  exception when others then
+    if sqlerrm like 'FAIL:%' then raise; end if;
+  end;
+
+  -- A member cannot promote anyone.
+  begin
+    perform public.admin_set_role(member_b, 'doctor');
+    raise exception 'FAIL: member called admin_set_role';
+  exception when others then
+    if sqlerrm like 'FAIL:%' then raise; end if;
+  end;
+  reset role;
+
+  -- Admin cannot promote to admin (capped to member|doctor).
+  perform pg_temp.become(admin);
+  begin
+    perform public.admin_set_role(member_b, 'admin');
+    raise exception 'FAIL: admin_set_role accepted the admin role';
+  exception when others then
+    if sqlerrm like 'FAIL:%' then raise; end if;
+  end;
+  reset role;
+
+  -- cleanup
+  delete from public.lab_reports where id = draft_id;
+  raise notice 'admin-visibility / admin-rpc-guard checks passed';
 end $$;
 
 select 'ALL RLS CHECKS PASSED' as result;
