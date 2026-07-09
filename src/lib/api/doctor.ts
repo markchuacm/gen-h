@@ -84,16 +84,28 @@ export async function fetchCaseDetail(memberId: string): Promise<{
   const firstError = profile.error || member.error || responses.error || docs.error || results.error;
   if (firstError) return { data: null, error: firstError.message };
 
+  const onboarding = Object.fromEntries(
+    (responses.data ?? []).map((row) => [row.question_key, row.response]),
+  );
+
+  // The onboarding answers are the member's live source of truth for age/sex;
+  // member_profiles is a copy taken at completion that can go stale if they
+  // edit afterwards. Prefer the answers so the header matches the brief's hero.
+  const basics =
+    onboarding.basics && typeof onboarding.basics === "object" && !Array.isArray(onboarding.basics)
+      ? (onboarding.basics as Record<string, unknown>)
+      : {};
+  const basicsAge = typeof basics.age === "number" ? basics.age : null;
+  const basicsSex = typeof basics.sex === "string" ? basics.sex : null;
+
   return {
     data: {
       memberName: profile.data?.full_name ?? null,
       memberEmail: profile.data?.email ?? null,
-      age: member.data?.age ?? null,
-      sex: member.data?.sex ?? null,
+      age: basicsAge ?? member.data?.age ?? null,
+      sex: basicsSex ?? member.data?.sex ?? null,
       stage: member.data?.current_stage ?? null,
-      onboarding: Object.fromEntries(
-        (responses.data ?? []).map((row) => [row.question_key, row.response]),
-      ),
+      onboarding,
       documents: docs.data ?? [],
       hasResults: (results.count ?? 0) > 0,
     },

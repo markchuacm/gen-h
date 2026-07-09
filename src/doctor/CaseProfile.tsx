@@ -164,11 +164,19 @@ function CaseProfile({ detail }: { detail: DoctorCaseDetail }) {
   const [preview, setPreview] = useState<CaseDoc | null>(null);
   const answers = toAnswers(detail.onboarding);
   const hasProfile = Object.keys(detail.onboarding).length > 0;
+  const docCount = detail.documents.length;
+  const reportsFact =
+    docCount === 0 ? "None uploaded" : `${docCount} document${docCount === 1 ? "" : "s"}`;
 
   return (
     <>
       {hasProfile ? (
-        <ProfileSummary answers={answers} showTitle={false} showReports={false} />
+        <ProfileSummary
+          answers={answers}
+          showTitle={false}
+          showReports={false}
+          reportsFact={reportsFact}
+        />
       ) : (
         <p className="doc-muted">No onboarding responses yet.</p>
       )}

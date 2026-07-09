@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Info, Search, Sparkles } from "lucide-react";
+import { ChevronDown, Info, Search } from "lucide-react";
 import { BIOMARKERS, BIOMARKER_CATEGORIES } from "../member-v2/screens/results/biomarkerData";
 import type { Biomarker } from "../member-v2/screens/results/types";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import { fetchLabOrder, saveLabOrder } from "../lib/api/labOrder";
 import { recommendedCodes, relevantBundles } from "./recommendedPanel";
 import type { RecommendationInput } from "./recommendedPanel";
+
+// "No concern" answers that shouldn't read as risk flags in the context panel.
+const CLEAR_ANSWERS = new Set([
+  "None that I know of",
+  "Nothing major — mostly prevention",
+  "Nothing at the moment",
+]);
 
 function asStringList(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -50,7 +57,6 @@ function PanelBuilder({
   const [openInfo, setOpenInfo] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
-  const [existingOrder, setExistingOrder] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -61,7 +67,6 @@ function PanelBuilder({
       if (cancelled) return;
       if (data && data.biomarker_codes.length > 0) {
         setSelected(new Set(data.biomarker_codes));
-        setExistingOrder(true);
       }
       setLoading(false);
     });
@@ -88,17 +93,12 @@ function PanelBuilder({
 
   const bundleActive = (codes: string[]) => codes.every((code) => selected.has(code));
 
-  const flags = [
-    detail.age ? `${detail.age}` : null,
-    detail.sex ? detail.sex[0].toUpperCase() : null,
-  ]
-    .filter(Boolean)
-    .join("");
-  const contextBits = [
-    flags || null,
-    profileInput.family.length ? `fam: ${profileInput.family.slice(0, 3).join(", ")}` : null,
-    profileInput.symptoms.length ? profileInput.symptoms.slice(0, 2).join(", ") : null,
-  ].filter(Boolean);
+  const subtext = [detail.age ? `${detail.age}y` : null, detail.sex].filter(Boolean).join(" · ");
+  const contextGroups = [
+    { label: "Family history", items: profileInput.family, flag: true },
+    { label: "Reported symptoms", items: profileInput.symptoms, flag: false },
+    { label: "Goals", items: profileInput.goals, flag: false },
+  ].filter((group) => group.items.length > 0);
 
   const save = async () => {
     setSaving(true);
@@ -130,22 +130,26 @@ function PanelBuilder({
         <div>
           <span className="doc-eyebrow">BLOOD PANEL</span>
           <h1>{detail.memberName ?? "Member"}</h1>
-          {contextBits.length > 0 && <p className="doc-sub">{contextBits.join(" · ")}</p>}
+          {subtext && <p className="doc-sub">{subtext}</p>}
         </div>
       </header>
 
-      <div className="pb-banner">
-        <Sparkles strokeWidth={1.7} aria-hidden="true" />
-        <p>
-          {existingOrder
-            ? "Editing the saved panel. "
-            : `${recommended.length} markers recommended from ${detail.memberName?.split(" ")[0] ?? "this member"}'s profile. `}
-          Adjust anything before saving.
-        </p>
-        <button type="button" className="pb-reset" onClick={() => setSelected(new Set(recommended))}>
-          Reset to recommended
-        </button>
-      </div>
+      {contextGroups.length > 0 && (
+        <section className="pb-context" aria-label="Clinical context">
+          {contextGroups.map((group) => (
+            <div className="pb-context-group" key={group.label}>
+              <span className="pb-context-label">{group.label}</span>
+              <ul className="pb-context-chips">
+                {group.items.map((item) => (
+                  <li key={item} className={group.flag && !CLEAR_ANSWERS.has(item) ? "is-flag" : ""}>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </section>
+      )}
 
       {bundles.length > 0 && (
         <div className="pb-bundles" aria-label="Quick-add panels for this member">
@@ -255,6 +259,13 @@ function PanelBuilder({
           <strong>{selected.size}</strong> marker{selected.size === 1 ? "" : "s"} selected
         </div>
         {error && <span className="doc-error">{error}</span>}
+        <button
+          type="button"
+          className="pb-footer-reset"
+          onClick={() => setSelected(new Set(recommended))}
+        >
+          Reset to recommended
+        </button>
         <button
           type="button"
           className="doc-primary"
