@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { fetchCaseDetail } from "../lib/api/doctor";
 import type { DoctorCase, DoctorCaseDetail } from "../lib/api/doctor";
-import { createDocumentSignedUrl } from "../lib/api/healthDocuments";
 import CarePlanEditor from "./CarePlanEditor";
+import CaseProfile from "./CaseProfile";
+import CaseResults from "./CaseResults";
+import PanelBuilder from "./PanelBuilder";
+
+// The doctor moves through the case in order: the health-profile brief, then —
+// depending on whether results exist yet — the blood-panel order or the
+// results review, then the care plan.
+type CaseView = "brief" | "panel" | "results" | "carePlan";
 
 function CaseDetail({
   memberId,
@@ -15,26 +22,53 @@ function CaseDetail({
 }) {
   const [detail, setDetail] = useState<DoctorCaseDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
+  const [view, setView] = useState<CaseView>("brief");
 
-  useEffect(() => {
+  const load = useCallback(() => {
     fetchCaseDetail(memberId).then(({ data, error: err }) => {
       if (err) setError(err);
       else setDetail(data);
     });
   }, [memberId]);
 
-  const openDoc = async (storagePath: string) => {
-    const { url } = await createDocumentSignedUrl(storagePath);
-    if (url) window.open(url, "_blank", "noopener");
-  };
+  useEffect(() => {
+    load();
+  }, [load]);
 
-  if (editing) {
+  const memberName = detail?.memberName ?? caseSummary?.memberName ?? null;
+
+  if (view === "carePlan") {
     return (
       <CarePlanEditor
         memberId={memberId}
-        memberName={detail?.memberName ?? caseSummary?.memberName ?? null}
-        onBack={() => setEditing(false)}
+        memberName={memberName}
+        onBack={() => setView(detail?.hasResults ? "results" : "brief")}
+      />
+    );
+  }
+
+  if (view === "panel" && detail) {
+    return (
+      <PanelBuilder
+        memberId={memberId}
+        detail={detail}
+        onBack={() => setView("brief")}
+        onSaved={() => {
+          // Saving advanced the member's stage; refresh so the brief reflects it.
+          load();
+          setView("brief");
+        }}
+      />
+    );
+  }
+
+  if (view === "results") {
+    return (
+      <CaseResults
+        memberId={memberId}
+        memberName={memberName}
+        onBack={() => setView("brief")}
+        onEditCarePlan={() => setView("carePlan")}
       />
     );
   }
@@ -60,44 +94,18 @@ function CaseDetail({
                   .join(" · ")}
               </p>
             </div>
-            <button type="button" className="doc-primary" onClick={() => setEditing(true)}>
-              Edit care plan
-            </button>
+            {detail.hasResults ? (
+              <button type="button" className="doc-primary" onClick={() => setView("results")}>
+                View results
+              </button>
+            ) : (
+              <button type="button" className="doc-primary" onClick={() => setView("panel")}>
+                Order blood panel
+              </button>
+            )}
           </header>
 
-          <section className="doc-card">
-            <h2>Health profile</h2>
-            {Object.keys(detail.onboarding).length === 0 ? (
-              <p className="doc-muted">No onboarding responses yet.</p>
-            ) : (
-              <dl className="doc-answers">
-                {Object.entries(detail.onboarding).map(([key, value]) => (
-                  <div key={key}>
-                    <dt>{key}</dt>
-                    <dd>{JSON.stringify(value)}</dd>
-                  </div>
-                ))}
-              </dl>
-            )}
-          </section>
-
-          <section className="doc-card">
-            <h2>Documents</h2>
-            {detail.documents.length === 0 ? (
-              <p className="doc-muted">No documents uploaded.</p>
-            ) : (
-              <ul className="doc-doc-list">
-                {detail.documents.map((doc) => (
-                  <li key={doc.id}>
-                    <button type="button" onClick={() => void openDoc(doc.storage_path)}>
-                      {doc.file_name}
-                    </button>
-                    <span>{doc.doc_type}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+          <CaseProfile detail={detail} />
         </>
       )}
     </main>

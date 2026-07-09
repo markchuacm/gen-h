@@ -30,13 +30,15 @@ export async function fetchDoctorProfile(doctorId: string) {
     .maybeSingle<{ id: string; full_name: string | null; avatar_url: string | null }>();
 }
 
-export async function fetchMemberProfile() {
-  return supabase
+/** The signed-in member's profile, or a specific member's when memberId is
+    passed (a doctor viewing an assigned case — RLS still gates the read). */
+export async function fetchMemberProfile(memberId?: string) {
+  const query = supabase
     .from("member_profiles")
     .select(
       "member_id, preferred_name, age, sex, height_cm, weight_kg, onboarding_status, current_stage, profile_confirmed_at",
-    )
-    .maybeSingle<MemberProfileRow>();
+    );
+  return (memberId ? query.eq("member_id", memberId) : query).maybeSingle<MemberProfileRow>();
 }
 
 /** All saved onboarding responses, keyed by question_key. */
