@@ -1,0 +1,601 @@
+/* Gen-H internal admin ops console. Reuses the member portal token set
+   (tokens.css). Clean, dense, restrained — terracotta only for priority/action. */
+
+.adm-shell {
+  min-height: 100vh;
+  background: #f7f8fa;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+/* ---- Top bar ---- */
+.adm-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 clamp(16px, 3vw, 32px);
+  height: 56px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+}
+
+.adm-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.adm-brand-mark {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.adm-brand-tag {
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.adm-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.adm-tabs button {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.adm-tabs button.is-active {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+}
+
+.adm-user {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.adm-signout {
+  color: var(--accent);
+}
+
+/* ---- Page ---- */
+.adm-main {
+  padding: clamp(16px, 3vw, 32px);
+}
+
+.adm-page {
+  max-width: 1180px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.adm-page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.adm-page-head h1 {
+  font-size: 1.5rem;
+}
+
+.adm-search,
+.adm-promote select,
+.adm-stage-correct select,
+.adm-upload select,
+.adm-upload input,
+.adm-assign-controls select,
+.adm-bio-grid input,
+.adm-bio-grid select,
+.adm-new-report input,
+.adm-new-report select {
+  font: inherit;
+  font-size: 0.88rem;
+  color: var(--ink);
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+}
+
+.adm-search {
+  min-width: 240px;
+}
+
+.adm-promote {
+  display: flex;
+  gap: 8px;
+}
+
+/* ---- Filter chips ---- */
+.adm-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.adm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+
+.adm-chip.is-active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.adm-chip-count {
+  font-size: 0.72rem;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  color: inherit;
+}
+
+.adm-chip.is-active .adm-chip-count {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+/* ---- Tables ---- */
+.adm-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: var(--shadow-border);
+}
+
+.adm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.adm-table thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.adm-table tbody td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+  vertical-align: middle;
+}
+
+.adm-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.adm-table tbody tr[tabindex] {
+  cursor: pointer;
+}
+
+.adm-table tbody tr[tabindex]:hover {
+  background: var(--accent-tint);
+}
+
+.adm-table-tight {
+  box-shadow: none;
+  border-radius: 0;
+}
+
+.adm-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.adm-member-name {
+  display: block;
+  font-weight: 600;
+}
+
+.adm-member-email {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.adm-row-actions {
+  display: flex;
+  gap: 12px;
+  white-space: nowrap;
+}
+
+.adm-subrow td {
+  background: #fbfcfd;
+}
+
+.adm-inline-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  list-style: none;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+/* ---- Pills & status ---- */
+.adm-pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.adm-pill-none {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--muted);
+}
+
+.adm-pill-draft {
+  background: rgba(184, 93, 53, 0.12);
+  color: var(--accent-dark);
+}
+
+.adm-pill-released {
+  background: rgba(22, 122, 90, 0.12);
+  color: #167a5a;
+}
+
+.adm-next {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.adm-next-admin {
+  color: var(--accent-dark);
+}
+
+.adm-next-member,
+.adm-next-doctor {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.adm-next-done {
+  color: #167a5a;
+}
+
+.adm-warn {
+  color: var(--accent-dark);
+  font-weight: 600;
+}
+
+.adm-bio-status {
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.adm-bio-optimal { color: #167a5a; }
+.adm-bio-at_risk { color: var(--accent-dark); }
+.adm-bio-needs_attention { color: #b3261e; }
+
+/* ---- Cards ---- */
+.adm-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.adm-card h2 {
+  font-size: 1.05rem;
+}
+
+.adm-subhead {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+.adm-kv {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 24px;
+  margin: 0;
+}
+
+.adm-kv > div {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 10px;
+  font-size: 0.86rem;
+  padding: 3px 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.05);
+}
+
+.adm-kv dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.adm-kv dd {
+  margin: 0;
+  word-break: break-word;
+}
+
+.adm-hint,
+.adm-muted {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.adm-hint {
+  font-style: italic;
+}
+
+.adm-error {
+  color: #b3261e;
+  font-size: 0.88rem;
+}
+
+/* ---- Case header + stage ---- */
+.adm-case-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.adm-case-head h1 {
+  font-size: 1.6rem;
+}
+
+.adm-stage-correct {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adm-back {
+  align-self: flex-start;
+  color: var(--accent);
+  font-size: 0.88rem;
+}
+
+/* ---- Timeline ---- */
+.adm-timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 14px 18px;
+  margin: 0;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: var(--shadow-border);
+}
+
+.adm-timeline li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.adm-timeline-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 2px solid var(--line);
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.adm-timeline li.is-done {
+  color: var(--ink);
+}
+
+.adm-timeline li.is-done .adm-timeline-dot {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.adm-timeline-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Buttons ---- */
+.adm-btn,
+.adm-btn-ghost,
+.adm-btn-danger {
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.adm-btn {
+  background: var(--accent);
+  color: #fff;
+}
+
+.adm-btn:hover:not(:disabled) {
+  background: var(--accent-dark);
+}
+
+.adm-btn-ghost {
+  background: #fff;
+  box-shadow: var(--shadow-border);
+}
+
+.adm-btn-danger {
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  color: #b3261e;
+}
+
+.adm-btn:disabled,
+.adm-btn-ghost:disabled,
+.adm-btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.adm-link {
+  color: var(--accent);
+  font-size: 0.84rem;
+}
+
+.adm-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.adm-link-danger {
+  color: #b3261e;
+}
+
+.adm-add {
+  align-self: flex-start;
+}
+
+/* ---- Documents / upload ---- */
+.adm-upload {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ---- Doctor assignment ---- */
+.adm-assign-current {
+  font-size: 0.9rem;
+}
+
+.adm-assign-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ---- Lab results ---- */
+.adm-report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-report {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.adm-report-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.adm-report-head strong {
+  display: block;
+  font-size: 0.98rem;
+}
+
+.adm-report-meta {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.adm-report-head-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.adm-new-report,
+.adm-bio-form {
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: #fbfcfd;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.adm-bio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.adm-bio-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.adm-bio-notes {
+  grid-column: 1 / -1;
+}
+
+.adm-bio-actions {
+  display: flex;
+  gap: 8px;
+}
