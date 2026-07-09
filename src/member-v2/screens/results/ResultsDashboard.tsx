@@ -815,12 +815,12 @@ function OverviewDistribution({ counts, total }: { counts: OverviewCounts; total
   );
 }
 
-export default function ResultsDashboard() {
+export default function ResultsDashboard({ memberId }: { memberId?: string } = {}) {
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const [query, setQuery] = useState("");
   const [selectedBiomarker, setSelectedBiomarker] = useState<Biomarker | null>(null);
 
-  const { loading, error, biomarkers, categories, age, sex } = useMemberResults();
+  const { loading, error, biomarkers, categories, age, sex } = useMemberResults(memberId);
 
   const rangeContext = useMemo<PatientRangeContext>(
     () => ({

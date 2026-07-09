@@ -5,7 +5,15 @@ import type { ProfileAnswers, StepId } from "./profileQuestions";
 
 type ProfileSummaryProps = {
   answers: ProfileAnswers;
-  onEditStep: (stepId: StepId) => void;
+  /** Omitted in read-only contexts (e.g. the doctor case view) — hides the
+      per-row Edit buttons. */
+  onEditStep?: (stepId: StepId) => void;
+  /** The member-facing title header. Hidden when the brief is embedded under a
+      page that already has its own heading (doctor case view). */
+  showTitle?: boolean;
+  /** The built-in "Previous reports" text row. The doctor view hides it and
+      renders prominent, clickable attachment tiles instead. */
+  showReports?: boolean;
 };
 
 function stepIndexOf(stepId: StepId) {
@@ -72,6 +80,21 @@ function ConcernList({ items }: { items: string[] }) {
   );
 }
 
+// Answers can themselves contain "/" (e.g. "Focus / brain fog"), so joining
+// with " / " reads ambiguously. Render each answer as its own tag instead.
+function TagList({ items }: { items: string[] }) {
+  if (items.length === 0) return <span className="pf-brief-muted">Nothing selected</span>;
+  return (
+    <span className="pf-brief-tags">
+      {items.map((item) => (
+        <span className="pf-brief-tag" key={item}>
+          {item}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function shouldTopAlignList(items: string[]) {
   return items.length > 1 || listSummary(items).length > 72;
 }
@@ -89,25 +112,36 @@ function DetailRow({
   value: React.ReactNode;
   icon?: React.ReactNode;
   topAlign?: boolean;
-  onEditStep: (stepId: StepId) => void;
+  onEditStep?: (stepId: StepId) => void;
 }) {
   return (
-    <div className={`pf-brief-detail-row ${topAlign ? "is-top-aligned" : ""}`}>
+    <div
+      className={`pf-brief-detail-row ${topAlign ? "is-top-aligned" : ""} ${
+        onEditStep ? "" : "is-readonly"
+      }`}
+    >
       <dt>{label}</dt>
       <dd>
         {icon}
         <span>{value}</span>
       </dd>
-      <div>
-        <button className="pf-brief-edit" type="button" onClick={() => onEditStep(stepId)}>
-          Edit
-        </button>
-      </div>
+      {onEditStep && (
+        <div>
+          <button className="pf-brief-edit" type="button" onClick={() => onEditStep(stepId)}>
+            Edit
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
-function ProfileSummary({ answers, onEditStep }: ProfileSummaryProps) {
+function ProfileSummary({
+  answers,
+  onEditStep,
+  showTitle = true,
+  showReports = true,
+}: ProfileSummaryProps) {
   const { basics, lifestyle, habits } = answers;
 
   const supplements = answers.supplementsOther.trim()
@@ -121,12 +155,14 @@ function ProfileSummary({ answers, onEditStep }: ProfileSummaryProps) {
 
   return (
     <article className="pf-brief" aria-label="Your health profile">
-      <header className="pf-brief-title">
-        <span className="p-eyebrow">PROFILE</span>
-        <h1>
-          A <em>short brief</em> for your doctor
-        </h1>
-      </header>
+      {showTitle && (
+        <header className="pf-brief-title">
+          <span className="p-eyebrow">PROFILE</span>
+          <h1>
+            A <em>short brief</em> for your doctor
+          </h1>
+        </header>
+      )}
 
       <section className="pf-brief-hero" aria-label="Main concern">
         <img className="pf-brief-hero-image" src={profileBriefHeroImage} alt="" aria-hidden="true" />
@@ -158,7 +194,7 @@ function ProfileSummary({ answers, onEditStep }: ProfileSummaryProps) {
           <div className="pf-brief-facts">
             <BriefFact label="Alcohol" value={conciseHabit(habits.alcohol)} />
             <BriefFact label="Smoking" value={habits.smoking} />
-            <BriefFact label="Reports" value={contextReportSummary(answers)} />
+            {showReports && <BriefFact label="Reports" value={contextReportSummary(answers)} />}
           </div>
         </section>
       </div>
@@ -176,38 +212,40 @@ function ProfileSummary({ answers, onEditStep }: ProfileSummaryProps) {
           <DetailRow
             stepId="goals"
             label="Goals"
-            value={listSummary(answers.goals)}
+            value={<TagList items={answers.goals} />}
             topAlign={shouldTopAlignList(answers.goals)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="symptoms"
             label="What feels off"
-            value={listSummary(answers.symptoms)}
+            value={<TagList items={answers.symptoms} />}
             topAlign={shouldTopAlignList(answers.symptoms)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="family"
             label="Family history"
-            value={listSummary(answers.family)}
+            value={<TagList items={answers.family} />}
             topAlign={shouldTopAlignList(answers.family)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="supplements"
             label="Supplements & medications"
-            value={listSummary(supplements)}
+            value={<TagList items={supplements} />}
             topAlign={shouldTopAlignList(supplements)}
             onEditStep={onEditStep}
           />
-          <DetailRow
-            stepId="reports"
-            label="Previous reports"
-            value={reportSummary(answers)}
-            icon={<FileText aria-hidden="true" />}
-            onEditStep={onEditStep}
-          />
+          {showReports && (
+            <DetailRow
+              stepId="reports"
+              label="Previous reports"
+              value={reportSummary(answers)}
+              icon={<FileText aria-hidden="true" />}
+              onEditStep={onEditStep}
+            />
+          )}
         </dl>
       </section>
     </article>

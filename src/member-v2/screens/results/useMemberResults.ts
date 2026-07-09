@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { fetchLabOrder } from "../../../lib/api/labOrder";
 import { fetchMemberProfile } from "../../../lib/api/memberProfile";
 import { fetchReleasedReports } from "../../../lib/api/results";
 import type { BiomarkerResultRow, LabReportRow } from "../../../lib/api/results";
@@ -122,7 +123,32 @@ export function mergeResults(reports: LabReportRow[]): {
   return { biomarkers: [...merged.values()], categories };
 }
 
-export function useMemberResults(): MemberResults {
+/** The member's panel = the markers the doctor ordered, plus any that already
+    have a value (so admin-added extras never hide). When neither an order nor
+    any result exists we leave the full catalog untouched, so previews and
+    not-yet-ordered members still see the standard set. */
+function constrainToPanel(
+  categories: BiomarkerCategory[],
+  biomarkers: Biomarker[],
+  orderedCodes: string[] | null,
+): BiomarkerCategory[] {
+  const measured = biomarkers.filter((entry) => entry.latestValue !== null && entry.latestValue !== "");
+  if (orderedCodes === null && measured.length === 0) return categories;
+
+  const panel = new Set(orderedCodes ?? []);
+  for (const entry of measured) panel.add(entry.id);
+
+  return categories
+    .map((category) => ({
+      ...category,
+      biomarkerIds: category.biomarkerIds.filter((id) => panel.has(id)),
+    }))
+    .filter((category) => category.biomarkerIds.length > 0);
+}
+
+/** Pass memberId to load a specific member's results (a doctor viewing an
+    assigned case); omit it for the signed-in member's own results. */
+export function useMemberResults(memberId?: string): MemberResults {
   const [results, setResults] = useState<MemberResults>({
     loading: true,
     error: null,
@@ -135,35 +161,38 @@ export function useMemberResults(): MemberResults {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchReleasedReports(), fetchMemberProfile()]).then(
-      ([reports, memberProfile]) => {
-        if (cancelled) return;
-        if (reports.error) {
-          setResults((current) => ({
-            ...current,
-            loading: false,
-            error: reports.error!.message,
-            biomarkers: BIOMARKERS.map(bareCatalogEntry),
-          }));
-          return;
-        }
-        const { biomarkers, categories } = mergeResults(reports.data ?? []);
-        const sexRaw = memberProfile.data?.sex?.toLowerCase();
-        setResults({
+    Promise.all([
+      fetchReleasedReports(memberId),
+      fetchMemberProfile(memberId),
+      fetchLabOrder(memberId),
+    ]).then(([reports, memberProfile, order]) => {
+      if (cancelled) return;
+      if (reports.error) {
+        setResults((current) => ({
+          ...current,
           loading: false,
-          error: null,
-          biomarkers,
-          categories,
-          age: memberProfile.data?.age ?? null,
-          sex: sexRaw === "male" || sexRaw === "female" ? sexRaw : null,
-          hasResults: (reports.data ?? []).some((report) => report.biomarker_results.length > 0),
-        });
-      },
-    );
+          error: reports.error!.message,
+          biomarkers: BIOMARKERS.map(bareCatalogEntry),
+        }));
+        return;
+      }
+      const { biomarkers, categories } = mergeResults(reports.data ?? []);
+      const orderedCodes = order.data ? order.data.biomarker_codes : null;
+      const sexRaw = memberProfile.data?.sex?.toLowerCase();
+      setResults({
+        loading: false,
+        error: null,
+        biomarkers,
+        categories: constrainToPanel(categories, biomarkers, orderedCodes),
+        age: memberProfile.data?.age ?? null,
+        sex: sexRaw === "male" || sexRaw === "female" ? sexRaw : null,
+        hasResults: (reports.data ?? []).some((report) => report.biomarker_results.length > 0),
+      });
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [memberId]);
 
   return results;
 }

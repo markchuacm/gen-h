@@ -25,13 +25,17 @@ export type LabReportRow = {
   biomarker_results: BiomarkerResultRow[];
 };
 
-/** Released reports only — drafts are filtered out by RLS, not by us. */
-export async function fetchReleasedReports() {
-  return supabase
+/** Released reports only — drafts are filtered out by RLS, not by us.
+    Pass memberId to scope to a specific member (a doctor's RLS grant spans all
+    their assigned members, so the filter is required to view just one case);
+    omit it and RLS returns the signed-in member's own reports. */
+export async function fetchReleasedReports(memberId?: string) {
+  let query = supabase
     .from("lab_reports")
     .select(
       "id, lab_name, panel_name, collected_at, released_at, biomarker_results(*)",
     )
-    .order("collected_at", { ascending: true })
-    .returns<LabReportRow[]>();
+    .order("collected_at", { ascending: true });
+  if (memberId) query = query.eq("member_id", memberId);
+  return query.returns<LabReportRow[]>();
 }

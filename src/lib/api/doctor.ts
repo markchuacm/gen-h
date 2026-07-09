@@ -50,6 +50,9 @@ export type DoctorCaseDetail = {
   stage: string | null;
   onboarding: Record<string, unknown>;
   documents: Array<{ id: string; file_name: string; storage_path: string; doc_type: string | null }>;
+  /** Whether any released biomarker results exist — decides whether the case
+      opens the panel builder (order) or the results view (review). */
+  hasResults: boolean;
 };
 
 /** Everything a doctor needs to review an assigned case. Each query is RLS-gated
@@ -58,7 +61,7 @@ export async function fetchCaseDetail(memberId: string): Promise<{
   data: DoctorCaseDetail | null;
   error: string | null;
 }> {
-  const [profile, member, responses, docs] = await Promise.all([
+  const [profile, member, responses, docs, results] = await Promise.all([
     supabase.from("profiles").select("full_name, email").eq("id", memberId).maybeSingle(),
     supabase
       .from("member_profiles")
@@ -70,9 +73,15 @@ export async function fetchCaseDetail(memberId: string): Promise<{
       .from("health_documents")
       .select("id, file_name, storage_path, doc_type")
       .eq("member_id", memberId),
+    // RLS already limits doctor reads to released results, so any row here means
+    // the member has results to review.
+    supabase
+      .from("biomarker_results")
+      .select("id", { count: "exact", head: true })
+      .eq("member_id", memberId),
   ]);
 
-  const firstError = profile.error || member.error || responses.error || docs.error;
+  const firstError = profile.error || member.error || responses.error || docs.error || results.error;
   if (firstError) return { data: null, error: firstError.message };
 
   return {
@@ -86,6 +95,7 @@ export async function fetchCaseDetail(memberId: string): Promise<{
         (responses.data ?? []).map((row) => [row.question_key, row.response]),
       ),
       documents: docs.data ?? [],
+      hasResults: (results.count ?? 0) > 0,
     },
     error: null,
   };
