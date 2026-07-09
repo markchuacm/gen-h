@@ -3,16 +3,8 @@ import { useAuth } from "../auth/AuthProvider";
 import { fetchDoctorCases } from "../lib/api/doctor";
 import type { DoctorCase } from "../lib/api/doctor";
 import CaseDetail from "./CaseDetail";
+import { STAGE_LABELS } from "./stageLabels";
 import "./doctor.css";
-
-const STAGE_LABELS: Record<string, string> = {
-  profile_incomplete: "Profile incomplete",
-  consult_upcoming: "Consult upcoming",
-  blood_form_ready: "Blood draw",
-  results_pending: "Results pending",
-  results_ready: "Results ready",
-  care_plan_ready: "Care plan released",
-};
 
 function DoctorApp() {
   const { profile, signOut } = useAuth();

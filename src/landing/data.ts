@@ -254,9 +254,9 @@ export const launchPriceSteps = [
     note: "if unsatisfied with the consult",
   },
   {
-    value: "Up to RM1,200",
+    value: "RM1,800",
     label: "Full test",
-    note: "Pricing may be lower, depending on tests",
+    note: "Personalized blood panel configured by your doctor",
   },
   {
     value: "Included",
@@ -298,9 +298,9 @@ export const faqs = [
       "Gen-H is not a clinic, we are a health intelligence platform that helps you understand your long-term health risks and helps you achieve your health goals.",
   },
   {
-    question: "Why does the full test say up to RM1,200?",
+    question: "Why is the full test RM1,800?",
     answer:
-      "Your doctor configures the panel around what you need. If you already have recent blood tests or do not need every marker, your final test price may be lower.",
+      "Your doctor configures the panel around what you need. The RM1,800 test includes your personalized blood panel, lab processing, doctor review, and follow-up consult.",
   },
   {
     question: "Are the consults virtual?",

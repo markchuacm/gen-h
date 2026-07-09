@@ -5,6 +5,7 @@ import CarePlanEditor from "./CarePlanEditor";
 import CaseProfile from "./CaseProfile";
 import CaseResults from "./CaseResults";
 import PanelBuilder from "./PanelBuilder";
+import { stageLabel } from "./stageLabels";
 
 // The doctor moves through the case in order: the health-profile brief, then —
 // depending on whether results exist yet — the blood-panel order or the
@@ -54,9 +55,10 @@ function CaseDetail({
         detail={detail}
         onBack={() => setView("brief")}
         onSaved={() => {
-          // Saving advanced the member's stage; refresh so the brief reflects it.
+          // Saving advanced the member's stage; refresh, then move straight into
+          // authoring the care plan.
           load();
-          setView("brief");
+          setView("carePlan");
         }}
       />
     );
@@ -89,7 +91,7 @@ function CaseDetail({
               <span className="doc-eyebrow">CASE</span>
               <h1>{detail.memberName ?? detail.memberEmail ?? "Member"}</h1>
               <p className="doc-sub">
-                {[detail.age ? `${detail.age}y` : null, detail.sex, detail.stage]
+                {[detail.age ? `${detail.age}y` : null, detail.sex, stageLabel(detail.stage)]
                   .filter(Boolean)
                   .join(" · ")}
               </p>

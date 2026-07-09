@@ -49,7 +49,7 @@ All colors, type treatments, spacing, imagery treatment and component behaviour 
 
 **Emphasis.** Carried entirely by **italic + terracotta** runs inside an otherwise-plain heading — *"The answers are in the **details**"*, *"connects the **dots**"*, *"treat **root causes**"*. Never bold, never a second typeface, never underline.
 
-**Numbers & specifics.** Concrete and honest: "100+ biomarkers", "RM99", "Up to RM1,200". Hedge where the truth hedges ("Pricing may be lower, depending on tests"). Footnoted caveats use a leading asterisk in a neutral pill: "\*100% refundable".
+**Numbers & specifics.** Concrete and honest: "100+ biomarkers", "RM99", "RM1,800". Use plain inclusions where the offer is fixed ("personalized blood panel, lab processing, doctor review, and follow-up consult"). Footnoted caveats use a leading asterisk in a neutral pill: "\*100% refundable".
 
 **Tone examples (verbatim from source):**
 

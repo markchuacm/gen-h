@@ -11,9 +11,12 @@ type ProfileSummaryProps = {
   /** The member-facing title header. Hidden when the brief is embedded under a
       page that already has its own heading (doctor case view). */
   showTitle?: boolean;
-  /** The built-in "Previous reports" text row. The doctor view hides it and
-      renders prominent, clickable attachment tiles instead. */
+  /** The built-in "Previous reports" text row in "More details". The doctor
+      view hides it and renders prominent, clickable attachment tiles instead. */
   showReports?: boolean;
+  /** Overrides the Health-context "Reports" fact. The doctor passes a real
+      document count; the member view derives it from their uploads. */
+  reportsFact?: string;
 };
 
 function stepIndexOf(stepId: StepId) {
@@ -141,6 +144,7 @@ function ProfileSummary({
   onEditStep,
   showTitle = true,
   showReports = true,
+  reportsFact,
 }: ProfileSummaryProps) {
   const { basics, lifestyle, habits } = answers;
 
@@ -194,7 +198,7 @@ function ProfileSummary({
           <div className="pf-brief-facts">
             <BriefFact label="Alcohol" value={conciseHabit(habits.alcohol)} />
             <BriefFact label="Smoking" value={habits.smoking} />
-            {showReports && <BriefFact label="Reports" value={contextReportSummary(answers)} />}
+            <BriefFact label="Reports" value={reportsFact ?? contextReportSummary(answers)} />
           </div>
         </section>
       </div>
@@ -213,28 +217,24 @@ function ProfileSummary({
             stepId="goals"
             label="Goals"
             value={<TagList items={answers.goals} />}
-            topAlign={shouldTopAlignList(answers.goals)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="symptoms"
             label="What feels off"
             value={<TagList items={answers.symptoms} />}
-            topAlign={shouldTopAlignList(answers.symptoms)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="family"
             label="Family history"
             value={<TagList items={answers.family} />}
-            topAlign={shouldTopAlignList(answers.family)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="supplements"
             label="Supplements & medications"
             value={<TagList items={supplements} />}
-            topAlign={shouldTopAlignList(supplements)}
             onEditStep={onEditStep}
           />
           {showReports && (
