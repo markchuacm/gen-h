@@ -5,18 +5,7 @@ import type { Biomarker } from "../member-v2/screens/results/types";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import { fetchLabOrder, saveLabOrder } from "../lib/api/labOrder";
 import { recommendedCodes, relevantBundles } from "./recommendedPanel";
-import type { RecommendationInput } from "./recommendedPanel";
-
-// "No concern" answers that shouldn't read as risk flags in the context panel.
-const CLEAR_ANSWERS = new Set([
-  "None that I know of",
-  "Nothing major — mostly prevention",
-  "Nothing at the moment",
-]);
-
-function asStringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
+import { CLEAR_ANSWERS, toRecommendationInput } from "./caseSignals";
 
 function matchesQuery(marker: Biomarker | undefined, query: string) {
   if (!query) return true;
@@ -38,16 +27,7 @@ function PanelBuilder({
 }) {
   const catalog = useMemo(() => new Map(BIOMARKERS.map((marker) => [marker.id, marker])), []);
 
-  const profileInput = useMemo<RecommendationInput>(
-    () => ({
-      sex: detail.sex ?? "",
-      age: detail.age,
-      goals: asStringList(detail.onboarding.goals),
-      symptoms: asStringList(detail.onboarding.symptoms),
-      family: asStringList(detail.onboarding.family),
-    }),
-    [detail],
-  );
+  const profileInput = useMemo(() => toRecommendationInput(detail), [detail]);
 
   const recommended = useMemo(() => recommendedCodes(profileInput), [profileInput]);
   const bundles = useMemo(() => relevantBundles(profileInput), [profileInput]);

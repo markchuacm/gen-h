@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchCaseDetail } from "../lib/api/doctor";
 import type { DoctorCase, DoctorCaseDetail } from "../lib/api/doctor";
 import CarePlanEditor from "./CarePlanEditor";
-import CaseProfile from "./CaseProfile";
+import CaseBrief from "./CaseBrief";
 import CaseResults from "./CaseResults";
 import PanelBuilder from "./PanelBuilder";
 import { stageLabel } from "./stageLabels";
@@ -90,11 +90,9 @@ function CaseDetail({
             <div>
               <span className="doc-eyebrow">Case</span>
               <h1>{detail.memberName ?? detail.memberEmail ?? "Member"}</h1>
-              <p className="doc-sub">
-                {[detail.age ? `${detail.age}y` : null, detail.sex, stageLabel(detail.stage)]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
+              {/* Age/sex live in the brief's vitals line, so only the journey
+                  stage belongs up here. */}
+              <p className="doc-sub">{stageLabel(detail.stage)}</p>
             </div>
             {detail.hasResults ? (
               <button type="button" className="doc-primary" onClick={() => setView("results")}>
@@ -107,7 +105,7 @@ function CaseDetail({
             )}
           </header>
 
-          <CaseProfile detail={detail} />
+          <CaseBrief detail={detail} />
         </>
       )}
     </main>
