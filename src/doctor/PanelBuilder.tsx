@@ -4,7 +4,7 @@ import { BIOMARKERS, BIOMARKER_CATEGORIES } from "../member-v2/screens/results/b
 import type { Biomarker } from "../member-v2/screens/results/types";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import { fetchLabOrder, saveLabOrder } from "../lib/api/labOrder";
-import { recommendedCodes, relevantBundles } from "./recommendedPanel";
+import { BASELINE_BUNDLE, PANEL_BUNDLES, recommendedCodes, relevantBundles } from "./recommendedPanel";
 import { CLEAR_ANSWERS, toRecommendationInput } from "./caseSignals";
 
 function matchesQuery(marker: Biomarker | undefined, query: string) {
@@ -30,11 +30,17 @@ function PanelBuilder({
   const profileInput = useMemo(() => toRecommendationInput(detail), [detail]);
 
   const recommended = useMemo(() => recommendedCodes(profileInput), [profileInput]);
-  const bundles = useMemo(() => relevantBundles(profileInput), [profileInput]);
+  const recommendedSet = useMemo(() => new Set(recommended), [recommended]);
+  const suggestedBundles = useMemo(() => relevantBundles(profileInput), [profileInput]);
+  const otherBundles = useMemo(
+    () => PANEL_BUNDLES.filter((bundle) => !bundle.applies(profileInput)),
+    [profileInput],
+  );
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(recommended));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [openInfo, setOpenInfo] = useState<Set<string>>(new Set());
+  const [showAllBundles, setShowAllBundles] = useState(false);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -72,6 +78,8 @@ function PanelBuilder({
     });
 
   const bundleActive = (codes: string[]) => codes.every((code) => selected.has(code));
+
+  const addedCount = [...selected].filter((id) => !recommendedSet.has(id)).length;
 
   const subtext = [detail.age ? `${detail.age}y` : null, detail.sex].filter(Boolean).join(" · ");
   const contextGroups = [
@@ -131,16 +139,41 @@ function PanelBuilder({
         </section>
       )}
 
-      {bundles.length > 0 && (
-        <div className="pb-bundles" aria-label="Quick-add panels for this member">
-          {bundles.map((bundle) => {
+      <div className="pb-bundles" aria-label="Quick-add panels">
+        {[BASELINE_BUNDLE, ...suggestedBundles].map((bundle) => {
+          const active = bundleActive(bundle.codes);
+          return (
+            <button
+              key={bundle.id}
+              type="button"
+              title={bundle.reason}
+              className={`pb-bundle ${bundle.id === "baseline" ? "pb-bundle--baseline" : ""} ${active ? "is-active" : ""}`}
+              onClick={() => setCodes(bundle.codes, !active)}
+            >
+              {bundle.label}
+              <span>{bundle.codes.length}</span>
+            </button>
+          );
+        })}
+        {otherBundles.length > 0 && (
+          <button
+            type="button"
+            className="pb-bundles-more"
+            aria-expanded={showAllBundles}
+            onClick={() => setShowAllBundles((open) => !open)}
+          >
+            {showAllBundles ? "Fewer panels" : `More panels (${otherBundles.length})`}
+          </button>
+        )}
+        {showAllBundles &&
+          otherBundles.map((bundle) => {
             const active = bundleActive(bundle.codes);
             return (
               <button
                 key={bundle.id}
                 type="button"
                 title={bundle.reason}
-                className={`pb-bundle ${active ? "is-active" : ""}`}
+                className={`pb-bundle pb-bundle--extra ${active ? "is-active" : ""}`}
                 onClick={() => setCodes(bundle.codes, !active)}
               >
                 {bundle.label}
@@ -148,8 +181,7 @@ function PanelBuilder({
               </button>
             );
           })}
-        </div>
-      )}
+      </div>
 
       <label className="pb-search">
         <Search strokeWidth={1.8} aria-hidden="true" />
@@ -208,6 +240,9 @@ function PanelBuilder({
                           <span className="pb-row-name">
                             {marker.displayName}
                             {alias && <span className="pb-row-alias">{alias}</span>}
+                            {checked && !recommendedSet.has(id) && (
+                              <span className="pb-row-tag">Added</span>
+                            )}
                           </span>
                         </label>
                         {marker.whatItMeasures && (
@@ -237,6 +272,11 @@ function PanelBuilder({
       <div className="pb-footer">
         <div className="pb-footer-count">
           <strong>{selected.size}</strong> marker{selected.size === 1 ? "" : "s"} selected
+          <span className="pb-footer-breakdown">
+            {" · "}
+            {selected.size - addedCount} recommended
+            {addedCount > 0 ? ` · ${addedCount} added` : ""}
+          </span>
         </div>
         {error && <span className="doc-error">{error}</span>}
         <button
