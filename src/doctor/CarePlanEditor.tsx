@@ -139,7 +139,7 @@ function CarePlanEditor({
 
       <header className="doc-head">
         <div>
-          <span className="doc-eyebrow">CARE PLAN · {status.toUpperCase()}</span>
+          <span className="doc-eyebrow">Care plan · {status}</span>
           <h1>Plan for {memberName ?? "member"}</h1>
         </div>
         <div className="doc-editor-actions">

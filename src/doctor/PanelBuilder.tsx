@@ -128,7 +128,7 @@ function PanelBuilder({
 
       <header className="doc-head">
         <div>
-          <span className="doc-eyebrow">BLOOD PANEL</span>
+          <span className="doc-eyebrow">Blood panel</span>
           <h1>{detail.memberName ?? "Member"}</h1>
           {subtext && <p className="doc-sub">{subtext}</p>}
         </div>

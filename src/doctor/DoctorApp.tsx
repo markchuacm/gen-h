@@ -34,7 +34,7 @@ function DoctorApp() {
     <main className="doc-page">
       <header className="doc-head">
         <div>
-          <span className="doc-eyebrow">GEN-H · DOCTOR</span>
+          <span className="doc-eyebrow">Gen-H · Doctor</span>
           <h1>Your cases</h1>
           <p className="doc-sub">
             {profile?.full_name ? `Signed in as ${profile.full_name}` : profile?.email}

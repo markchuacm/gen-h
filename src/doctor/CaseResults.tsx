@@ -24,7 +24,7 @@ function CaseResults({
 
       <header className="doc-head">
         <div>
-          <span className="doc-eyebrow">RESULTS</span>
+          <span className="doc-eyebrow">Results</span>
           <h1>{memberName ?? "Member"}</h1>
         </div>
         <button type="button" className="doc-primary" onClick={onEditCarePlan}>

@@ -88,7 +88,7 @@ function CaseDetail({
         <>
           <header className="doc-head">
             <div>
-              <span className="doc-eyebrow">CASE</span>
+              <span className="doc-eyebrow">Case</span>
               <h1>{detail.memberName ?? detail.memberEmail ?? "Member"}</h1>
               <p className="doc-sub">
                 {[detail.age ? `${detail.age}y` : null, detail.sex, stageLabel(detail.stage)]

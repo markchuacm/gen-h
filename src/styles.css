@@ -10,6 +10,9 @@
   --line: rgba(15, 23, 42, 0.13);
   --accent: #b85d35;
   --accent-dark: #964829;
+  --danger: #b3261e;
+  --danger-dark: #9a2820;
+  --danger-tint: rgba(179, 38, 30, 0.08);
   --dark: #0f172a;
   --container: min(1280px, calc(100% - clamp(32px, 5vw, 96px)));
   --shadow-border:
