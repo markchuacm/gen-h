@@ -251,22 +251,248 @@
 }
 
 .doc-action-row {
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 8px;
+}
+
+@media (max-width: 560px) {
+  .doc-action-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- Care plan editor --------------------------------------------------- */
+
+.doc-section-eyebrow,
+.doc-action-eyebrow {
+  font-size: var(--doc-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.doc-section-tools {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* The one remove/reorder affordance for sections and actions alike. */
+.doc-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  color: var(--muted);
+}
+
+.doc-icon-btn:hover:not(:disabled) {
+  background: var(--doc-fill);
+  color: var(--ink);
+}
+
+.doc-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.doc-icon-btn--danger {
+  color: var(--danger);
+}
+
+.doc-icon-btn--danger:hover:not(:disabled) {
+  background: var(--danger-tint);
+  color: var(--danger-dark);
+}
+
+.doc-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.doc-action-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.doc-add-row {
   display: flex;
   gap: 8px;
 }
 
-.doc-action-row input {
-  flex: 1;
+.doc-add-row .doc-secondary,
+.doc-editor-actions .doc-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.doc-remove {
-  color: var(--danger);
+.doc-add-row svg,
+.doc-editor-actions svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* Inline library panels (focus-area templates / common actions). */
+.doc-library {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--doc-fill);
+}
+
+.doc-library-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.doc-library-tab {
+  padding: 6px 13px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  font-size: var(--doc-text-sm);
+  font-weight: 520;
+}
+
+.doc-library-tab.is-active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: none;
+}
+
+.doc-library-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+  text-align: left;
+  transition: box-shadow 0.18s var(--ease-ui);
+}
+
+.doc-library-item:hover {
+  box-shadow: var(--shadow-border-hover);
+}
+
+.doc-library-item-head {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--doc-text-md);
+}
+
+.doc-library-item-head svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+  flex: none;
+}
+
+.doc-library-count {
+  margin-left: auto;
+  font-size: var(--doc-text-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.doc-library-item-body {
+  font-size: var(--doc-text-sm);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* Marker picker: catalog-constrained chips with a search-to-add input. */
+.doc-marker-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.doc-chip-remove {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.doc-chip-remove:hover {
+  opacity: 1;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.doc-chip-remove svg {
+  width: 11px;
+  height: 11px;
+}
+
+.doc-marker-suggest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.doc-marker-suggest button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
   font-size: var(--doc-text-sm);
 }
 
-.doc-add,
-.doc-add-section {
-  align-self: flex-start;
+.doc-marker-suggest button:hover {
+  box-shadow: var(--shadow-border-hover);
+  color: var(--accent-dark);
+}
+
+.doc-marker-suggest svg {
+  width: 13px;
+  height: 13px;
+  color: var(--accent);
+}
+
+.doc-marker-empty {
+  font-size: var(--doc-text-sm);
+}
+
+/* Member-view preview inside the editor (reuses the member cp-* classes). */
+.doc-plan-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: clamp(16px, 3vw, 32px);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+}
+
+.doc-plan-preview-title {
+  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  margin-top: 6px;
+}
+
+.doc-plan-preview-protocol {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 /* ---- Case brief (triage view) ------------------------------------------ */

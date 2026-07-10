@@ -1,18 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Info, Search } from "lucide-react";
 import { BIOMARKERS, BIOMARKER_CATEGORIES } from "../member-v2/screens/results/biomarkerData";
-import type { Biomarker } from "../member-v2/screens/results/types";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import { fetchLabOrder, saveLabOrder } from "../lib/api/labOrder";
 import { BASELINE_BUNDLE, PANEL_BUNDLES, recommendedCodes, relevantBundles } from "./recommendedPanel";
-import { CLEAR_ANSWERS, toRecommendationInput } from "./caseSignals";
-
-function matchesQuery(marker: Biomarker | undefined, query: string) {
-  if (!query) return true;
-  if (!marker) return false;
-  const haystack = [marker.displayName, marker.name, ...marker.aliases].join(" ").toLowerCase();
-  return haystack.includes(query.toLowerCase());
-}
+import { CLEAR_ANSWERS, matchesQuery, toRecommendationInput } from "./caseSignals";
 
 function PanelBuilder({
   memberId,

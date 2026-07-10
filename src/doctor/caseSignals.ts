@@ -6,6 +6,7 @@ import {
   EXCLUSIVE_PROFILE_OPTIONS,
 } from "../member-v2/screens/profile/profileQuestions";
 import type { ProfileAnswers } from "../member-v2/screens/profile/profileQuestions";
+import type { Biomarker } from "../member-v2/screens/results/types";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import type { RecommendationInput } from "./recommendedPanel";
 
@@ -44,6 +45,14 @@ export function toAnswers(onboarding: Record<string, unknown>): ProfileAnswers {
     supplements: asStringList(onboarding.supplements),
     supplementsOther: typeof onboarding.supplementsOther === "string" ? onboarding.supplementsOther : "",
   };
+}
+
+/** Alias-aware biomarker search used by the panel builder and marker picker. */
+export function matchesQuery(marker: Biomarker | undefined, query: string) {
+  if (!query) return true;
+  if (!marker) return false;
+  const haystack = [marker.displayName, marker.name, ...marker.aliases].join(" ").toLowerCase();
+  return haystack.includes(query.toLowerCase());
 }
 
 export function toRecommendationInput(detail: DoctorCaseDetail): RecommendationInput {
