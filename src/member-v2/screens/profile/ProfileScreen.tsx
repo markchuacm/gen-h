@@ -20,7 +20,7 @@ function ProfileScreen({
   onExitIncomplete,
 }: ProfileScreenProps) {
   // profile is always loaded before ProfileScreen mounts (see main.tsx Gate).
-  const { profile } = useAuth();
+  const { profile, signOut } = useAuth();
   const {
     state,
     uploadErrors,
@@ -45,6 +45,7 @@ function ProfileScreen({
   const handleFlowClose = () => {
     onFlowOpenChange(false);
     if (!completed) onExitIncomplete();
+    else onCompleted(state.answers.basics.preferredName);
   };
 
   const flow = (
@@ -79,16 +80,16 @@ function ProfileScreen({
         <button
           className="p-btn pf-summary-confirm"
           type="button"
-          onClick={() => onCompleted(state.answers.basics.preferredName)}
+          onClick={() => openFlow(0)}
         >
-          Confirm profile
+          Edit answers
         </button>
         <button
           className="pf-summary-edit"
           type="button"
-          onClick={() => openFlow(0)}
+          onClick={() => void signOut()}
         >
-          Edit answers
+          Log-out
         </button>
       </div>
 
