@@ -16,7 +16,7 @@ function CarePlanPreview({ title, sections }: { title: string; sections: DraftSe
   return (
     <div className="doc-plan-preview">
       <header className="cp-head">
-        <span className="doc-eyebrow">Member view</span>
+        <span className="p-eyebrow">Member view</span>
         <h1 className="doc-plan-preview-title">{title || "Your care plan"}</h1>
       </header>
 

@@ -76,7 +76,7 @@ function CaseDetail({
   }
 
   return (
-    <main className="doc-page">
+    <main className="p-page doc-page">
       <button type="button" className="doc-back" onClick={onBack}>
         ← All cases
       </button>
@@ -88,18 +88,18 @@ function CaseDetail({
         <>
           <header className="doc-head">
             <div>
-              <span className="doc-eyebrow">Case</span>
-              <h1>{detail.memberName ?? detail.memberEmail ?? "Member"}</h1>
-              {/* Age/sex live in the brief's vitals line, so only the journey
+              <span className="p-eyebrow">Case brief</span>
+              <h1 className="p-h1">{detail.memberName ?? detail.memberEmail ?? "Member"}</h1>
+              {/* Age/sex live in the brief's vitals row, so only the journey
                   stage belongs up here. */}
               <p className="doc-sub">{stageLabel(detail.stage)}</p>
             </div>
             {detail.hasResults ? (
-              <button type="button" className="doc-primary" onClick={() => setView("results")}>
+              <button type="button" className="p-btn" onClick={() => setView("results")}>
                 View results
               </button>
             ) : (
-              <button type="button" className="doc-primary" onClick={() => setView("panel")}>
+              <button type="button" className="p-btn" onClick={() => setView("panel")}>
                 Order blood panel
               </button>
             )}

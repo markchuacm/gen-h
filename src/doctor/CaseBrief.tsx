@@ -21,18 +21,17 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
   const answers = toAnswers(detail.onboarding);
   const flags = deriveRedFlags(answers);
 
-  const vitals = [
-    detail.age ? `${detail.age} years` : null,
-    detail.sex,
-    answers.basics.heightCm ? `${answers.basics.heightCm} cm` : null,
-    answers.basics.weightKg ? `${answers.basics.weightKg} kg` : null,
-  ].filter(Boolean);
+  const vitals: Array<[string, string]> = [];
+  if (detail.age) vitals.push(["Age", `${detail.age}`]);
+  if (detail.sex) vitals.push(["Sex", detail.sex]);
+  if (answers.basics.heightCm) vitals.push(["Height", `${answers.basics.heightCm} cm`]);
+  if (answers.basics.weightKg) vitals.push(["Weight", `${answers.basics.weightKg} kg`]);
 
   const lifestyleFacts: Array<[string, string]> = [
     ["Sleep", `~${answers.lifestyle.sleepHours}h per night`],
     ["Exercise", `${answers.lifestyle.exerciseDays} days per week`],
     ["Diet", answers.lifestyle.diet],
-    ["Stress", `${answers.lifestyle.stress}/5`],
+    ["Stress", `${answers.lifestyle.stress} out of 5`],
     ["Alcohol", answers.habits.alcohol],
     ["Smoking", answers.habits.smoking],
   ];
@@ -41,24 +40,38 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
 
   return (
     <>
-      <section className="doc-card" aria-labelledby="brief-glance">
-        <h2 id="brief-glance">At a glance</h2>
-        {vitals.length > 0 && <p className="doc-vitals">{vitals.join(" · ")}</p>}
-        {flags.length > 0 ? (
-          <ul className="doc-chips" aria-label="Flags from intake">
-            {flags.map((flag) => (
-              <li key={flag} className="is-flag">
-                <AlertTriangle strokeWidth={1.9} aria-hidden="true" />
-                {flag}
-              </li>
+      <section className="doc-card" aria-label="At a glance">
+        {vitals.length > 0 && (
+          <div className="doc-facts">
+            {vitals.map(([label, value]) => (
+              <div className="doc-fact" key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
             ))}
-          </ul>
+          </div>
+        )}
+        {flags.length > 0 ? (
+          <div className="doc-tag-group">
+            <span className="doc-label">Flags from intake</span>
+            <ul className="doc-chips">
+              {flags.map((flag) => (
+                <li key={flag} className="is-flag">
+                  <AlertTriangle strokeWidth={1.9} aria-hidden="true" />
+                  {flag}
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : (
-          <p className="doc-muted">No flags from intake.</p>
+          <div className="doc-tag-group">
+            <span className="doc-label">Flags from intake</span>
+            <p className="doc-muted">Nothing flagged from intake.</p>
+          </div>
         )}
         {answers.reason.length > 0 && (
-          <div className="doc-reason">
-            <h3>Why they're here</h3>
+          <div className="doc-reason doc-tag-group">
+            <span className="doc-label">Why they're here</span>
             <ul>
               {answers.reason.map((item) => (
                 <li key={item}>{item}</li>
@@ -70,15 +83,14 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
 
       <CaseAttachments documents={detail.documents} />
 
-      <section className="doc-card" aria-labelledby="brief-concerns">
-        <h2 id="brief-concerns">Goals &amp; symptoms</h2>
+      <section className="doc-card" aria-label="Goals and symptoms">
         <TagGroup label="Main goals" items={answers.goals} />
         <TagGroup label="What feels off" items={answers.symptoms} />
         <TagGroup label="Family history" items={answers.family} flagRisks />
       </section>
 
-      <section className="doc-card" aria-labelledby="brief-lifestyle">
-        <h2 id="brief-lifestyle">Lifestyle &amp; habits</h2>
+      <section className="doc-card" aria-label="Lifestyle and habits">
+        <span className="doc-label">Lifestyle &amp; habits</span>
         <dl className="doc-answers">
           {lifestyleFacts.map(([label, value]) => (
             <div key={label}>
@@ -89,8 +101,8 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
         </dl>
       </section>
 
-      <section className="doc-card" aria-labelledby="brief-supplements">
-        <h2 id="brief-supplements">Supplements &amp; medications</h2>
+      <section className="doc-card" aria-label="Supplements and medications">
+        <span className="doc-label">Supplements &amp; medications</span>
         {supplements.length === 0 && !answers.supplementsOther ? (
           <p className="doc-muted">Nothing at the moment.</p>
         ) : (
@@ -129,7 +141,7 @@ function TagGroup({
   if (items.length === 0) return null;
   return (
     <div className="doc-tag-group">
-      <h3>{label}</h3>
+      <span className="doc-label">{label}</span>
       <ul className="doc-chips">
         {items.map((item) => (
           <li key={item} className={flagRisks && !CLEAR_ANSWERS.has(item) ? "is-flag" : ""}>

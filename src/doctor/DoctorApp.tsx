@@ -3,11 +3,13 @@ import { useAuth } from "../auth/AuthProvider";
 import { fetchDoctorCases } from "../lib/api/doctor";
 import type { DoctorCase } from "../lib/api/doctor";
 import CaseDetail from "./CaseDetail";
+import DoctorNav from "./DoctorNav";
 import { STAGE_LABELS } from "./stageLabels";
+import "../member-v2/shell/shell.css";
 import "./doctor.css";
 
 function DoctorApp() {
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const [cases, setCases] = useState<DoctorCase[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openMemberId, setOpenMemberId] = useState<string | null>(null);
@@ -22,51 +24,60 @@ function DoctorApp() {
   if (openMemberId) {
     const activeCase = cases?.find((c) => c.memberId === openMemberId);
     return (
-      <CaseDetail
-        memberId={openMemberId}
-        caseSummary={activeCase}
-        onBack={() => setOpenMemberId(null)}
-      />
+      <>
+        <DoctorNav />
+        <CaseDetail
+          memberId={openMemberId}
+          caseSummary={activeCase}
+          onBack={() => setOpenMemberId(null)}
+        />
+      </>
     );
   }
 
+  const firstName = profile?.full_name?.split(" ")[0];
+
   return (
-    <main className="doc-page">
-      <header className="doc-head">
-        <div>
-          <span className="doc-eyebrow">Gen-H · Doctor</span>
-          <h1>Your cases</h1>
-          <p className="doc-sub">
-            {profile?.full_name ? `Signed in as ${profile.full_name}` : profile?.email}
-          </p>
-        </div>
-        <button type="button" className="doc-signout" onClick={() => void signOut()}>
-          Sign out
-        </button>
-      </header>
+    <>
+      <DoctorNav />
+      <main className="p-page doc-page">
+        <header className="doc-head">
+          <div>
+            <span className="p-eyebrow">Doctor console</span>
+            <h1 className="p-h1">
+              Your <em>cases</em>
+            </h1>
+            <p className="doc-sub">
+              {firstName
+                ? `Welcome back, ${firstName} — everything your members shared, in one place.`
+                : "Everything your members shared, in one place."}
+            </p>
+          </div>
+        </header>
 
-      {error && <p role="alert" className="doc-error">Couldn't load cases ({error}).</p>}
+        {error && <p role="alert" className="doc-error">Couldn't load cases ({error}).</p>}
 
-      {cases === null && !error && <p className="doc-muted">Loading cases…</p>}
+        {cases === null && !error && <p className="doc-muted">Loading cases…</p>}
 
-      {cases !== null && cases.length === 0 && (
-        <p className="doc-muted">No members assigned to you yet.</p>
-      )}
+        {cases !== null && cases.length === 0 && (
+          <p className="doc-muted">No members assigned to you yet.</p>
+        )}
 
-      <ul className="doc-case-list">
-        {cases?.map((c) => (
-          <li key={c.assignmentId}>
-            <button type="button" className="doc-case" onClick={() => setOpenMemberId(c.memberId)}>
-              <div className="doc-case-main">
-                <strong>{c.memberName ?? c.memberEmail ?? "Member"}</strong>
-                <span>{c.memberEmail}</span>
-              </div>
-              <span className="doc-stage-chip">{STAGE_LABELS[c.stage ?? ""] ?? c.stage ?? "—"}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-    </main>
+        <ul className="doc-case-list">
+          {cases?.map((c) => (
+            <li key={c.assignmentId}>
+              <button type="button" className="doc-case" onClick={() => setOpenMemberId(c.memberId)}>
+                <div className="doc-case-main">
+                  <strong>{c.memberName ?? c.memberEmail ?? "Member"}</strong>
+                  <span>{c.memberEmail}</span>
+                </div>
+                <span className="p-chip">{STAGE_LABELS[c.stage ?? ""] ?? c.stage ?? "—"}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </main>
+    </>
   );
 }
 

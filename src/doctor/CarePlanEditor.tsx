@@ -167,23 +167,27 @@ function CarePlanEditor({
     }
   };
 
-  if (loading) return <main className="doc-page"><p className="doc-muted">Loading plan…</p></main>;
+  if (loading) return <main className="p-page doc-page"><p className="doc-muted">Loading plan…</p></main>;
+
+  const firstName = memberName?.split(" ")[0];
 
   return (
-    <main className="doc-page">
+    <main className="p-page doc-page">
       <button type="button" className="doc-back" onClick={onBack}>
         ← Back to case
       </button>
 
       <header className="doc-head">
         <div>
-          <span className="doc-eyebrow">Care plan · {status}</span>
-          <h1>Plan for {memberName ?? "member"}</h1>
+          <span className="p-eyebrow">Care plan · {status}</span>
+          <h1 className="p-h1">
+            A plan for <em>{firstName ?? "this member"}</em>
+          </h1>
         </div>
         <div className="doc-editor-actions">
           <button
             type="button"
-            className="doc-secondary"
+            className="p-btn-ghost"
             aria-pressed={showPreview}
             onClick={() => setShowPreview((open) => !open)}
           >
@@ -197,10 +201,10 @@ function CarePlanEditor({
               </>
             )}
           </button>
-          <button type="button" className="doc-secondary" disabled={busy} onClick={() => void save()}>
+          <button type="button" className="p-btn-ghost" disabled={busy} onClick={() => void save()}>
             Save draft
           </button>
-          <button type="button" className="doc-primary" disabled={busy} onClick={() => void release()}>
+          <button type="button" className="p-btn" disabled={busy} onClick={() => void release()}>
             {status === "released" ? "Re-release" : "Release to member"}
           </button>
         </div>
@@ -226,7 +230,7 @@ function CarePlanEditor({
           {sections.map((section, si) => (
             <section className="doc-card doc-section-edit" key={section.key}>
               <div className="doc-section-head">
-                <span className="doc-section-eyebrow">Focus area {si + 1}</span>
+                <span className="doc-label">Focus area {si + 1}</span>
                 <div className="doc-section-tools">
                   <button
                     type="button"
@@ -287,7 +291,7 @@ function CarePlanEditor({
                 />
               </label>
 
-              <h3 className="doc-actions-title">Actions</h3>
+              <span className="doc-label doc-actions-title">Actions</span>
               {section.actions.map((action, ai) => (
                 <div className="doc-action-edit" key={action.id}>
                   <div className="doc-action-head">
@@ -356,7 +360,7 @@ function CarePlanEditor({
               <div className="doc-add-row">
                 <button
                   type="button"
-                  className="doc-secondary"
+                  className="p-btn-ghost"
                   aria-expanded={actionLibraryFor === section.key}
                   onClick={() =>
                     setActionLibraryFor((open) => (open === section.key ? null : section.key))
@@ -366,7 +370,7 @@ function CarePlanEditor({
                 </button>
                 <button
                   type="button"
-                  className="doc-secondary"
+                  className="p-btn-ghost"
                   onClick={() =>
                     patchSection(section.key, { actions: [...section.actions, emptyAction()] })
                   }
@@ -389,7 +393,7 @@ function CarePlanEditor({
           <div className="doc-add-row">
             <button
               type="button"
-              className="doc-secondary"
+              className="p-btn-ghost"
               aria-expanded={templatesOpen}
               onClick={() => setTemplatesOpen((open) => !open)}
             >
@@ -397,7 +401,7 @@ function CarePlanEditor({
             </button>
             <button
               type="button"
-              className="doc-secondary"
+              className="p-btn-ghost"
               onClick={() => addSections([emptySection(sections.length)])}
             >
               <Plus strokeWidth={1.8} aria-hidden="true" /> Blank focus area

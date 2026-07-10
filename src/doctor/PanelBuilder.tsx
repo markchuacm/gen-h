@@ -91,7 +91,7 @@ function PanelBuilder({
 
   if (loading) {
     return (
-      <main className="doc-page">
+      <main className="p-page doc-page">
         <button type="button" className="doc-back" onClick={onBack}>
           ← Case brief
         </button>
@@ -100,26 +100,30 @@ function PanelBuilder({
     );
   }
 
+  const firstName = detail.memberName?.split(" ")[0];
+
   return (
-    <main className="doc-page pb">
+    <main className="p-page doc-page pb">
       <button type="button" className="doc-back" onClick={onBack}>
         ← Case brief
       </button>
 
       <header className="doc-head">
         <div>
-          <span className="doc-eyebrow">Blood panel</span>
-          <h1>{detail.memberName ?? "Member"}</h1>
+          <span className="p-eyebrow">Blood panel</span>
+          <h1 className="p-h1">
+            A panel built for <em>{firstName ?? "this member"}</em>
+          </h1>
           {subtext && <p className="doc-sub">{subtext}</p>}
         </div>
       </header>
 
       {contextGroups.length > 0 && (
-        <section className="pb-context" aria-label="Clinical context">
+        <section className="doc-card pb-context" aria-label="Clinical context">
           {contextGroups.map((group) => (
             <div className="pb-context-group" key={group.label}>
-              <span className="pb-context-label">{group.label}</span>
-              <ul className="pb-context-chips">
+              <span className="doc-label pb-context-label">{group.label}</span>
+              <ul className="doc-chips">
                 {group.items.map((item) => (
                   <li key={item} className={group.flag && !CLEAR_ANSWERS.has(item) ? "is-flag" : ""}>
                     {item}
@@ -280,7 +284,7 @@ function PanelBuilder({
         </button>
         <button
           type="button"
-          className="doc-primary"
+          className="p-btn"
           disabled={saving || selected.size === 0}
           onClick={() => void save()}
         >
