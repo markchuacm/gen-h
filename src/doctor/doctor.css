@@ -474,6 +474,11 @@
 }
 
 /* Member-view preview inside the editor (reuses the member cp-* classes). */
+.doc-plan-preview ul {
+  list-style: none;
+  padding: 0;
+}
+
 .doc-plan-preview {
   display: flex;
   flex-direction: column;
