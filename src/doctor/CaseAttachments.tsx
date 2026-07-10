@@ -1,44 +1,16 @@
 import { useEffect, useState } from "react";
 import { Download, ExternalLink, Eye, FileSpreadsheet, FileText, Image as ImageIcon, X } from "lucide-react";
-import ProfileSummary from "../member-v2/screens/profile/ProfileSummary";
+// The attachment tiles reuse the member onboarding uploader look (pf-report-file*
+// classes from profile.css), made clickable to open an inline preview instead of
+// removable. That stylesheet coupling is confined to this file.
 import "../member-v2/screens/profile/profile.css";
-import { DEFAULT_ANSWERS, REPORT_CATEGORY_LABELS } from "../member-v2/screens/profile/profileQuestions";
-import type { ProfileAnswers, ReportUploadCategory } from "../member-v2/screens/profile/profileQuestions";
+import { REPORT_CATEGORY_LABELS } from "../member-v2/screens/profile/profileQuestions";
+import type { ReportUploadCategory } from "../member-v2/screens/profile/profileQuestions";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import { createDocumentSignedUrl } from "../lib/api/healthDocuments";
 
 type CaseDoc = DoctorCaseDetail["documents"][number];
 type DocKind = "pdf" | "image" | "sheet" | "doc" | "other";
-
-// The onboarding record is untyped jsonb, so every section is coerced back into
-// a ProfileAnswers shape defensively before the shared member brief renders it.
-function asObject(value: unknown): Record<string, unknown> {
-  return value && typeof value === "object" && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-}
-
-function asStringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function toAnswers(onboarding: Record<string, unknown>): ProfileAnswers {
-  return {
-    ...DEFAULT_ANSWERS,
-    basics: { ...DEFAULT_ANSWERS.basics, ...(asObject(onboarding.basics) as ProfileAnswers["basics"]) },
-    lifestyle: {
-      ...DEFAULT_ANSWERS.lifestyle,
-      ...(asObject(onboarding.lifestyle) as ProfileAnswers["lifestyle"]),
-    },
-    habits: { ...DEFAULT_ANSWERS.habits, ...(asObject(onboarding.habits) as ProfileAnswers["habits"]) },
-    reason: asStringList(onboarding.reason),
-    goals: asStringList(onboarding.goals),
-    symptoms: asStringList(onboarding.symptoms),
-    family: asStringList(onboarding.family),
-    supplements: asStringList(onboarding.supplements),
-    supplementsOther: typeof onboarding.supplementsOther === "string" ? onboarding.supplementsOther : "",
-  };
-}
 
 function docKind(fileName: string): DocKind {
   const name = fileName.toLowerCase();
@@ -160,41 +132,26 @@ function DocumentPreview({ doc, onClose }: { doc: CaseDoc; onClose: () => void }
   );
 }
 
-function CaseProfile({ detail }: { detail: DoctorCaseDetail }) {
+/** Previous reports & attachments card, with inline preview overlay. */
+function CaseAttachments({ documents }: { documents: CaseDoc[] }) {
   const [preview, setPreview] = useState<CaseDoc | null>(null);
-  const answers = toAnswers(detail.onboarding);
-  const hasProfile = Object.keys(detail.onboarding).length > 0;
-  const docCount = detail.documents.length;
-  const reportsFact =
-    docCount === 0 ? "None uploaded" : `${docCount} document${docCount === 1 ? "" : "s"}`;
 
   return (
     <>
-      {hasProfile ? (
-        <ProfileSummary
-          answers={answers}
-          showTitle={false}
-          showReports={false}
-          reportsFact={reportsFact}
-        />
-      ) : (
-        <p className="doc-muted">No onboarding responses yet.</p>
-      )}
-
       <section className="doc-card doc-attachments" aria-labelledby="case-attachments">
         <div className="doc-attach-head">
-          <h2 id="case-attachments">Previous reports &amp; attachments</h2>
-          {detail.documents.length > 0 && (
+          <span className="doc-label" id="case-attachments">Previous reports &amp; attachments</span>
+          {documents.length > 0 && (
             <span className="doc-attach-count">
-              {detail.documents.length} file{detail.documents.length === 1 ? "" : "s"}
+              {documents.length} file{documents.length === 1 ? "" : "s"}
             </span>
           )}
         </div>
-        {detail.documents.length === 0 ? (
+        {documents.length === 0 ? (
           <p className="doc-muted">No documents uploaded.</p>
         ) : (
           <div className="pf-report-file-grid">
-            {detail.documents.map((doc) => (
+            {documents.map((doc) => (
               <AttachmentTile key={doc.id} doc={doc} onOpen={setPreview} />
             ))}
           </div>
@@ -206,4 +163,4 @@ function CaseProfile({ detail }: { detail: DoctorCaseDetail }) {
   );
 }
 
-export default CaseProfile;
+export default CaseAttachments;

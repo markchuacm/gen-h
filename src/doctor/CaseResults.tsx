@@ -17,17 +17,17 @@ function CaseResults({
   onEditCarePlan: () => void;
 }) {
   return (
-    <main className="doc-page">
+    <main className="p-page doc-page">
       <button type="button" className="doc-back" onClick={onBack}>
         ← Case brief
       </button>
 
       <header className="doc-head">
         <div>
-          <span className="doc-eyebrow">RESULTS</span>
-          <h1>{memberName ?? "Member"}</h1>
+          <span className="p-eyebrow">Results</span>
+          <h1 className="p-h1">{memberName ?? "Member"}</h1>
         </div>
-        <button type="button" className="doc-primary" onClick={onEditCarePlan}>
+        <button type="button" className="p-btn" onClick={onEditCarePlan}>
           Edit care plan
         </button>
       </header>

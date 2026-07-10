@@ -67,6 +67,16 @@ export const BASELINE_CODES: string[] = [
   "mean-corpuscular-volume-mcv",
 ];
 
+/** The baseline as a quick-add chip, so the 35 pre-ticked markers are visible
+    and toggleable like any other bundle. Not part of PANEL_BUNDLES because it
+    applies unconditionally. */
+export const BASELINE_BUNDLE = {
+  id: "baseline",
+  label: "Advanced baseline",
+  reason: "Ordered for every member",
+  codes: BASELINE_CODES,
+};
+
 function hasAny(list: string[], values: string[]) {
   return values.some((value) => list.includes(value));
 }
@@ -128,7 +138,7 @@ export const PANEL_BUNDLES: PanelBundle[] = [
   },
   {
     id: "hormones-male",
-    label: "Hormones",
+    label: "Hormones — male",
     reason: "Libido, mood or hormone-related goals",
     codes: [
       "total-testosterone",
@@ -147,7 +157,7 @@ export const PANEL_BUNDLES: PanelBundle[] = [
   },
   {
     id: "hormones-female",
-    label: "Hormones",
+    label: "Hormones — female",
     reason: "Libido, mood or hormone-related goals",
     codes: [
       "estradiol",

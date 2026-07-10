@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { fetchCaseDetail } from "../lib/api/doctor";
 import type { DoctorCase, DoctorCaseDetail } from "../lib/api/doctor";
 import CarePlanEditor from "./CarePlanEditor";
-import CaseProfile from "./CaseProfile";
+import CaseBrief from "./CaseBrief";
 import CaseResults from "./CaseResults";
 import PanelBuilder from "./PanelBuilder";
 import { stageLabel } from "./stageLabels";
@@ -76,7 +76,7 @@ function CaseDetail({
   }
 
   return (
-    <main className="doc-page">
+    <main className="p-page doc-page">
       <button type="button" className="doc-back" onClick={onBack}>
         ← All cases
       </button>
@@ -88,26 +88,24 @@ function CaseDetail({
         <>
           <header className="doc-head">
             <div>
-              <span className="doc-eyebrow">CASE</span>
-              <h1>{detail.memberName ?? detail.memberEmail ?? "Member"}</h1>
-              <p className="doc-sub">
-                {[detail.age ? `${detail.age}y` : null, detail.sex, stageLabel(detail.stage)]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </p>
+              <span className="p-eyebrow">Case brief</span>
+              <h1 className="p-h1">{detail.memberName ?? detail.memberEmail ?? "Member"}</h1>
+              {/* Age/sex live in the brief's vitals row, so only the journey
+                  stage belongs up here. */}
+              <p className="doc-sub">{stageLabel(detail.stage)}</p>
             </div>
             {detail.hasResults ? (
-              <button type="button" className="doc-primary" onClick={() => setView("results")}>
+              <button type="button" className="p-btn" onClick={() => setView("results")}>
                 View results
               </button>
             ) : (
-              <button type="button" className="doc-primary" onClick={() => setView("panel")}>
+              <button type="button" className="p-btn" onClick={() => setView("panel")}>
                 Order blood panel
               </button>
             )}
           </header>
 
-          <CaseProfile detail={detail} />
+          <CaseBrief detail={detail} />
         </>
       )}
     </main>

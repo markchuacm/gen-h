@@ -1,29 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { ChevronDown, Info, Search } from "lucide-react";
 import { BIOMARKERS, BIOMARKER_CATEGORIES } from "../member-v2/screens/results/biomarkerData";
-import type { Biomarker } from "../member-v2/screens/results/types";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import { fetchLabOrder, saveLabOrder } from "../lib/api/labOrder";
-import { recommendedCodes, relevantBundles } from "./recommendedPanel";
-import type { RecommendationInput } from "./recommendedPanel";
-
-// "No concern" answers that shouldn't read as risk flags in the context panel.
-const CLEAR_ANSWERS = new Set([
-  "None that I know of",
-  "Nothing major — mostly prevention",
-  "Nothing at the moment",
-]);
-
-function asStringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
-}
-
-function matchesQuery(marker: Biomarker | undefined, query: string) {
-  if (!query) return true;
-  if (!marker) return false;
-  const haystack = [marker.displayName, marker.name, ...marker.aliases].join(" ").toLowerCase();
-  return haystack.includes(query.toLowerCase());
-}
+import { BASELINE_BUNDLE, PANEL_BUNDLES, recommendedCodes, relevantBundles } from "./recommendedPanel";
+import { CLEAR_ANSWERS, matchesQuery, toRecommendationInput } from "./caseSignals";
 
 function PanelBuilder({
   memberId,
@@ -38,23 +19,20 @@ function PanelBuilder({
 }) {
   const catalog = useMemo(() => new Map(BIOMARKERS.map((marker) => [marker.id, marker])), []);
 
-  const profileInput = useMemo<RecommendationInput>(
-    () => ({
-      sex: detail.sex ?? "",
-      age: detail.age,
-      goals: asStringList(detail.onboarding.goals),
-      symptoms: asStringList(detail.onboarding.symptoms),
-      family: asStringList(detail.onboarding.family),
-    }),
-    [detail],
-  );
+  const profileInput = useMemo(() => toRecommendationInput(detail), [detail]);
 
   const recommended = useMemo(() => recommendedCodes(profileInput), [profileInput]);
-  const bundles = useMemo(() => relevantBundles(profileInput), [profileInput]);
+  const recommendedSet = useMemo(() => new Set(recommended), [recommended]);
+  const suggestedBundles = useMemo(() => relevantBundles(profileInput), [profileInput]);
+  const otherBundles = useMemo(
+    () => PANEL_BUNDLES.filter((bundle) => !bundle.applies(profileInput)),
+    [profileInput],
+  );
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(recommended));
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [openInfo, setOpenInfo] = useState<Set<string>>(new Set());
+  const [showAllBundles, setShowAllBundles] = useState(false);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -93,6 +71,8 @@ function PanelBuilder({
 
   const bundleActive = (codes: string[]) => codes.every((code) => selected.has(code));
 
+  const addedCount = [...selected].filter((id) => !recommendedSet.has(id)).length;
+
   const subtext = [detail.age ? `${detail.age}y` : null, detail.sex].filter(Boolean).join(" · ");
   const contextGroups = [
     { label: "Family history", items: profileInput.family, flag: true },
@@ -111,7 +91,7 @@ function PanelBuilder({
 
   if (loading) {
     return (
-      <main className="doc-page">
+      <main className="p-page doc-page">
         <button type="button" className="doc-back" onClick={onBack}>
           ← Case brief
         </button>
@@ -120,26 +100,30 @@ function PanelBuilder({
     );
   }
 
+  const firstName = detail.memberName?.split(" ")[0];
+
   return (
-    <main className="doc-page pb">
+    <main className="p-page doc-page pb">
       <button type="button" className="doc-back" onClick={onBack}>
         ← Case brief
       </button>
 
       <header className="doc-head">
         <div>
-          <span className="doc-eyebrow">BLOOD PANEL</span>
-          <h1>{detail.memberName ?? "Member"}</h1>
+          <span className="p-eyebrow">Blood panel</span>
+          <h1 className="p-h1">
+            A panel built for <em>{firstName ?? "this member"}</em>
+          </h1>
           {subtext && <p className="doc-sub">{subtext}</p>}
         </div>
       </header>
 
       {contextGroups.length > 0 && (
-        <section className="pb-context" aria-label="Clinical context">
+        <section className="doc-card pb-context" aria-label="Clinical context">
           {contextGroups.map((group) => (
             <div className="pb-context-group" key={group.label}>
-              <span className="pb-context-label">{group.label}</span>
-              <ul className="pb-context-chips">
+              <span className="doc-label pb-context-label">{group.label}</span>
+              <ul className="doc-chips">
                 {group.items.map((item) => (
                   <li key={item} className={group.flag && !CLEAR_ANSWERS.has(item) ? "is-flag" : ""}>
                     {item}
@@ -151,16 +135,41 @@ function PanelBuilder({
         </section>
       )}
 
-      {bundles.length > 0 && (
-        <div className="pb-bundles" aria-label="Quick-add panels for this member">
-          {bundles.map((bundle) => {
+      <div className="pb-bundles" aria-label="Quick-add panels">
+        {[BASELINE_BUNDLE, ...suggestedBundles].map((bundle) => {
+          const active = bundleActive(bundle.codes);
+          return (
+            <button
+              key={bundle.id}
+              type="button"
+              title={bundle.reason}
+              className={`pb-bundle ${bundle.id === "baseline" ? "pb-bundle--baseline" : ""} ${active ? "is-active" : ""}`}
+              onClick={() => setCodes(bundle.codes, !active)}
+            >
+              {bundle.label}
+              <span>{bundle.codes.length}</span>
+            </button>
+          );
+        })}
+        {otherBundles.length > 0 && (
+          <button
+            type="button"
+            className="pb-bundles-more"
+            aria-expanded={showAllBundles}
+            onClick={() => setShowAllBundles((open) => !open)}
+          >
+            {showAllBundles ? "Fewer panels" : `More panels (${otherBundles.length})`}
+          </button>
+        )}
+        {showAllBundles &&
+          otherBundles.map((bundle) => {
             const active = bundleActive(bundle.codes);
             return (
               <button
                 key={bundle.id}
                 type="button"
                 title={bundle.reason}
-                className={`pb-bundle ${active ? "is-active" : ""}`}
+                className={`pb-bundle pb-bundle--extra ${active ? "is-active" : ""}`}
                 onClick={() => setCodes(bundle.codes, !active)}
               >
                 {bundle.label}
@@ -168,8 +177,7 @@ function PanelBuilder({
               </button>
             );
           })}
-        </div>
-      )}
+      </div>
 
       <label className="pb-search">
         <Search strokeWidth={1.8} aria-hidden="true" />
@@ -228,6 +236,9 @@ function PanelBuilder({
                           <span className="pb-row-name">
                             {marker.displayName}
                             {alias && <span className="pb-row-alias">{alias}</span>}
+                            {checked && !recommendedSet.has(id) && (
+                              <span className="pb-row-tag">Added</span>
+                            )}
                           </span>
                         </label>
                         {marker.whatItMeasures && (
@@ -257,6 +268,11 @@ function PanelBuilder({
       <div className="pb-footer">
         <div className="pb-footer-count">
           <strong>{selected.size}</strong> marker{selected.size === 1 ? "" : "s"} selected
+          <span className="pb-footer-breakdown">
+            {" · "}
+            {selected.size - addedCount} recommended
+            {addedCount > 0 ? ` · ${addedCount} added` : ""}
+          </span>
         </div>
         {error && <span className="doc-error">{error}</span>}
         <button
@@ -268,7 +284,7 @@ function PanelBuilder({
         </button>
         <button
           type="button"
-          className="doc-primary"
+          className="p-btn"
           disabled={saving || selected.size === 0}
           onClick={() => void save()}
         >
