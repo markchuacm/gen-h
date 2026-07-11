@@ -1,0 +1,66 @@
+{"kind":"deck","id":"pr/vfesl8","name":"Deck"}
+{"kind":"layout","layoutId":"2c5dfde5-fade-41fa-b374-e3279f446012","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"7fbd6610-4330-4d2c-8db6-62eab3522453","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/hgwp5k","slide":1,"title":"Slide 1","textShapes":0}
+{"kind":"image","id":"im/9g3ipwb2","slide":1,"name":"","alt":"Gen-H naming proof-of-concept slide 1","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/hgwp5k","slide":1,"text":""}
+{"kind":"slide","id":"sl/srlgs8","slide":2,"title":"Slide 2","textShapes":0}
+{"kind":"image","id":"im/mlgvmpsr","slide":2,"name":"","alt":"Gen-H naming proof-of-concept slide 2","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/srlgs8","slide":2,"text":""}
+{"kind":"slide","id":"sl/27sjmf","slide":3,"title":"Slide 3","textShapes":0}
+{"kind":"image","id":"im/w3upkni9","slide":3,"name":"","alt":"Gen-H naming proof-of-concept slide 3","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/27sjmf","slide":3,"text":""}
+{"kind":"slide","id":"sl/gea10c","slide":4,"title":"Slide 4","textShapes":0}
+{"kind":"image","id":"im/ep8rmxoz","slide":4,"name":"","alt":"Gen-H naming proof-of-concept slide 4","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/gea10c","slide":4,"text":""}
+{"kind":"slide","id":"sl/b0r4q6","slide":5,"title":"Slide 5","textShapes":0}
+{"kind":"image","id":"im/a5wfut03","slide":5,"name":"","alt":"Gen-H naming proof-of-concept slide 5","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/b0r4q6","slide":5,"text":""}
+{"kind":"slide","id":"sl/cwwnye","slide":6,"title":"Slide 6","textShapes":0}
+{"kind":"image","id":"im/or25076t","slide":6,"name":"","alt":"Gen-H naming proof-of-concept slide 6","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/cwwnye","slide":6,"text":""}
+{"kind":"slide","id":"sl/x4kh1w","slide":7,"title":"Slide 7","textShapes":0}
+{"kind":"image","id":"im/25cv654n","slide":7,"name":"","alt":"Gen-H naming proof-of-concept slide 7","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/x4kh1w","slide":7,"text":""}
+{"kind":"slide","id":"sl/i0y6n0","slide":8,"title":"Slide 8","textShapes":0}
+{"kind":"image","id":"im/fmt0vq9k","slide":8,"name":"","alt":"Gen-H naming proof-of-concept slide 8","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/i0y6n0","slide":8,"text":""}
+{"kind":"slide","id":"sl/d5wre9","slide":9,"title":"Slide 9","textShapes":0}
+{"kind":"image","id":"im/3yt872l0","slide":9,"name":"","alt":"Gen-H naming proof-of-concept slide 9","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/d5wre9","slide":9,"text":""}
+{"kind":"slide","id":"sl/h8rj9j","slide":10,"title":"Slide 10","textShapes":0}
+{"kind":"image","id":"im/qp03yxsv","slide":10,"name":"","alt":"Gen-H naming proof-of-concept slide 10","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/h8rj9j","slide":10,"text":""}
+{"kind":"slide","id":"sl/8l3lze","slide":11,"title":"Slide 11","textShapes":0}
+{"kind":"image","id":"im/107u9wj2","slide":11,"name":"","alt":"Gen-H naming proof-of-concept slide 11","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/8l3lze","slide":11,"text":""}
+{"kind":"slide","id":"sl/nywbay","slide":12,"title":"Slide 12","textShapes":0}
+{"kind":"image","id":"im/5wry94n6","slide":12,"name":"","alt":"Gen-H naming proof-of-concept slide 12","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/nywbay","slide":12,"text":""}
+{"kind":"slide","id":"sl/1vlh0c","slide":13,"title":"Slide 13","textShapes":0}
+{"kind":"image","id":"im/hor61wbe","slide":13,"name":"","alt":"Gen-H naming proof-of-concept slide 13","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/1vlh0c","slide":13,"text":""}
+{"kind":"slide","id":"sl/4u0b6n","slide":14,"title":"Slide 14","textShapes":0}
+{"kind":"image","id":"im/kjqlkbax","slide":14,"name":"","alt":"Gen-H naming proof-of-concept slide 14","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/4u0b6n","slide":14,"text":""}
+{"kind":"slide","id":"sl/pvz2fa","slide":15,"title":"Slide 15","textShapes":0}
+{"kind":"image","id":"im/6xkv2ds3","slide":15,"name":"","alt":"Gen-H naming proof-of-concept slide 15","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/pvz2fa","slide":15,"text":""}
+{"kind":"slide","id":"sl/6yr4yo","slide":16,"title":"Slide 16","textShapes":0}
+{"kind":"image","id":"im/ex4nedoz","slide":16,"name":"","alt":"Gen-H naming proof-of-concept slide 16","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/6yr4yo","slide":16,"text":""}
+{"kind":"slide","id":"sl/no63pm","slide":17,"title":"Slide 17","textShapes":0}
+{"kind":"image","id":"im/elw7m507","slide":17,"name":"","alt":"Gen-H naming proof-of-concept slide 17","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/no63pm","slide":17,"text":""}
+{"kind":"slide","id":"sl/by4pv6","slide":18,"title":"Slide 18","textShapes":0}
+{"kind":"image","id":"im/cfadcr2x","slide":18,"name":"","alt":"Gen-H naming proof-of-concept slide 18","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/by4pv6","slide":18,"text":""}
+{"kind":"slide","id":"sl/lfkbty","slide":19,"title":"Slide 19","textShapes":0}
+{"kind":"image","id":"im/zulw321o","slide":19,"name":"","alt":"Gen-H naming proof-of-concept slide 19","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/lfkbty","slide":19,"text":""}
+{"kind":"slide","id":"sl/4gdbp6","slide":20,"title":"Slide 20","textShapes":0}
+{"kind":"image","id":"im/onqxwvq9","slide":20,"name":"","alt":"Gen-H naming proof-of-concept slide 20","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/4gdbp6","slide":20,"text":""}
+{"kind":"slide","id":"sl/pqgx0b","slide":21,"title":"Slide 21","textShapes":0}
+{"kind":"image","id":"im/dkn6dkb6","slide":21,"name":"","alt":"Gen-H naming proof-of-concept slide 21","bbox":[0,0,1280,720]}
+{"kind":"notes","id":"nt/pqgx0b","slide":21,"text":""}
