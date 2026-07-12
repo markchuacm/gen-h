@@ -105,7 +105,10 @@ function DoctorsPage() {
   return (
     <section className="adm-page">
       <div className="adm-page-head">
-        <h1>Doctors</h1>
+        <div>
+          <p className="p-eyebrow">Admin · Doctors</p>
+          <h1 className="p-h1">Doctors</h1>
+        </div>
         <div className="adm-promote">
           <select value={promoteId} onChange={(e) => setPromoteId(e.target.value)}>
             <option value="">Promote a member to doctor…</option>

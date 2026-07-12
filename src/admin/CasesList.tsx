@@ -63,7 +63,10 @@ function CasesList({ onOpen }: { onOpen: (memberId: string) => void }) {
   return (
     <section className="adm-page">
       <div className="adm-page-head">
-        <h1>Member cases</h1>
+        <div>
+          <p className="p-eyebrow">Admin · Cases</p>
+          <h1 className="p-h1">Member cases</h1>
+        </div>
         <input
           className="adm-search"
           type="search"

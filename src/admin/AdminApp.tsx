@@ -3,6 +3,7 @@ import { useAuth } from "../auth/AuthProvider";
 import CasesList from "./CasesList";
 import CaseDetail from "./CaseDetail";
 import DoctorsPage from "./DoctorsPage";
+import "../member-v2/shell/shell.css";
 import "./admin.css";
 
 type Tab = "cases" | "doctors";
@@ -17,7 +18,7 @@ function AdminApp() {
       <header className="adm-topbar">
         <div className="adm-brand">
           <span className="adm-brand-mark">Gen-H</span>
-          <span className="adm-brand-tag">Admin</span>
+          <span className="p-chip">Admin</span>
         </div>
         <nav className="adm-tabs" aria-label="Admin sections">
           <button

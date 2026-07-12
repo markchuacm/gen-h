@@ -10,6 +10,7 @@ import {
 } from "../lib/api/admin";
 import type { AdminBiomarkerRow, AdminLabReport, BiomarkerInput } from "../lib/api/admin";
 import { BIOMARKER_CATALOG, catalogLookup } from "./biomarkerCatalog";
+import IngestModal from "./ingest/IngestModal";
 
 const STATUS_OPTIONS: AdminBiomarkerRow["status"][] = ["optimal", "at_risk", "needs_attention"];
 const STATUS_LABELS: Record<string, string> = {
@@ -271,16 +272,21 @@ function ReportCard({
 
 function LabResultsSection({
   memberId,
+  sex,
+  age,
   reports,
   documents,
   onChange,
 }: {
   memberId: string;
+  sex: string | null;
+  age: number | null;
   reports: AdminLabReport[];
   documents: DocRef[];
   onChange: () => Promise<void>;
 }) {
   const [creating, setCreating] = useState(false);
+  const [ingesting, setIngesting] = useState(false);
   const [labName, setLabName] = useState("");
   const [panelName, setPanelName] = useState("");
   const [collectedAt, setCollectedAt] = useState("");
@@ -317,9 +323,22 @@ function LabResultsSection({
       <div className="adm-card-head">
         <h2>Lab results</h2>
         {!creating && (
-          <button type="button" className="adm-btn" onClick={() => setCreating(true)}>New report</button>
+          <div className="adm-card-head-actions">
+            <button type="button" className="adm-btn" onClick={() => setIngesting(true)}>Ingest from PDF</button>
+            <button type="button" className="adm-btn-ghost" onClick={() => setCreating(true)}>New report</button>
+          </div>
         )}
       </div>
+
+      {ingesting && (
+        <IngestModal
+          memberId={memberId}
+          sex={sex}
+          age={age}
+          onClose={() => setIngesting(false)}
+          onCommitted={onChange}
+        />
+      )}
 
       {error && <p role="alert" className="adm-error">{error}</p>}
 

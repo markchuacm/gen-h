@@ -12,6 +12,7 @@ import {
 } from "../lib/api/admin";
 import type { AdminCaseDetail, AdminDoctorRow, AdminLabReport } from "../lib/api/admin";
 import { createDocumentSignedUrl } from "../lib/api/healthDocuments";
+import { CLEAR_ANSWERS, lifestyleConcerns, toAnswers } from "../doctor/caseSignals";
 import LabResultsSection from "./LabResultsSection";
 import CaseTimeline from "./CaseTimeline";
 
@@ -22,15 +23,28 @@ const DOC_TYPES = [
   { value: "other", label: "Other" },
 ];
 
-function formatValue(value: unknown): string {
-  if (value == null) return "—";
-  if (Array.isArray(value)) return value.map(formatValue).join(", ");
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
-}
-
-function humanizeKey(key: string): string {
-  return key.replace(/[_-]+/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+function TagGroup({
+  label,
+  items,
+  flagged,
+}: {
+  label: string;
+  items: string[];
+  flagged?: boolean;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <div className="adm-tag-group">
+      <span className="adm-group-label">{label}</span>
+      <ul className="adm-chips">
+        {items.map((item) => (
+          <li key={item} className={flagged && !CLEAR_ANSWERS.has(item) ? "is-flag" : ""}>
+            {item}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
 }
 
 function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void }) {
@@ -122,16 +136,35 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   }
 
   const activeDoctors = doctors.filter((d) => d.isActive);
-  const basics: [string, string][] = [
-    ["Preferred name", detail.preferredName ?? "—"],
-    ["Age", detail.age != null ? `${detail.age}` : "—"],
-    ["Sex", detail.sex ?? "—"],
-    ["Height", detail.heightCm != null ? `${detail.heightCm} cm` : "—"],
-    ["Weight", detail.weightKg != null ? `${detail.weightKg} kg` : "—"],
-    ["Goals", detail.goals && detail.goals.length ? detail.goals.join(", ") : "—"],
-    ["Medications", detail.medications ?? "—"],
-    ["Conditions", detail.conditions ?? "—"],
-  ];
+
+  const hasOnboarding = Object.keys(detail.onboarding).length > 0;
+  const answers = hasOnboarding ? toAnswers(detail.onboarding) : null;
+  const concerns = answers ? lifestyleConcerns(answers) : new Set<string>();
+
+  const vitals: [string, string][] = [];
+  if (detail.age != null) vitals.push(["Age", `${detail.age}`]);
+  if (detail.sex) vitals.push(["Sex", detail.sex]);
+  if (detail.heightCm != null) vitals.push(["Height", `${detail.heightCm} cm`]);
+  if (detail.weightKg != null) vitals.push(["Weight", `${detail.weightKg} kg`]);
+
+  const lifestyleFacts: [string, string][] = answers
+    ? [
+        ["Sleep", `~${answers.lifestyle.sleepHours}h per night`],
+        ["Exercise", `${answers.lifestyle.exerciseDays} days per week`],
+        ["Diet", answers.lifestyle.diet],
+        ["Stress", `${answers.lifestyle.stress} out of 5`],
+        ["Alcohol", answers.habits.alcohol],
+        ["Smoking", answers.habits.smoking],
+      ]
+    : [];
+
+  const supplements = answers ? answers.supplements.filter((s) => !CLEAR_ANSWERS.has(s)) : [];
+  const subtitle = [
+    detail.preferredName ? `Goes by ${detail.preferredName}` : null,
+    detail.memberEmail,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <section className="adm-page">
@@ -140,8 +173,9 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
 
       <header className="adm-case-head">
         <div>
+          <p className="p-eyebrow">Member case</p>
           <h1>{detail.memberName ?? detail.memberEmail ?? "Member"}</h1>
-          <p className="adm-muted">{detail.memberEmail}</p>
+          <p className="adm-sub">{subtitle}</p>
         </div>
         <label className="adm-stage-correct">
           <span>Stage</span>
@@ -166,20 +200,84 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
 
       <div className="adm-card">
         <h2>Member profile</h2>
-        <dl className="adm-kv">
-          {basics.map(([k, v]) => (
-            <div key={k}><dt>{k}</dt><dd>{v}</dd></div>
-          ))}
-        </dl>
-        {Object.keys(detail.onboarding).length > 0 && (
+
+        {vitals.length > 0 && (
+          <div className="adm-facts">
+            {vitals.map(([label, value]) => (
+              <div className="adm-fact" key={label}>
+                <span>{label}</span>
+                <strong>{value}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {answers && answers.reason.length > 0 && (
+          <blockquote className="adm-reason adm-brief-section" aria-label="Why they're here">
+            {answers.reason.map((item) => (
+              <p key={item}>{item}</p>
+            ))}
+          </blockquote>
+        )}
+
+        {answers ? (
           <>
-            <h3 className="adm-subhead">Onboarding responses</h3>
-            <dl className="adm-kv">
-              {Object.entries(detail.onboarding).map(([key, value]) => (
-                <div key={key}><dt>{humanizeKey(key)}</dt><dd>{formatValue(value)}</dd></div>
-              ))}
-            </dl>
+            <div className="adm-brief-section">
+              <div className="adm-brief-cols">
+                <div className="adm-brief-col">
+                  <TagGroup label="Main goals" items={answers.goals} />
+                  <TagGroup label="What feels off" items={answers.symptoms} />
+                  <TagGroup label="Family history" items={answers.family} flagged />
+                </div>
+                <div className="adm-brief-col">
+                  <span className="adm-group-label">Lifestyle &amp; habits</span>
+                  <dl className="adm-kv">
+                    {lifestyleFacts.map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd className={concerns.has(label) ? "is-concern" : ""}>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </div>
+            </div>
+
+            <div className="adm-brief-section">
+              <span className="adm-group-label">Supplements &amp; medications</span>
+              {supplements.length === 0 && !answers.supplementsOther && !detail.medications ? (
+                <p className="adm-muted">Nothing at the moment.</p>
+              ) : (
+                <>
+                  {supplements.length > 0 && (
+                    <ul className="adm-chips">
+                      {supplements.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {answers.supplementsOther && <p className="adm-muted">{answers.supplementsOther}</p>}
+                  {detail.medications && (
+                    <p className="adm-muted">Medications: {detail.medications}</p>
+                  )}
+                </>
+              )}
+              {detail.conditions && <p className="adm-muted">Conditions: {detail.conditions}</p>}
+            </div>
           </>
+        ) : (
+          <div className="adm-brief-section">
+            <p className="adm-muted">No onboarding responses yet.</p>
+            {(detail.goals?.length || detail.medications || detail.conditions) ? (
+              <dl className="adm-kv">
+                {detail.goals && detail.goals.length > 0 && (
+                  <div><dt>Goals</dt><dd>{detail.goals.join(", ")}</dd></div>
+                )}
+                {detail.medications && <div><dt>Medications</dt><dd>{detail.medications}</dd></div>}
+                {detail.conditions && <div><dt>Conditions</dt><dd>{detail.conditions}</dd></div>}
+              </dl>
+            ) : null}
+          </div>
         )}
       </div>
 
@@ -230,6 +328,8 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
 
       <LabResultsSection
         memberId={memberId}
+        sex={detail.sex}
+        age={detail.age}
         reports={reports}
         documents={detail.documents.map((d) => ({ id: d.id, file_name: d.file_name }))}
         onChange={reload}
