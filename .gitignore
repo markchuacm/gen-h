@@ -9,3 +9,6 @@ dist
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+
+# Real lab reports used to tune the ingest parser — PHI, never commit.
+ocr-sample/

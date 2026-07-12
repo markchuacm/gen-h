@@ -280,6 +280,21 @@ export async function updateBiomarker(id: string, row: BiomarkerInput) {
   return { error: error?.message ?? null };
 }
 
+/** Insert many biomarker rows into one draft report in a single round trip
+    (used by the PDF-ingest flow). RLS on biomarker_results already governs it. */
+export async function createBiomarkersBulk(
+  reportId: string,
+  memberId: string,
+  rows: BiomarkerInput[],
+) {
+  if (rows.length === 0) return { inserted: 0, error: null };
+  const { data, error } = await supabase
+    .from("biomarker_results")
+    .insert(rows.map((row) => ({ lab_report_id: reportId, member_id: memberId, ...row })))
+    .select("id");
+  return { inserted: data?.length ?? 0, error: error?.message ?? null };
+}
+
 export async function deleteBiomarker(id: string) {
   const { error } = await supabase.from("biomarker_results").delete().eq("id", id);
   return { error: error?.message ?? null };
@@ -303,37 +318,42 @@ const ADMIN_MIME: Record<string, string> = {
 };
 
 /** Upload into the member's folder ({member_id}/{uuid}.{ext}); uploaded_by is
-    the admin so the "uploader" column stays truthful. */
+    the admin so the "uploader" column stays truthful. Returns the created
+    health_documents id so callers (e.g. lab-report ingest) can link it. */
 export async function uploadDocumentForMember(memberId: string, file: File, docType: string) {
   const { data: sessionData } = await supabase.auth.getSession();
   const adminId = sessionData.session?.user.id;
-  if (!adminId) return { error: "not signed in" };
+  if (!adminId) return { data: null, error: "not signed in" };
 
   const ext = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase() : "";
-  if (!(ext in ADMIN_MIME)) return { error: "unsupported type — PDF, JPG, PNG, CSV, DOC or DOCX." };
-  if (file.size > 10 * 1024 * 1024) return { error: "larger than 10MB." };
+  if (!(ext in ADMIN_MIME)) return { data: null, error: "unsupported type — PDF, JPG, PNG, CSV, DOC or DOCX." };
+  if (file.size > 10 * 1024 * 1024) return { data: null, error: "larger than 10MB." };
 
   const storagePath = `${memberId}/${crypto.randomUUID()}.${ext}`;
   const upload = await supabase.storage.from(BUCKET).upload(storagePath, file, {
     contentType: ADMIN_MIME[ext],
     upsert: false,
   });
-  if (upload.error) return { error: upload.error.message };
+  if (upload.error) return { data: null, error: upload.error.message };
 
-  const { error } = await supabase.from("health_documents").insert({
-    member_id: memberId,
-    storage_path: storagePath,
-    file_name: file.name,
-    mime_type: ADMIN_MIME[ext],
-    size_bytes: file.size,
-    doc_type: docType,
-    uploaded_by: adminId,
-  });
+  const { data, error } = await supabase
+    .from("health_documents")
+    .insert({
+      member_id: memberId,
+      storage_path: storagePath,
+      file_name: file.name,
+      mime_type: ADMIN_MIME[ext],
+      size_bytes: file.size,
+      doc_type: docType,
+      uploaded_by: adminId,
+    })
+    .select("id")
+    .single();
   if (error) {
     void supabase.storage.from(BUCKET).remove([storagePath]);
-    return { error: error.message };
+    return { data: null, error: error.message };
   }
-  return { error: null };
+  return { data, error: null };
 }
 
 // ---- Doctors -------------------------------------------------------------
