@@ -1,11 +1,17 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import { SECTION_IMAGE_OPTIONS } from "../member-v2/screens/care-plan/carePlanAssets";
 import { FOCUS_AREA_TEMPLATES, LIBRARY_ACTIONS } from "./carePlanLibrary";
 import type { LibraryAction, LibraryTemplate, LifestyleCategory } from "./carePlanLibrary";
 
 const CATEGORIES: LifestyleCategory[] = ["Nutrition", "Exercise", "Supplements", "Sleep"];
 
-/** Inline panel listing the focus-area templates. */
+const templateImage = (imageKey: string) =>
+  SECTION_IMAGE_OPTIONS.find((option) => option.key === imageKey)?.src ??
+  SECTION_IMAGE_OPTIONS[0].src;
+
+/** Inline panel listing the focus-area templates, each led by the
+    member-facing image it ships with. */
 export function TemplatePicker({ onPick }: { onPick: (template: LibraryTemplate) => void }) {
   return (
     <div className="doc-library" role="listbox" aria-label="Focus-area templates">
@@ -13,16 +19,19 @@ export function TemplatePicker({ onPick }: { onPick: (template: LibraryTemplate)
         <button
           key={template.id}
           type="button"
-          className="doc-library-item"
+          className="doc-library-item doc-library-item--template"
           onClick={() => onPick(template)}
         >
-          <span className="doc-library-item-head">
-            <strong>{template.title}</strong>
-            <span className="doc-library-count">
-              {template.actions.length} action{template.actions.length === 1 ? "" : "s"}
+          <img className="doc-library-thumb" src={templateImage(template.imageKey)} alt="" />
+          <span className="doc-library-item-copy">
+            <span className="doc-library-item-head">
+              <strong>{template.title}</strong>
+              <span className="doc-library-count">
+                {template.actions.length} action{template.actions.length === 1 ? "" : "s"}
+              </span>
             </span>
+            <span className="doc-library-item-body">{template.summary}</span>
           </span>
-          <span className="doc-library-item-body">{template.summary}</span>
         </button>
       ))}
     </div>

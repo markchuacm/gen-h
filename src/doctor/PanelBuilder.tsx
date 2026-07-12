@@ -1,10 +1,40 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, Info, Search } from "lucide-react";
+import {
+  Activity,
+  Brain,
+  Check,
+  ChevronDown,
+  Dna,
+  Droplets,
+  FlaskConical,
+  HeartPulse,
+  LayoutGrid,
+  List,
+  Plus,
+  Search,
+  Shield,
+  Zap,
+} from "lucide-react";
 import { BIOMARKERS, BIOMARKER_CATEGORIES } from "../member-v2/screens/results/biomarkerData";
+import type { Biomarker } from "../member-v2/screens/results/types";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import { fetchLabOrder, saveLabOrder } from "../lib/api/labOrder";
-import { BASELINE_BUNDLE, PANEL_BUNDLES, recommendedCodes, relevantBundles } from "./recommendedPanel";
-import { CLEAR_ANSWERS, matchesQuery, toRecommendationInput } from "./caseSignals";
+import { BASELINE_BUNDLE, offerableBundles, recommendedCodes } from "./recommendedPanel";
+import { matchesQuery, toRecommendationInput } from "./caseSignals";
+
+type CatalogView = "list" | "pills";
+
+/** Card corner icon per panel; the reason copy moved to the tooltip. */
+const PANEL_ICONS: Record<string, typeof HeartPulse> = {
+  baseline: FlaskConical,
+  cardiovascular: HeartPulse,
+  metabolic: Droplets,
+  "thyroid-fatigue": Zap,
+  "hormones-male": Dna,
+  "hormones-female": Dna,
+  stress: Brain,
+  prostate: Shield,
+};
 
 function PanelBuilder({
   memberId,
@@ -20,20 +50,14 @@ function PanelBuilder({
   const catalog = useMemo(() => new Map(BIOMARKERS.map((marker) => [marker.id, marker])), []);
 
   const profileInput = useMemo(() => toRecommendationInput(detail), [detail]);
-
   const recommended = useMemo(() => recommendedCodes(profileInput), [profileInput]);
   const recommendedSet = useMemo(() => new Set(recommended), [recommended]);
-  const suggestedBundles = useMemo(() => relevantBundles(profileInput), [profileInput]);
-  const otherBundles = useMemo(
-    () => PANEL_BUNDLES.filter((bundle) => !bundle.applies(profileInput)),
-    [profileInput],
-  );
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set(recommended));
+  const [view, setView] = useState<CatalogView>("list");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [openInfo, setOpenInfo] = useState<Set<string>>(new Set());
-  const [showAllBundles, setShowAllBundles] = useState(false);
   const [query, setQuery] = useState("");
+  const [reviewing, setReviewing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,14 +77,19 @@ function PanelBuilder({
     };
   }, [memberId]);
 
-  const toggleSet = <T,>(setter: React.Dispatch<React.SetStateAction<Set<T>>>, value: T) =>
-    setter((current) => {
+  const toggleCode = (code: string) =>
+    setSelected((current) => {
       const next = new Set(current);
-      next.has(value) ? next.delete(value) : next.add(value);
+      next.has(code) ? next.delete(code) : next.add(code);
       return next;
     });
 
-  const toggleCode = (code: string) => toggleSet(setSelected, code);
+  const toggleExpanded = (name: string) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
 
   const setCodes = (codes: string[], on: boolean) =>
     setSelected((current) => {
@@ -69,16 +98,21 @@ function PanelBuilder({
       return next;
     });
 
-  const bundleActive = (codes: string[]) => codes.every((code) => selected.has(code));
-
   const addedCount = [...selected].filter((id) => !recommendedSet.has(id)).length;
 
+  // Mirror the panel-level rule in the catalog: don't offer the other sex's
+  // category (e.g. Male Health / PSA for a female member). Unknown sex keeps
+  // everything visible.
+  const hiddenCategory = detail.sex
+    ? detail.sex.toLowerCase().startsWith("m")
+      ? "Female Health"
+      : "Male Health"
+    : null;
+  const visibleCategories = BIOMARKER_CATEGORIES.filter(
+    (category) => category.name !== hiddenCategory,
+  );
+
   const subtext = [detail.age ? `${detail.age}y` : null, detail.sex].filter(Boolean).join(" · ");
-  const contextGroups = [
-    { label: "Family history", items: profileInput.family, flag: true },
-    { label: "Reported symptoms", items: profileInput.symptoms, flag: false },
-    { label: "Goals", items: profileInput.goals, flag: false },
-  ].filter((group) => group.items.length > 0);
 
   const save = async () => {
     setSaving(true);
@@ -110,160 +144,181 @@ function PanelBuilder({
 
       <header className="doc-head">
         <div>
-          <span className="p-eyebrow">Blood panel</span>
           <h1 className="p-h1">
-            A panel built for <em>{firstName ?? "this member"}</em>
+            Blood panel for <em>{firstName ?? "this member"}</em>
           </h1>
           {subtext && <p className="doc-sub">{subtext}</p>}
         </div>
       </header>
 
-      {contextGroups.length > 0 && (
-        <section className="doc-card pb-context" aria-label="Clinical context">
-          {contextGroups.map((group) => (
-            <div className="pb-context-group" key={group.label}>
-              <span className="doc-label pb-context-label">{group.label}</span>
-              <ul className="doc-chips">
-                {group.items.map((item) => (
-                  <li key={item} className={group.flag && !CLEAR_ANSWERS.has(item) ? "is-flag" : ""}>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </section>
-      )}
-
-      <div className="pb-bundles" aria-label="Quick-add panels">
-        {[BASELINE_BUNDLE, ...suggestedBundles].map((bundle) => {
-          const active = bundleActive(bundle.codes);
-          return (
-            <button
-              key={bundle.id}
-              type="button"
-              title={bundle.reason}
-              className={`pb-bundle ${bundle.id === "baseline" ? "pb-bundle--baseline" : ""} ${active ? "is-active" : ""}`}
-              onClick={() => setCodes(bundle.codes, !active)}
-            >
-              {bundle.label}
-              <span>{bundle.codes.length}</span>
-            </button>
-          );
-        })}
-        {otherBundles.length > 0 && (
-          <button
-            type="button"
-            className="pb-bundles-more"
-            aria-expanded={showAllBundles}
-            onClick={() => setShowAllBundles((open) => !open)}
-          >
-            {showAllBundles ? "Fewer panels" : `More panels (${otherBundles.length})`}
-          </button>
-        )}
-        {showAllBundles &&
-          otherBundles.map((bundle) => {
-            const active = bundleActive(bundle.codes);
+      {/* Panels this member's profile points to arrive pre-selected; the rest
+          sit unselected. The trigger rationale lives in the card tooltip. */}
+      <section aria-label="Panels">
+        <div className="pb-panels">
+          {[BASELINE_BUNDLE, ...offerableBundles(profileInput.sex)].map((bundle) => {
+            const inPanel = bundle.codes.filter((code) => selected.has(code)).length;
+            const active = inPanel === bundle.codes.length;
+            const Icon = PANEL_ICONS[bundle.id] ?? FlaskConical;
             return (
               <button
                 key={bundle.id}
                 type="button"
+                aria-pressed={active}
                 title={bundle.reason}
-                className={`pb-bundle pb-bundle--extra ${active ? "is-active" : ""}`}
+                className={`pb-panel ${active ? "is-active" : ""}`}
                 onClick={() => setCodes(bundle.codes, !active)}
               >
-                {bundle.label}
-                <span>{bundle.codes.length}</span>
+                <span className="pb-panel-head">
+                  <strong>{bundle.label}</strong>
+                  {active && <Check strokeWidth={2.2} aria-hidden="true" />}
+                </span>
+                <span className="pb-panel-meta">
+                  {inPanel > 0 && !active
+                    ? `${inPanel} of ${bundle.codes.length} markers`
+                    : `${bundle.codes.length} markers`}
+                  <Icon className="pb-panel-icon" strokeWidth={1.7} aria-hidden="true" />
+                </span>
               </button>
             );
           })}
-      </div>
+        </div>
+      </section>
 
-      <label className="pb-search">
-        <Search strokeWidth={1.8} aria-hidden="true" />
-        <span className="sr-only">Search biomarkers</span>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search a biomarker…"
-        />
-      </label>
+      <section aria-label="All biomarkers">
+        <div className="pb-section-head">
+          <h2 className="doc-card-title">Fine-tune</h2>
+          <div className="pb-view-toggle" role="group" aria-label="Catalog view">
+            <button
+              type="button"
+              className={view === "list" ? "is-active" : ""}
+              aria-pressed={view === "list"}
+              onClick={() => setView("list")}
+            >
+              <List strokeWidth={1.9} aria-hidden="true" /> List
+            </button>
+            <button
+              type="button"
+              className={view === "pills" ? "is-active" : ""}
+              aria-pressed={view === "pills"}
+              onClick={() => setView("pills")}
+            >
+              <LayoutGrid strokeWidth={1.9} aria-hidden="true" /> Pills
+            </button>
+          </div>
+        </div>
 
-      <div className="pb-cats">
-        {BIOMARKER_CATEGORIES.map((category) => {
-          const visibleIds = category.biomarkerIds.filter((id) => matchesQuery(catalog.get(id), query));
-          if (visibleIds.length === 0) return null;
-          const selectedCount = category.biomarkerIds.filter((id) => selected.has(id)).length;
-          const allSelected = selectedCount === category.biomarkerIds.length;
-          const isOpen = expanded.has(category.name) || query.length > 0;
+        <label className="pb-search">
+          <Search strokeWidth={1.8} aria-hidden="true" />
+          <span className="sr-only">Search biomarkers</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search a biomarker…"
+          />
+        </label>
 
-          return (
-            <section className="pb-cat" key={category.name}>
-              <div className="pb-cat-head">
-                <button
-                  type="button"
-                  className="pb-cat-toggle"
-                  aria-expanded={isOpen}
-                  onClick={() => toggleSet(setExpanded, category.name)}
-                >
-                  <ChevronDown className={`pb-cat-chevron ${isOpen ? "is-open" : ""}`} strokeWidth={2} aria-hidden="true" />
-                  <span className="pb-cat-name">{category.name}</span>
-                  <span className={`pb-cat-count ${selectedCount > 0 ? "is-active" : ""}`}>
-                    {selectedCount}/{category.biomarkerIds.length}
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="pb-cat-all"
-                  onClick={() => setCodes(category.biomarkerIds, !allSelected)}
-                >
-                  {allSelected ? "Clear" : "Select all"}
-                </button>
-              </div>
+        <div className="pb-catalog doc-card">
+          {visibleCategories.map((category) => {
+            const visibleIds = category.biomarkerIds.filter((id) => matchesQuery(catalog.get(id), query));
+            if (visibleIds.length === 0) return null;
+            const selectedCount = category.biomarkerIds.filter((id) => selected.has(id)).length;
+            const allSelected = selectedCount === category.biomarkerIds.length;
+            const isOpen = view === "pills" || query.length > 0 || expanded.has(category.name);
 
-              {isOpen && (
-                <ul className="pb-rows">
-                  {visibleIds.map((id) => {
-                    const marker = catalog.get(id);
-                    if (!marker) return null;
-                    const checked = selected.has(id);
-                    const infoOpen = openInfo.has(id);
-                    const alias = marker.aliases.find((value) => value !== marker.displayName);
-                    return (
-                      <li key={`${category.name}-${id}`} className={`pb-row ${checked ? "is-checked" : ""}`}>
-                        <label className="pb-check">
-                          <input type="checkbox" checked={checked} onChange={() => toggleCode(id)} />
-                          <span className="pb-row-name">
-                            {marker.displayName}
-                            {alias && <span className="pb-row-alias">{alias}</span>}
-                            {checked && !recommendedSet.has(id) && (
-                              <span className="pb-row-tag">Added</span>
-                            )}
-                          </span>
-                        </label>
-                        {marker.whatItMeasures && (
+            return (
+              <div className="pb-cat" key={category.name}>
+                <div className="pb-cat-head">
+                  {view === "list" ? (
+                    <button
+                      type="button"
+                      className="pb-cat-toggle"
+                      aria-expanded={isOpen}
+                      onClick={() => toggleExpanded(category.name)}
+                    >
+                      <ChevronDown
+                        className={`pb-cat-chevron ${isOpen ? "is-open" : ""}`}
+                        strokeWidth={2}
+                        aria-hidden="true"
+                      />
+                      <span className="pb-cat-name">{category.name}</span>
+                      <span className={`pb-cat-count ${selectedCount > 0 ? "is-active" : ""}`}>
+                        {selectedCount}/{category.biomarkerIds.length}
+                      </span>
+                    </button>
+                  ) : (
+                    <>
+                      <span className="pb-cat-name">{category.name}</span>
+                      <span className={`pb-cat-count ${selectedCount > 0 ? "is-active" : ""}`}>
+                        {selectedCount}/{category.biomarkerIds.length}
+                      </span>
+                    </>
+                  )}
+                  <button
+                    type="button"
+                    className="pb-cat-all"
+                    onClick={() => setCodes(category.biomarkerIds, !allSelected)}
+                  >
+                    {allSelected ? "Clear" : "Select all"}
+                  </button>
+                </div>
+
+                {view === "pills" ? (
+                  <ul className="pb-markers">
+                    {visibleIds.map((id) => {
+                      const marker = catalog.get(id);
+                      if (!marker) return null;
+                      const checked = selected.has(id);
+                      return (
+                        <li key={`${category.name}-${id}`}>
                           <button
                             type="button"
-                            className={`pb-info-btn ${infoOpen ? "is-open" : ""}`}
-                            aria-label={`What ${marker.displayName} measures`}
-                            aria-expanded={infoOpen}
-                            onClick={() => toggleSet(setOpenInfo, id)}
+                            aria-pressed={checked}
+                            className={`pb-marker ${checked ? "is-on" : ""}`}
+                            title={marker.whatItMeasures || undefined}
+                            onClick={() => toggleCode(id)}
                           >
-                            <Info strokeWidth={1.8} aria-hidden="true" />
+                            {checked ? (
+                              <Check strokeWidth={2.2} aria-hidden="true" />
+                            ) : (
+                              <Plus strokeWidth={2} aria-hidden="true" />
+                            )}
+                            {marker.displayName}
                           </button>
-                        )}
-                        {infoOpen && marker.whatItMeasures && (
-                          <p className="pb-info">{marker.whatItMeasures}</p>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-          );
-        })}
-      </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  isOpen && (
+                    <ul className="pb-rows">
+                      {visibleIds.map((id) => {
+                        const marker = catalog.get(id);
+                        if (!marker) return null;
+                        const checked = selected.has(id);
+                        const alias = marker.aliases.find((value) => value !== marker.displayName);
+                        return (
+                          <li key={`${category.name}-${id}`}>
+                            <label
+                              className={`pb-row ${checked ? "is-checked" : ""}`}
+                              title={marker.whatItMeasures || undefined}
+                            >
+                              <input type="checkbox" checked={checked} onChange={() => toggleCode(id)} />
+                              <span className="pb-row-name">
+                                {marker.displayName}
+                                {alias && <span className="pb-row-alias">{alias}</span>}
+                              </span>
+                            </label>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       <div className="pb-footer">
         <div className="pb-footer-count">
@@ -285,13 +340,90 @@ function PanelBuilder({
         <button
           type="button"
           className="p-btn"
-          disabled={saving || selected.size === 0}
-          onClick={() => void save()}
+          disabled={selected.size === 0}
+          onClick={() => setReviewing(true)}
         >
-          {saving ? "Saving…" : "Save panel"}
+          Review panel
         </button>
       </div>
+
+      {reviewing && (
+        <PanelReview
+          catalog={catalog}
+          selected={selected}
+          saving={saving}
+          error={error}
+          onClose={() => setReviewing(false)}
+          onConfirm={() => void save()}
+        />
+      )}
     </main>
+  );
+}
+
+/** Confirmation overlay: only the selected markers, grouped by the categories
+    they'll be reported under, then one explicit confirm. */
+function PanelReview({
+  catalog,
+  selected,
+  saving,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  catalog: Map<string, Biomarker>;
+  selected: Set<string>;
+  saving: boolean;
+  error: string | null;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const groups = BIOMARKER_CATEGORIES.map((category) => ({
+    name: category.name,
+    markers: category.biomarkerIds.filter((id) => selected.has(id)),
+  })).filter((group) => group.markers.length > 0);
+
+  return (
+    <div className="pb-review-layer" role="presentation">
+      <button className="pb-review-backdrop" type="button" aria-label="Close review" onClick={onClose} />
+      <div className="pb-review" role="dialog" aria-modal="true" aria-label="Review panel before saving">
+        <header className="pb-review-head">
+          <h2 className="doc-card-title">Review the panel</h2>
+          <span className="pb-review-count">
+            {selected.size} marker{selected.size === 1 ? "" : "s"}
+          </span>
+        </header>
+        <div className="pb-review-body">
+          {groups.map((group) => (
+            <div className="pb-review-group" key={group.name}>
+              <span className="doc-group-label">{group.name}</span>
+              <ul>
+                {group.markers.map((id) => (
+                  <li key={id}>{catalog.get(id)?.displayName ?? id}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+        <footer className="pb-review-foot">
+          {error && <span className="doc-error">{error}</span>}
+          <button type="button" className="p-btn-ghost" onClick={onClose}>
+            Keep editing
+          </button>
+          <button type="button" className="p-btn" disabled={saving} onClick={onConfirm}>
+            {saving ? "Saving…" : "Confirm & save"}
+          </button>
+        </footer>
+      </div>
+    </div>
   );
 }
 

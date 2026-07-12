@@ -20,6 +20,9 @@ export type LibraryTemplate = {
   summary: string;
   markers: string[];
   doctorNote: string;
+  /** carePlanAssets SECTION_IMAGE_OPTIONS key — the member-facing image the
+      template starts with (the doctor can still change it per section). */
+  imageKey: string;
   actions: LibraryAction[];
 };
 
@@ -34,6 +37,7 @@ export function instantiateTemplate(template: LibraryTemplate, order: number): D
     summary: template.summary,
     markers: [...template.markers],
     doctor_note: template.doctorNote,
+    image_key: template.imageKey,
     actions: template.actions.map(instantiateAction),
   };
 }
@@ -41,6 +45,7 @@ export function instantiateTemplate(template: LibraryTemplate, order: number): D
 export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   {
     id: "cardiovascular",
+    imageKey: "heart-health-food",
     title: "Cardiovascular health",
     summary:
       "Food swaps that raise soluble fibre and improve fat quality, plus steady aerobic work, to bring ApoB and LDL cholesterol down.",
@@ -76,6 +81,7 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   },
   {
     id: "metabolic",
+    imageKey: "breakfast-bowl",
     title: "Glucose stability",
     summary:
       "Steadier meals and light movement after eating to flatten glucose spikes and move HbA1c over the next 12 weeks.",
@@ -111,6 +117,7 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   },
   {
     id: "energy-thyroid",
+    imageKey: "sunlit-plant",
     title: "Energy & thyroid",
     summary:
       "Rebuilding the inputs behind daytime energy — iron, vitamin D and thyroid support — alongside a consistent morning routine.",
@@ -146,6 +153,7 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   },
   {
     id: "sleep",
+    imageKey: "sleep-bedroom",
     title: "Sleep quality",
     summary:
       "A consistent wind-down and a cooler, darker room to extend deep sleep — the base layer under every other marker.",
@@ -181,6 +189,7 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   },
   {
     id: "stress",
+    imageKey: "sleep-bedroom",
     title: "Stress & recovery",
     summary:
       "Small, repeatable decompression habits to bring cortisol down and recovery up — without adding another obligation to the calendar.",
@@ -216,6 +225,7 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   },
   {
     id: "hormones",
+    imageKey: "chia-yoghurt",
     title: "Hormone balance",
     summary:
       "Sleep, strength work and body-composition changes — the three levers with the best evidence for healthy hormone levels.",
@@ -251,6 +261,7 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   },
   {
     id: "nutrients",
+    imageKey: "chia-yoghurt",
     title: "Nutrient status",
     summary:
       "Filling the measured gaps — vitamin D, iron, magnesium and omega-3 — through food first, supplements where the numbers say so.",
@@ -286,6 +297,7 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   },
   {
     id: "fitness",
+    imageKey: "sunlit-plant",
     title: "Fitness & body composition",
     summary:
       "A simple weekly training structure plus protein targets to shift body composition without an aggressive diet.",
@@ -321,6 +333,7 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
   },
   {
     id: "longevity",
+    imageKey: "heart-health-food",
     title: "Longevity foundations",
     summary:
       "The prevention basics with the strongest evidence — lipids, glucose, inflammation — folded into habits that compound quietly for decades.",

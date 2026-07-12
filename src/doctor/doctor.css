@@ -18,6 +18,43 @@
   display: flex;
   flex-direction: column;
   gap: 28px;
+  /* The console has a slim top bar, not the floating capsule nav p-page
+     reserves room for. */
+  padding-top: 44px;
+  /* Same entrance as the onboarding steps (pf-step-in). */
+  animation: doc-step-in 360ms var(--ease-spring);
+}
+
+@keyframes doc-step-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
+/* Slim top bar — the onboarding's quiet header, not the portal capsule. */
+.doc-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px clamp(20px, 3vw, 36px) 0;
+}
+
+.doc-topbar-wordmark {
+  font-weight: 560;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.doc-topbar-signout {
+  color: var(--muted);
+  font-size: 0.88rem;
+  transition: color 180ms var(--ease-ui);
+}
+
+.doc-topbar-signout:hover {
+  color: var(--ink);
 }
 
 .doc-head {
@@ -74,28 +111,9 @@
   color: var(--ink);
 }
 
-.doc-nav-role {
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.78rem;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.doc-nav-signout {
-  color: rgba(255, 255, 255, 0.66);
-  font-size: 0.85rem;
-  white-space: nowrap;
-  transition: color 180ms var(--ease-ui);
-}
-
-.doc-nav-signout:hover {
-  color: #fff;
-}
-
-/* Small-caps section label — the member brief's organizing device. */
+/* Small-caps eyebrow — reserved for true eyebrows only: counters and labels
+   that sit directly above a heading (Focus area 1, First step). Card and
+   section titles use .doc-card-title / .doc-group-label instead. */
 .doc-label {
   display: block;
   font-size: var(--doc-text-xs);
@@ -103,6 +121,38 @@
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* Card heading — a real title in the member portal's voice. */
+.doc-card-title {
+  font-size: 1.14rem;
+  font-weight: 520;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--ink);
+}
+
+/* Room between a card's title and its content (the flex gap alone is tight). */
+.doc-card > .doc-card-title {
+  margin-bottom: 6px;
+}
+
+.doc-h1-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.doc-h1-row .p-chip {
+  text-transform: capitalize;
+}
+
+/* Quiet in-card group label (matches the form field labels). */
+.doc-group-label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.92rem;
 }
 
 /* ── Case list ───────────────────────────────────────────────────────────── */
@@ -248,31 +298,61 @@
   flex: none;
 }
 
-.doc-reason ul {
-  list-style: none;
-  margin: 8px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 7px;
+/* Why they're here — the member's own words as an editorial pull-quote, not
+   another labelled list. The first-person copy makes the label redundant. */
+.doc-hero {
+  gap: 22px;
 }
 
-.doc-reason li {
-  position: relative;
-  padding-left: 16px;
-  font-size: 0.98rem;
-  line-height: 1.5;
+.doc-reason {
+  margin: 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--doc-hairline);
+  display: grid;
+  gap: 8px;
+}
+
+.doc-reason p {
+  font-size: clamp(1.12rem, 1.6vw, 1.3rem);
+  font-style: italic;
+  letter-spacing: -0.015em;
+  line-height: 1.42;
+  color: var(--ink);
   text-wrap: pretty;
 }
 
-.doc-reason li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 0.6em;
-  width: 5px;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--accent);
+.doc-reason p::before {
+  content: "“";
+  color: var(--accent);
+  margin-right: 1px;
+}
+
+.doc-reason p::after {
+  content: "”";
+  color: var(--accent);
+  margin-left: 1px;
+}
+
+/* Two-column snapshot grid: history & goals beside lifestyle detail, so the
+   whole brief fits one screen instead of a single stacked column. */
+.doc-brief-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.doc-brief-col {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+@media (max-width: 880px) {
+  .doc-brief-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .doc-tag-group {
@@ -288,11 +368,10 @@
 
 .doc-answers div {
   display: grid;
-  grid-template-columns: minmax(130px, 0.28fr) minmax(0, 1fr);
+  grid-template-columns: minmax(110px, 0.3fr) minmax(0, 1fr);
   gap: 18px;
-  align-items: center;
-  min-height: 48px;
-  padding: 12px 0;
+  align-items: baseline;
+  padding: 13px 0;
   border-bottom: 1px solid var(--doc-hairline);
 }
 
@@ -321,10 +400,24 @@
   text-wrap: pretty;
 }
 
+/* An answer that warrants attention — flagged on the fact itself. */
+.doc-answers dd.is-concern {
+  color: var(--danger-dark);
+  font-weight: 560;
+}
+
+.doc-supplement-note {
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
 /* ── Panel builder (blood-panel selection) ───────────────────────────────── */
 
 .pb {
-  padding-bottom: 40px;
+  /* Clears the fixed footer bar. */
+  padding-bottom: 120px;
 }
 
 .pb .sr-only {
@@ -336,103 +429,121 @@
   white-space: nowrap;
 }
 
-.pb-context {
+.pb-section-head {
   display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.pb-context-group {
-  display: grid;
-  grid-template-columns: 150px 1fr;
-  gap: 18px;
-  align-items: start;
-}
-
-.pb-context-label {
-  padding-top: 7px;
-}
-
-@media (max-width: 560px) {
-  .pb-context-group {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  .pb-context-label {
-    padding-top: 0;
-  }
-}
-
-/* Quick-add bundles as selectable chips (pf-chip pattern: ring when active). */
-.pb-bundles {
-  display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
 }
 
-.pb-bundle {
+/* Segmented list/pill view switch — quiet, like the onboarding chips. */
+.pb-view-toggle {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.05);
+}
+
+.pb-view-toggle button {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  padding: 8px 18px;
+  gap: 6px;
+  min-height: 32px;
+  padding: 4px 14px;
   border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 520;
+  transition:
+    background-color 180ms var(--ease-ui),
+    color 180ms var(--ease-ui),
+    box-shadow 180ms var(--ease-ui);
+}
+
+.pb-view-toggle button svg {
+  width: 14px;
+  height: 14px;
+}
+
+.pb-view-toggle button.is-active {
+  background: #fff;
+  color: var(--ink);
+  box-shadow: var(--shadow-border);
+}
+
+/* Panel cards — every panel always visible, whole-panel toggle. */
+.pb-panels {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 12px;
+}
+
+.pb-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 18px 20px;
+  border-radius: 20px;
   background: #fff;
   box-shadow: var(--shadow-border);
-  font-size: var(--doc-text-md);
   text-align: left;
   transition:
     box-shadow 180ms var(--ease-ui),
-    background-color 180ms var(--ease-ui),
-    color 180ms var(--ease-ui);
+    background-color 180ms var(--ease-ui);
 }
 
-.pb-bundle:hover {
+.pb-panel:hover {
   box-shadow: var(--shadow-border-hover);
 }
 
-.pb-bundle.is-active {
+.pb-panel.is-active {
   background: var(--accent-tint);
   box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.pb-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pb-panel-head strong {
+  font-size: var(--doc-text-md);
+  font-weight: 560;
+  letter-spacing: -0.01em;
+}
+
+.pb-panel-head svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
   color: var(--accent-dark);
 }
 
-.pb-bundle span {
-  display: inline-grid;
-  place-items: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.05);
+.pb-panel-meta {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 10px;
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: var(--doc-text-xs);
   font-weight: 600;
 }
 
-.pb-bundle.is-active span {
-  background: rgba(184, 93, 53, 0.16);
+.pb-panel-icon {
+  width: 19px;
+  height: 19px;
+  color: rgba(184, 93, 53, 0.55);
+}
+
+.pb-panel.is-active .pb-panel-icon {
   color: var(--accent-dark);
-}
-
-.pb-bundle--baseline {
-  font-weight: 520;
-}
-
-.pb-bundles-more {
-  min-height: 44px;
-  padding: 8px 10px;
-  color: var(--accent-dark);
-  font-size: var(--doc-text-sm);
-  font-weight: 520;
-  white-space: nowrap;
-  transition: color 180ms var(--ease-ui);
-}
-
-.pb-bundles-more:hover {
-  color: var(--accent);
 }
 
 /* Borderless fill search, like the onboarding inputs. */
@@ -466,45 +577,37 @@
   color: var(--muted);
 }
 
-.pb-cats {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+/* Full catalog in one card: category groups separated by hairlines, markers
+   as toggle chips — compact and scannable, no accordion to open. */
+.pb-search {
+  margin-bottom: 16px;
+}
+
+.pb-catalog {
+  gap: 0;
+  padding-block: clamp(10px, 1.5vw, 14px);
 }
 
 .pb-cat {
-  background: #fff;
-  border-radius: 20px;
-  box-shadow: var(--shadow-border);
-  overflow: hidden;
+  display: grid;
+  gap: 14px;
+  padding-block: 18px;
+  border-top: 1px solid var(--doc-hairline);
+}
+
+.pb-cat:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+.pb-cat:last-child {
+  padding-bottom: 4px;
 }
 
 .pb-cat-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 20px 6px 12px;
-}
-
-.pb-cat-toggle {
-  display: flex;
-  align-items: center;
   gap: 10px;
-  flex: 1;
-  padding: 15px 8px;
-  text-align: left;
-}
-
-.pb-cat-chevron {
-  width: 16px;
-  height: 16px;
-  color: var(--muted);
-  transition: transform 200ms var(--ease-ui);
-}
-
-.pb-cat-chevron.is-open {
-  transform: rotate(180deg);
 }
 
 .pb-cat-name {
@@ -528,6 +631,7 @@
 }
 
 .pb-cat-all {
+  margin-left: auto;
   flex: none;
   color: var(--accent-dark);
   font-size: 0.82rem;
@@ -539,34 +643,97 @@
   color: var(--accent);
 }
 
+.pb-markers {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pb-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 6px 14px 6px 11px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--doc-hairline);
+  color: var(--ink);
+  font-size: var(--doc-text-sm);
+  line-height: 1.3;
+  text-align: left;
+  transition:
+    box-shadow 160ms var(--ease-ui),
+    background-color 160ms var(--ease-ui),
+    color 160ms var(--ease-ui);
+}
+
+.pb-marker:hover {
+  box-shadow: inset 0 0 0 1px rgba(17, 24, 39, 0.22);
+}
+
+.pb-marker svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--muted);
+}
+
+.pb-marker.is-on {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  color: var(--accent-dark);
+  font-weight: 520;
+}
+
+.pb-marker.is-on svg {
+  color: var(--accent-dark);
+}
+
+/* List view — the earlier accordion's checkbox rows, inside the same card. */
+.pb-cat-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  padding-block: 4px;
+  text-align: left;
+}
+
+.pb-cat-chevron {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--muted);
+  transition: transform 200ms var(--ease-ui);
+}
+
+.pb-cat-chevron.is-open {
+  transform: rotate(180deg);
+}
+
 .pb-rows {
   list-style: none;
   margin: 0;
-  padding: 0 12px 10px;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
 
 .pb-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 8px;
-  border-top: 1px solid var(--doc-hairline);
-}
-
-.pb-check {
   display: flex;
   align-items: center;
   gap: 12px;
   min-height: 44px;
-  padding: 4px 0;
+  padding: 4px 2px;
   cursor: pointer;
-  min-width: 0;
 }
 
-.pb-check input {
+.pb-row input {
   width: 17px;
   height: 17px;
   flex: none;
@@ -594,60 +761,105 @@
   white-space: nowrap;
 }
 
-/* Marks selections the doctor made beyond the recommendation. */
-.pb-row-tag {
-  flex: none;
-  align-self: center;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--accent-tint);
-  color: var(--accent-dark);
-  font-size: 0.72rem;
-  font-weight: 600;
-  line-height: 1.5;
+/* ── Panel review overlay (confirm before save) ──────────────────────────── */
+
+.pb-review-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 4vw, 40px);
 }
 
-.pb-info-btn {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 999px;
-  color: var(--muted);
-  transition: background-color 180ms var(--ease-ui);
+.pb-review-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(2px);
 }
 
-.pb-info-btn:hover,
-.pb-info-btn.is-open {
-  background: var(--doc-fill);
-  color: var(--ink);
+.pb-review {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  width: min(680px, 100%);
+  max-height: min(84vh, 100%);
+  background: #fff;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lift);
+  animation: doc-step-in 300ms var(--ease-spring);
 }
 
-.pb-info-btn svg {
-  width: 15px;
-  height: 15px;
+.pb-review-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 26px 30px 18px;
 }
 
-.pb-info {
-  grid-column: 1 / -1;
-  margin: 0 0 8px 29px;
-  padding-right: 8px;
+.pb-review-count {
   color: var(--muted);
   font-size: var(--doc-text-sm);
+  white-space: nowrap;
+}
+
+.pb-review-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 30px;
+  display: grid;
+  gap: 18px;
+}
+
+.pb-review-group {
+  display: grid;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--doc-hairline);
+}
+
+.pb-review-group ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 4px 16px;
+}
+
+.pb-review-group li {
+  font-size: var(--doc-text-sm);
+  color: var(--ink);
   line-height: 1.5;
 }
 
-/* Floating summary bar — same capsule treatment as the portal nav. */
+.pb-review-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 20px 30px 26px;
+}
+
+/* Floating summary bar — same capsule treatment as the portal nav. Fixed, not
+   sticky: body{overflow-x:hidden} makes body the sticky scrollport, so a
+   sticky bar would never float while the doctor works through the catalog. */
 .pb-footer {
-  position: sticky;
+  position: fixed;
   bottom: 20px;
+  left: 50%;
+  translate: -50% 0;
   z-index: 30;
   display: flex;
   align-items: center;
   gap: 18px;
   width: max-content;
-  max-width: 100%;
-  margin-inline: auto;
+  max-width: calc(100dvw - 24px);
   padding: 10px 10px 10px 26px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.86);
@@ -698,6 +910,18 @@
   .pb-footer-breakdown {
     display: none;
   }
+}
+
+/* ── Results (shared member dashboard, doctor chrome) ────────────────────── */
+
+/* Keeps the dashboard in the page's flex flow while letting us hide its
+   member-voiced heading, which duplicates the doctor page header. */
+.doc-results {
+  display: contents;
+}
+
+.doc-results .results-heading {
+  display: none;
 }
 
 /* ── Forms (care plan editor) ────────────────────────────────────────────── */
@@ -769,6 +993,41 @@
   gap: 12px;
 }
 
+/* Collapsible focus-area header: chevron + live title, tools on the right. */
+.doc-section-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+  padding-block: 2px;
+  text-align: left;
+}
+
+.doc-section-chevron {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--muted);
+  transition: transform 200ms var(--ease-ui);
+}
+
+.doc-section-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.doc-section-toggle .doc-card-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.doc-section-meta {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--doc-text-sm);
+}
+
 .doc-section-tools {
   display: flex;
   align-items: center;
@@ -819,28 +1078,20 @@
   margin-top: 8px;
 }
 
+/* Actions are flat segments inside the focus-area card — hairline-separated,
+   not nested cards, so the hierarchy stays obvious. */
 .doc-action-edit {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 20px;
-  border-radius: 18px;
-  background: #fff;
-  box-shadow: inset 0 0 0 1px var(--doc-hairline);
+  padding-top: 18px;
+  border-top: 1px solid var(--doc-hairline);
 }
 
 .doc-action-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.doc-action-eyebrow {
-  color: var(--muted);
-  font-size: var(--doc-text-xs);
-  font-weight: 800;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
 }
 
 .doc-action-row {
@@ -859,6 +1110,101 @@
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+/* Guided empty state — the plan's obvious first move. */
+.doc-plan-start {
+  align-items: flex-start;
+  gap: 18px;
+  padding-block: clamp(28px, 4vw, 40px);
+}
+
+.doc-plan-start h2 {
+  font-size: clamp(1.4rem, 2.2vw, 1.8rem);
+}
+
+/* Plan-level add controls: a filled, dashed empty-slot, visually apart from
+   the quiet per-section action buttons. */
+.doc-add-focus {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(22px, 3vw, 30px);
+  border-radius: 24px;
+  border: 1.5px dashed rgba(17, 24, 39, 0.16);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+.doc-add-focus > span {
+  color: var(--muted);
+  font-size: var(--doc-text-sm);
+  font-weight: 520;
+}
+
+/* Section-level action adds: quiet inline buttons, clearly subordinate. */
+.doc-add-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.doc-quiet-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  color: var(--accent-dark);
+  font-size: var(--doc-text-sm);
+  font-weight: 520;
+  transition: background-color 180ms var(--ease-ui);
+}
+
+.doc-quiet-add:hover {
+  background: var(--accent-tint);
+}
+
+.doc-quiet-add svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* Member-facing image picker — the same crops the member app resolves. */
+.doc-image-picker {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.doc-image-option {
+  width: 76px;
+  height: 56px;
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  opacity: 0.75;
+  transition:
+    opacity 160ms var(--ease-ui),
+    box-shadow 160ms var(--ease-ui);
+}
+
+.doc-image-option img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.doc-image-option:hover {
+  opacity: 1;
+}
+
+.doc-image-option.is-active {
+  opacity: 1;
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 4px var(--accent);
 }
 
 /* ── Library panels (templates / common actions) ─────────────────────────── */
@@ -916,6 +1262,27 @@
 .doc-library-item:hover {
   translate: 0 -1px;
   box-shadow: var(--shadow-border-hover);
+}
+
+/* Template items lead with the member-facing image they ship with. */
+.doc-library-item--template {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+
+.doc-library-thumb {
+  width: 72px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.doc-library-item-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
 }
 
 .doc-library-item-head {
@@ -1063,6 +1430,36 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+/* Download renders the member view into a print-only layer; everything else
+   on the page is hidden while the browser prints it to PDF. */
+.doc-print-layer {
+  display: none;
+}
+
+@media print {
+  .doc-topbar {
+    display: none !important;
+  }
+
+  .doc-page {
+    padding: 0;
+    animation: none;
+  }
+
+  .doc-page > *:not(.doc-print-layer) {
+    display: none !important;
+  }
+
+  .doc-print-layer {
+    display: block;
+  }
+
+  .doc-print-layer .doc-plan-preview {
+    box-shadow: none;
+    padding: 0;
+  }
 }
 
 /* ── Attachments ─────────────────────────────────────────────────────────── */

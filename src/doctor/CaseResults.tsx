@@ -24,15 +24,21 @@ function CaseResults({
 
       <header className="doc-head">
         <div>
-          <span className="p-eyebrow">Results</span>
-          <h1 className="p-h1">{memberName ?? "Member"}</h1>
+          <h1 className="p-h1">
+            Results for <em>{memberName?.split(" ")[0] ?? "member"}</em>
+          </h1>
         </div>
         <button type="button" className="p-btn" onClick={onEditCarePlan}>
           Edit care plan
         </button>
       </header>
 
-      <ResultsDashboard memberId={memberId} />
+      {/* The shared dashboard brings its own member-voiced heading ("Your
+          results / Core biomarker overviews") — redundant under ours, so the
+          doc-results scope hides it. */}
+      <div className="doc-results">
+        <ResultsDashboard memberId={memberId} />
+      </div>
     </main>
   );
 }

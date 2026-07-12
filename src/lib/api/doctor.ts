@@ -122,6 +122,8 @@ export type DraftSection = {
   summary: string;
   markers: string[];
   doctor_note: string;
+  /** Doctor-chosen member-facing image; null falls back to the order cycle. */
+  image_key: string | null;
   actions: CarePlanActionData[];
 };
 
@@ -160,6 +162,7 @@ export async function savePlanSections(planId: string, sections: DraftSection[])
     summary: section.summary,
     markers: section.markers,
     doctor_note: section.doctor_note,
+    image_key: section.image_key,
     actions: section.actions,
   }));
   const { error } = await supabase.from("care_plan_sections").insert(rows);

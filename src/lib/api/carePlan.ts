@@ -17,6 +17,8 @@ export type CarePlanSectionRow = {
   summary: string | null;
   markers: string[];
   doctor_note: string | null;
+  /** Doctor-chosen member-facing image; null falls back to the order cycle. */
+  image_key: string | null;
   actions: CarePlanActionData[];
 };
 
@@ -38,7 +40,7 @@ export async function fetchCarePlan(memberId?: string) {
     .from("care_plans")
     .select(
       "id, member_id, doctor_id, title, summary, status, released_at, " +
-        "care_plan_sections(id, care_plan_id, sort_order, title, summary, markers, doctor_note, actions)",
+        "care_plan_sections(id, care_plan_id, sort_order, title, summary, markers, doctor_note, image_key, actions)",
     )
     .order("created_at", { ascending: false })
     .limit(1);
