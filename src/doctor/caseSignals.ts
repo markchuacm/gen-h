@@ -65,19 +65,18 @@ export function toRecommendationInput(detail: DoctorCaseDetail): RecommendationI
   };
 }
 
-/** Intake answers that warrant the doctor's attention first. Conservative and
-    purely rule-based — every flag traces to a literal answer the member gave.
-    None of the DEFAULT_ANSWERS fallbacks merged in by toAnswers trip a rule,
-    so unanswered sections can't produce phantom flags. */
-export function deriveRedFlags(answers: ProfileAnswers): string[] {
-  const flags: string[] = [];
-  for (const item of answers.family) {
-    if (!CLEAR_ANSWERS.has(item)) flags.push(`Family history — ${item}`);
-  }
-  if (answers.habits.smoking === "Current smoker") flags.push("Current smoker");
-  if (answers.habits.alcohol === "Most days") flags.push("Alcohol most days");
-  if (answers.lifestyle.stress >= 4) flags.push(`High stress (${answers.lifestyle.stress}/5)`);
-  if (answers.lifestyle.sleepHours < 6) flags.push(`Short sleep (~${answers.lifestyle.sleepHours}h)`);
-  if (answers.lifestyle.exerciseDays === "0") flags.push("No weekly exercise");
-  return flags;
+/** Lifestyle/habit answers that warrant the doctor's attention, keyed by the
+    brief's row label so the concern is highlighted on the fact itself instead
+    of repeated in a separate flags block. Conservative and purely rule-based —
+    every concern traces to a literal answer the member gave. None of the
+    DEFAULT_ANSWERS fallbacks merged in by toAnswers trip a rule, so unanswered
+    sections can't produce phantom flags. */
+export function lifestyleConcerns(answers: ProfileAnswers): Set<string> {
+  const concerns = new Set<string>();
+  if (answers.lifestyle.sleepHours < 6) concerns.add("Sleep");
+  if (answers.lifestyle.exerciseDays === "0") concerns.add("Exercise");
+  if (answers.lifestyle.stress >= 4) concerns.add("Stress");
+  if (answers.habits.alcohol === "Most days") concerns.add("Alcohol");
+  if (answers.habits.smoking === "Current smoker") concerns.add("Smoking");
+  return concerns;
 }

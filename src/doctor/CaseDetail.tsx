@@ -55,10 +55,10 @@ function CaseDetail({
         detail={detail}
         onBack={() => setView("brief")}
         onSaved={() => {
-          // Saving advanced the member's stage; refresh, then move straight into
-          // authoring the care plan.
+          // Saving advanced the member's stage; refresh, then land on results —
+          // the care plan comes only after the numbers are in.
           load();
-          setView("carePlan");
+          setView("results");
         }}
       />
     );

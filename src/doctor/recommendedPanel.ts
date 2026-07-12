@@ -14,10 +14,13 @@ export type RecommendationInput = {
 export type PanelBundle = {
   id: string;
   label: string;
-  /** Why it surfaced — shown as the chip's tooltip. */
+  /** Why it surfaced — shown on the panel card. */
   reason: string;
   codes: string[];
   applies: (input: RecommendationInput) => boolean;
+  /** Panels that are only medically sensible for one sex are hidden for the
+      other (e.g. PSA for a female member), independent of `applies`. */
+  sexSpecific?: "male" | "female";
 };
 
 // A comprehensive baseline ("advanced blood baseline") ordered for everyone.
@@ -83,6 +86,14 @@ function hasAny(list: string[], values: string[]) {
 
 function isMale(sex: string) {
   return sex.toLowerCase().startsWith("m");
+}
+
+/** The bundles it makes medical sense to offer this member at all — an
+    unknown sex keeps every panel on the table. */
+export function offerableBundles(sex: string): PanelBundle[] {
+  if (!sex) return PANEL_BUNDLES;
+  const memberSex = isMale(sex) ? "male" : "female";
+  return PANEL_BUNDLES.filter((bundle) => !bundle.sexSpecific || bundle.sexSpecific === memberSex);
 }
 
 export const PANEL_BUNDLES: PanelBundle[] = [
@@ -154,6 +165,7 @@ export const PANEL_BUNDLES: PanelBundle[] = [
       isMale(input.sex) &&
       (input.goals.includes("Libido / hormones") ||
         hasAny(input.symptoms, ["Low libido / drive", "Low mood / anxiety / irritability"])),
+    sexSpecific: "male",
   },
   {
     id: "hormones-female",
@@ -174,6 +186,7 @@ export const PANEL_BUNDLES: PanelBundle[] = [
       !isMale(input.sex) &&
       (input.goals.includes("Libido / hormones") ||
         hasAny(input.symptoms, ["Low libido / drive", "Low mood / anxiety / irritability"])),
+    sexSpecific: "female",
   },
   {
     id: "stress",
@@ -194,6 +207,7 @@ export const PANEL_BUNDLES: PanelBundle[] = [
       "prostate-specific-antigen-psa-percent-free",
     ],
     applies: (input) => isMale(input.sex) && (input.age ?? 0) >= 45,
+    sexSpecific: "male",
   },
 ];
 

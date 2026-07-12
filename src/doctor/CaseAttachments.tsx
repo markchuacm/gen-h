@@ -140,7 +140,7 @@ function CaseAttachments({ documents }: { documents: CaseDoc[] }) {
     <>
       <section className="doc-card doc-attachments" aria-labelledby="case-attachments">
         <div className="doc-attach-head">
-          <span className="doc-label" id="case-attachments">Previous reports &amp; attachments</span>
+          <h2 className="doc-card-title" id="case-attachments">Previous reports &amp; attachments</h2>
           {documents.length > 0 && (
             <span className="doc-attach-count">
               {documents.length} file{documents.length === 1 ? "" : "s"}

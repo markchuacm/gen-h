@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronDown, X } from "lucide-react";
 import { lifestyleCategoryOrder } from "./carePlanData";
 import type { CarePlanAction, FocusArea, LifestyleCategory } from "./carePlanData";
-import { CATEGORY_THUMBNAILS, defaultDoctorAvatar, sectionImage } from "./carePlanAssets";
+import { CATEGORY_THUMBNAILS, defaultDoctorAvatar, resolveSectionImage } from "./carePlanAssets";
 import { fetchCarePlan } from "../../../lib/api/carePlan";
 import type { CarePlanRow } from "../../../lib/api/carePlan";
 import { fetchDoctorProfile } from "../../../lib/api/memberProfile";
@@ -27,8 +27,8 @@ function toFocusAreas(plan: CarePlanRow, doctor: DoctorIdentity): FocusArea[] {
   return plan.care_plan_sections.map((section) => ({
     id: section.id,
     title: section.title ?? "Focus area",
-    overviewImageUrl: sectionImage(section.sort_order),
-    detailImageUrl: sectionImage(section.sort_order),
+    overviewImageUrl: resolveSectionImage(section.image_key, section.sort_order),
+    detailImageUrl: resolveSectionImage(section.image_key, section.sort_order),
     summary: section.summary ?? "",
     markers: section.markers ?? [],
     doctorNote: {

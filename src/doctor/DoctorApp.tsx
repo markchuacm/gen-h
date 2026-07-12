@@ -47,11 +47,7 @@ function DoctorApp() {
             <h1 className="p-h1">
               Your <em>cases</em>
             </h1>
-            <p className="doc-sub">
-              {firstName
-                ? `Welcome back, ${firstName} — everything your members shared, in one place.`
-                : "Everything your members shared, in one place."}
-            </p>
+            {firstName && <p className="doc-sub">Welcome back, {firstName}.</p>}
           </div>
         </header>
 

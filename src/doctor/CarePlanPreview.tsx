@@ -2,7 +2,7 @@
 // classes and image resolution, so the doctor sees what will ship. The member
 // CarePlanScreen itself isn't mounted here: it fetches its own (released-only)
 // data and owns localStorage done-state, neither of which fits a draft.
-import { CATEGORY_THUMBNAILS, sectionImage } from "../member-v2/screens/care-plan/carePlanAssets";
+import { CATEGORY_THUMBNAILS, resolveSectionImage } from "../member-v2/screens/care-plan/carePlanAssets";
 import { lifestyleCategoryOrder } from "../member-v2/screens/care-plan/carePlanData";
 import type { LifestyleCategory } from "../member-v2/screens/care-plan/carePlanData";
 import type { DraftSection } from "../lib/api/doctor";
@@ -24,7 +24,7 @@ function CarePlanPreview({ title, sections }: { title: string; sections: DraftSe
         {sections.map((section, index) => (
           <div className="cp-area" key={section.id ?? index}>
             <span className="cp-area-image">
-              <img src={sectionImage(index)} alt="" />
+              <img src={resolveSectionImage(section.image_key, index)} alt="" />
             </span>
             <span className="cp-area-body">
               <h3>{section.title || `Focus area ${index + 1}`}</h3>
