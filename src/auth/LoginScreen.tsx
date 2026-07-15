@@ -12,6 +12,18 @@ const PORTAL_URL = window.location.hostname === "app.veraehealth.com"
   : `${window.location.origin}/member.html`;
 
 type Mode = "signIn" | "signUp" | "twoFactor";
+const SIGNUP_CONFIRMATION_PARAM = "signup";
+
+function signupConfirmationIsActive() {
+  return new URL(window.location.href).searchParams.get(SIGNUP_CONFIRMATION_PARAM) === "check-email";
+}
+
+function setSignupConfirmationInUrl(active: boolean) {
+  const url = new URL(window.location.href);
+  if (active) url.searchParams.set(SIGNUP_CONFIRMATION_PARAM, "check-email");
+  else url.searchParams.delete(SIGNUP_CONFIRMATION_PARAM);
+  window.history.replaceState(null, "", url);
+}
 
 function LoginScreen() {
   const [mode, setMode] = useState<Mode>("signIn");
@@ -19,7 +31,7 @@ function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [confirmationSent, setConfirmationSent] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(signupConfirmationIsActive);
   const [totpCode, setTotpCode] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaHeaders = captchaToken ? { "x-captcha-response": captchaToken } : undefined;
@@ -43,14 +55,17 @@ function LoginScreen() {
     setError(null);
     setBusy(true);
     if (mode === "signUp") {
-      const { data, error: err } = await authClient.signUp.email(
+      const { error: err } = await authClient.signUp.email(
         { name: email.split("@", 1)[0] || "Verae member", email, password, callbackURL: PORTAL_URL },
         { headers: captchaHeaders },
       );
       setBusy(false);
       if (err) {
         setError(err.message ?? "Account creation failed.");
-      } else if (!data?.token) {
+      } else {
+        // Better Auth refreshes the session query after signup, which may remount
+        // this screen. Keep a non-identifying URL flag so the success state survives.
+        setSignupConfirmationInUrl(true);
         setConfirmationSent(true);
       }
     } else {
@@ -60,10 +75,13 @@ function LoginScreen() {
       );
       setBusy(false);
       if (err) {
+        const message = (err.message ?? "").toLowerCase();
         setError(
-          (err.message ?? "").toLowerCase().includes("invalid")
-            ? "Incorrect email or password."
-            : (err.message ?? "Sign-in failed."),
+          message.includes("email not verified")
+            ? "Email not verified. Check your inbox for the verification link."
+            : message.includes("invalid") || message.includes("incorrect") || message.includes("not found")
+              ? "We couldn't sign you in with those details. Check your email and password, or create an account below if you're new to Verae."
+              : (err.message ?? "Sign-in failed."),
         );
       } else if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
         setMode("twoFactor");
@@ -110,15 +128,17 @@ function LoginScreen() {
           <span className="auth-brand">Verae</span>
           <h1 className="auth-title">Check your email</h1>
           <p className="auth-copy">
-            We sent a confirmation link to <strong>{email}</strong>. Open it on this device to
-            finish creating your account.
+            We sent a verification link to the email address you entered. Open it on this device
+            to finish creating your account.
           </p>
           <button
             type="button"
             className="auth-link"
             onClick={() => {
+              setSignupConfirmationInUrl(false);
               setConfirmationSent(false);
               setMode("signIn");
+              setPassword("");
             }}
           >
             Back to sign in
