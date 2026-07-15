@@ -135,3 +135,19 @@
 .auth-link:hover {
   color: var(--accent-dark);
 }
+
+.auth-qr {
+  width: 240px;
+  max-width: 100%;
+  align-self: center;
+  border-radius: 12px;
+}
+
+.auth-backup-codes {
+  display: block;
+  margin-top: 8px;
+  padding: 12px;
+  white-space: pre-wrap;
+  border-radius: 10px;
+  background: var(--cream);
+}

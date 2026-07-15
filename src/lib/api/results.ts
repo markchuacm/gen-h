@@ -1,4 +1,4 @@
-import { supabase } from "../supabaseClient";
+import { apiError, apiRequest } from "../apiClient";
 
 export type BiomarkerResultRow = {
   id: string;
@@ -30,12 +30,11 @@ export type LabReportRow = {
     their assigned members, so the filter is required to view just one case);
     omit it and RLS returns the signed-in member's own reports. */
 export async function fetchReleasedReports(memberId?: string) {
-  let query = supabase
-    .from("lab_reports")
-    .select(
-      "id, lab_name, panel_name, collected_at, released_at, biomarker_results(*)",
-    )
-    .order("collected_at", { ascending: true });
-  if (memberId) query = query.eq("member_id", memberId);
-  return query.returns<LabReportRow[]>();
+  try {
+    const query = memberId ? `?memberId=${encodeURIComponent(memberId)}` : "";
+    return await apiRequest<{ data: LabReportRow[] }>(`/v1/member/lab-reports${query}`)
+      .then(({ data }) => ({ data, error: null }));
+  } catch (error) {
+    return { data: null, error: { message: apiError(error) } };
+  }
 }

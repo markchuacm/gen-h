@@ -324,13 +324,17 @@ function LabResultsSection({
         <h2>Lab results</h2>
         {!creating && (
           <div className="adm-card-head-actions">
-            <button type="button" className="adm-btn" onClick={() => setIngesting(true)}>Ingest from PDF</button>
+            {import.meta.env.DEV && (
+              <button type="button" className="adm-btn" onClick={() => setIngesting(true)}>
+                Ingest from PDF (development only)
+              </button>
+            )}
             <button type="button" className="adm-btn-ghost" onClick={() => setCreating(true)}>New report</button>
           </div>
         )}
       </div>
 
-      {ingesting && (
+      {import.meta.env.DEV && ingesting && (
         <IngestModal
           memberId={memberId}
           sex={sex}

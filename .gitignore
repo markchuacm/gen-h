@@ -1,6 +1,8 @@
 .env
 .env.local
 .env.*.local
+.env.production
+**/.env.production
 node_modules
 dist
 .DS_Store
@@ -9,6 +11,8 @@ dist
 *.tsbuildinfo
 vite.config.js
 vite.config.d.ts
+*.pem
+*.key
 
 # Real lab reports used to tune the ingest parser — PHI, never commit.
 ocr-sample/

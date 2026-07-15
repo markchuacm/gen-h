@@ -1,4 +1,4 @@
-import { supabase } from "../supabaseClient";
+import { apiError, apiRequest } from "../apiClient";
 
 export type LabOrderRow = {
   member_id: string;
@@ -14,20 +14,26 @@ export async function fetchLabOrder(memberId?: string): Promise<{
   data: LabOrderRow | null;
   error: string | null;
 }> {
-  const query = supabase
-    .from("lab_orders")
-    .select("member_id, biomarker_codes, status, ordered_at");
-  const { data, error } = await (memberId ? query.eq("member_id", memberId) : query).maybeSingle<LabOrderRow>();
-  return { data: data ?? null, error: error?.message ?? null };
+  try {
+    const query = memberId ? `?memberId=${encodeURIComponent(memberId)}` : "";
+    const { data } = await apiRequest<{ data: LabOrderRow | null }>(`/v1/member/lab-orders${query}`);
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
 }
 
 /** Persist the doctor's selected panel and advance the member's stage
     (consult_upcoming → blood_form_ready). Writes flow through the
     security-definer RPC so the stage advance stays atomic. */
 export async function saveLabOrder(memberId: string, codes: string[]) {
-  const { error } = await supabase.rpc("save_lab_order", {
-    p_member_id: memberId,
-    p_codes: codes,
-  });
-  return { error: error?.message ?? null };
+  try {
+    await apiRequest("/v1/member/lab-orders", {
+      method: "PUT",
+      body: JSON.stringify({ memberId, codes }),
+    });
+    return { error: null };
+  } catch (error) {
+    return { error: apiError(error) };
+  }
 }

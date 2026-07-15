@@ -1,14 +1,17 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { authClient } from "./authClient";
+import TurnstileWidget, { captchaEnabled } from "./TurnstileWidget";
 import "./auth.css";
 
 // The portal is a separate Vite entry (member.html). Redirects must land
-// there: the landing bundle has no Supabase client, so a PKCE code returned
+// there: the landing bundle has no portal auth client, so a callback returned
 // to "/" would never be exchanged and the user would appear logged out.
-const PORTAL_URL = `${window.location.origin}/member.html`;
+const PORTAL_URL = window.location.hostname === "app.veraehealth.com"
+  ? window.location.origin
+  : `${window.location.origin}/member.html`;
 
-type Mode = "signIn" | "signUp";
+type Mode = "signIn" | "signUp" | "twoFactor";
 
 function LoginScreen() {
   const [mode, setMode] = useState<Mode>("signIn");
@@ -17,16 +20,19 @@ function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const captchaHeaders = captchaToken ? { "x-captcha-response": captchaToken } : undefined;
 
   async function signInWithGoogle() {
     setError(null);
     setBusy(true);
-    const { error: err } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: PORTAL_URL },
-    });
+    const { error: err } = await authClient.signIn.social(
+      { provider: "google", callbackURL: PORTAL_URL },
+      { headers: captchaHeaders },
+    );
     if (err) {
-      setError(err.message);
+      setError(err.message ?? "Google sign-in failed.");
       setBusy(false);
     }
     // On success the browser navigates away; no state to reset.
@@ -37,38 +43,71 @@ function LoginScreen() {
     setError(null);
     setBusy(true);
     if (mode === "signUp") {
-      const { data, error: err } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: PORTAL_URL },
-      });
+      const { data, error: err } = await authClient.signUp.email(
+        { name: email.split("@", 1)[0] || "Verae member", email, password, callbackURL: PORTAL_URL },
+        { headers: captchaHeaders },
+      );
       setBusy(false);
       if (err) {
-        setError(err.message);
-      } else if (data.session) {
-        // Email confirmation disabled in project settings — session is live.
-      } else {
+        setError(err.message ?? "Account creation failed.");
+      } else if (!data?.token) {
         setConfirmationSent(true);
       }
     } else {
-      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error: err } = await authClient.signIn.email(
+        { email, password, callbackURL: PORTAL_URL },
+        { headers: captchaHeaders },
+      );
       setBusy(false);
       if (err) {
         setError(
-          err.message === "Invalid login credentials"
+          (err.message ?? "").toLowerCase().includes("invalid")
             ? "Incorrect email or password."
-            : err.message,
+            : (err.message ?? "Sign-in failed."),
         );
+      } else if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        setMode("twoFactor");
       }
       // On success onAuthStateChange swaps this screen out.
     }
+  }
+
+  async function verifySecondFactor(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    const result = await authClient.twoFactor.verifyTotp({ code: totpCode, trustDevice: true });
+    setBusy(false);
+    if (result.error) setError(result.error.message ?? "That code was not accepted.");
+  }
+
+  if (mode === "twoFactor") {
+    return (
+      <main className="auth-screen">
+        <div className="auth-card">
+          <span className="auth-brand">Verae</span>
+          <h1 className="auth-title">Enter your security code</h1>
+          <p className="auth-copy">Open your authenticator app and enter the current six-digit code.</p>
+          <form className="auth-form" onSubmit={verifySecondFactor}>
+            <label className="auth-field">
+              <span>Security code</span>
+              <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={totpCode} onChange={(event) => setTotpCode(event.target.value.replace(/\D/g, ""))} autoFocus />
+            </label>
+            {error ? <p className="auth-error" role="alert">{error}</p> : null}
+            <button type="submit" className="auth-submit" disabled={busy || totpCode.length !== 6}>
+              {busy ? "Checking…" : "Verify and sign in"}
+            </button>
+          </form>
+        </div>
+      </main>
+    );
   }
 
   if (confirmationSent) {
     return (
       <main className="auth-screen">
         <div className="auth-card">
-          <span className="auth-brand">Gen-H</span>
+          <span className="auth-brand">Verae</span>
           <h1 className="auth-title">Check your email</h1>
           <p className="auth-copy">
             We sent a confirmation link to <strong>{email}</strong>. Open it on this device to
@@ -92,7 +131,7 @@ function LoginScreen() {
   return (
     <main className="auth-screen">
       <div className="auth-card">
-        <span className="auth-brand">Gen-H</span>
+        <span className="auth-brand">Verae</span>
         <h1 className="auth-title">
           {mode === "signIn" ? "Welcome back" : "Start your health journey"}
         </h1>
@@ -146,18 +185,19 @@ function LoginScreen() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete={mode === "signIn" ? "current-password" : "new-password"}
-              minLength={8}
+              minLength={10}
               required
             />
           </label>
+          <TurnstileWidget onToken={setCaptchaToken} />
           {error ? <p className="auth-error" role="alert">{error}</p> : null}
-          <button type="submit" className="auth-submit" disabled={busy}>
+          <button type="submit" className="auth-submit" disabled={busy || (captchaEnabled() && !captchaToken)}>
             {busy ? "One moment…" : mode === "signIn" ? "Sign in" : "Create account"}
           </button>
         </form>
 
         <p className="auth-switch">
-          {mode === "signIn" ? "New to Gen-H?" : "Already have an account?"}{" "}
+          {mode === "signIn" ? "New to Verae?" : "Already have an account?"}{" "}
           <button
             type="button"
             className="auth-link"

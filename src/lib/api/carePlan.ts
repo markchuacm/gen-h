@@ -1,4 +1,4 @@
-import { supabase } from "../supabaseClient";
+import { apiError, apiRequest } from "../apiClient";
 
 export type CarePlanActionData = {
   id: string;
@@ -36,18 +36,12 @@ export type CarePlanRow = {
 /** For a member: their released plan (RLS filters to released + own). For a
     doctor viewing an assigned member: pass memberId to scope the query. */
 export async function fetchCarePlan(memberId?: string) {
-  let query = supabase
-    .from("care_plans")
-    .select(
-      "id, member_id, doctor_id, title, summary, status, released_at, " +
-        "care_plan_sections(id, care_plan_id, sort_order, title, summary, markers, doctor_note, image_key, actions)",
-    )
-    .order("created_at", { ascending: false })
-    .limit(1);
-  if (memberId) query = query.eq("member_id", memberId);
-  const { data, error } = await query.returns<CarePlanRow[]>();
-  if (error) return { data: null, error: error.message };
-  const plan = data?.[0] ?? null;
-  if (plan) plan.care_plan_sections.sort((a, b) => a.sort_order - b.sort_order);
-  return { data: plan, error: null };
+  try {
+    const query = memberId ? `?memberId=${encodeURIComponent(memberId)}` : "";
+    const { data } = await apiRequest<{ data: CarePlanRow | null }>(`/v1/member/care-plans${query}`);
+    if (data) data.care_plan_sections.sort((a, b) => a.sort_order - b.sort_order);
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
 }

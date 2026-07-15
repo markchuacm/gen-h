@@ -1,9 +1,8 @@
-import { supabase } from "../supabaseClient";
+import { apiError, apiRequest } from "../apiClient";
 
-const BUCKET = "health-documents";
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
-// Allowed types mirror the bucket config (which enforces them server-side).
+// Allowed types mirror the API validation rules.
 const ALLOWED: Record<string, string> = {
   pdf: "application/pdf",
   jpg: "image/jpeg",
@@ -41,66 +40,56 @@ export function validateHealthFile(file: File): string | null {
   return null;
 }
 
-/** Upload to {member_id}/{uuid}.{ext} then record the metadata row (the row
-    is the source of truth for listing). */
+/** Request an opaque object key, then upload through the authenticated API. */
 export async function uploadHealthDocument(
   file: File,
   docType: string,
 ): Promise<{ data: HealthDocumentRow | null; error: string | null }> {
-  const { data: sessionData } = await supabase.auth.getSession();
-  const memberId = sessionData.session?.user.id;
-  if (!memberId) return { data: null, error: "not signed in" };
-
   const ext = extensionOf(file.name);
-  const storagePath = `${memberId}/${crypto.randomUUID()}.${ext}`;
-
-  const upload = await supabase.storage.from(BUCKET).upload(storagePath, file, {
-    contentType: ALLOWED[ext] ?? file.type,
-    upsert: false,
-  });
-  if (upload.error) return { data: null, error: upload.error.message };
-
-  const { data, error } = await supabase
-    .from("health_documents")
-    .insert({
-      member_id: memberId,
-      storage_path: storagePath,
-      file_name: file.name,
-      mime_type: ALLOWED[ext] ?? file.type,
-      size_bytes: file.size,
-      doc_type: docType,
-      uploaded_by: memberId,
-    })
-    .select()
-    .single<HealthDocumentRow>();
-
-  if (error) {
-    // Best-effort cleanup; a stray object without a row is acceptable.
-    void supabase.storage.from(BUCKET).remove([storagePath]);
-    return { data: null, error: error.message };
+  const mimeType = ALLOWED[ext] ?? file.type;
+  try {
+    const prepared = await apiRequest<{ data: HealthDocumentRow }>(
+      "/v1/member/documents/upload",
+      { method: "POST", body: JSON.stringify({ fileName: file.name, mimeType, sizeBytes: file.size, docType }) },
+    );
+    await apiRequest(`/v1/member/documents/${encodeURIComponent(prepared.data.id)}/content`, {
+      method: "PUT",
+      headers: { "content-type": mimeType },
+      body: file,
+    });
+    return { data: prepared.data, error: null };
+  } catch (error) {
+    return { data: null, error: apiError(error) };
   }
-  return { data, error: null };
 }
 
 export async function removeHealthDocument(documentId: string, storagePath: string) {
-  const { error } = await supabase.from("health_documents").delete().eq("id", documentId);
-  if (error) return { error: error.message };
-  const removed = await supabase.storage.from(BUCKET).remove([storagePath]);
-  return { error: removed.error?.message ?? null };
+  void storagePath;
+  try {
+    await apiRequest(`/v1/member/documents/${encodeURIComponent(documentId)}`, { method: "DELETE" });
+    return { error: null };
+  } catch (error) {
+    return { error: apiError(error) };
+  }
 }
 
 export async function listHealthDocuments() {
-  return supabase
-    .from("health_documents")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .returns<HealthDocumentRow[]>();
+  try {
+    return await apiRequest<{ data: HealthDocumentRow[] }>("/v1/member/documents")
+      .then(({ data }) => ({ data, error: null }));
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
 }
 
 /** Private bucket: viewing always goes through a short-lived signed URL. */
 export async function createDocumentSignedUrl(storagePath: string) {
-  const { data, error } = await supabase.storage
-    .from(BUCKET)
-    .createSignedUrl(storagePath, 60 * 60);
-  return { url: data?.signedUrl ?? null, error: error?.message ?? null };
+  try {
+    const { url } = await apiRequest<{ url: string }>(
+      `/v1/member/documents/download?objectKey=${encodeURIComponent(storagePath)}`,
+    );
+    return { url, error: null };
+  } catch (error) {
+    return { url: null, error: apiError(error) };
+  }
 }

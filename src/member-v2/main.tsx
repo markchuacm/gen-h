@@ -5,6 +5,7 @@ import DoctorApp from "../doctor/DoctorApp";
 import AdminApp from "../admin/AdminApp";
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
 import LoginScreen from "../auth/LoginScreen";
+import MfaSetup from "../auth/MfaSetup";
 import "./tokens.css";
 
 function Gate() {
@@ -34,6 +35,23 @@ function Gate() {
 
   // Session live, profile still loading.
   if (!profile) return null;
+
+  if (profile.account_status === "pending") {
+    return (
+      <main className="auth-screen">
+        <div className="auth-card">
+          <span className="auth-brand">Verae</span>
+          <h1 className="auth-title">Account pending activation</h1>
+          <p className="auth-copy">Your email is verified. Verae staff will activate your member profile after matching your invitation or order.</p>
+          <button type="button" className="auth-link" onClick={() => void signOut()}>Sign out</button>
+        </div>
+      </main>
+    );
+  }
+
+  if ((profile.role === "admin" || profile.role === "doctor") && !profile.two_factor_enabled) {
+    return <MfaSetup />;
+  }
 
   // Admins get the ops console; doctors get the doctor console; members the portal.
   if (profile.role === "admin") return <AdminApp />;

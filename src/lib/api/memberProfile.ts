@@ -1,4 +1,4 @@
-import { supabase } from "../supabaseClient";
+import { apiError, apiRequest } from "../apiClient";
 
 export type MemberStage =
   | "profile_incomplete"
@@ -23,22 +23,25 @@ export type MemberProfileRow = {
 /** The member's assigned doctor's public identity (name/avatar). Readable via
     the is_my_doctor profile policy. */
 export async function fetchDoctorProfile(doctorId: string) {
-  return supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url")
-    .eq("id", doctorId)
-    .maybeSingle<{ id: string; full_name: string | null; avatar_url: string | null }>();
+  try {
+    return await apiRequest<{ data: { id: string; full_name: string | null; avatar_url: string | null } | null }>(
+      `/v1/profiles/${encodeURIComponent(doctorId)}/public`,
+    ).then(({ data }) => ({ data, error: null }));
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
 }
 
 /** The signed-in member's profile, or a specific member's when memberId is
     passed (a doctor viewing an assigned case — RLS still gates the read). */
 export async function fetchMemberProfile(memberId?: string) {
-  const query = supabase
-    .from("member_profiles")
-    .select(
-      "member_id, preferred_name, age, sex, height_cm, weight_kg, onboarding_status, current_stage, profile_confirmed_at",
-    );
-  return (memberId ? query.eq("member_id", memberId) : query).maybeSingle<MemberProfileRow>();
+  try {
+    const query = memberId ? `?memberId=${encodeURIComponent(memberId)}` : "";
+    return await apiRequest<{ data: MemberProfileRow | null }>(`/v1/member/profile${query}`)
+      .then(({ data }) => ({ data, error: null }));
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
 }
 
 /** All saved onboarding responses, keyed by question_key. */
@@ -46,15 +49,12 @@ export async function fetchOnboardingResponses(): Promise<{
   data: Record<string, unknown> | null;
   error: string | null;
 }> {
-  const { data, error } = await supabase
-    .from("onboarding_responses")
-    .select("question_key, response");
-  if (error) return { data: null, error: error.message };
-  if (!data.length) return { data: null, error: null };
-  return {
-    data: Object.fromEntries(data.map((row) => [row.question_key, row.response])),
-    error: null,
-  };
+  try {
+    const { data } = await apiRequest<{ data: Record<string, unknown> }>("/v1/member/onboarding");
+    return { data: Object.keys(data).length ? data : null, error: null };
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
 }
 
 /** Upsert one row per question/section key. The DB is the source of truth;
@@ -67,15 +67,15 @@ export async function fetchOnboardingResponses(): Promise<{
     no longer matches the live session, RLS rejects it instead of misfiling
     it. */
 export async function upsertOnboardingResponses(entries: Record<string, unknown>, memberId: string) {
-  const rows = Object.entries(entries).map(([question_key, response]) => ({
-    member_id: memberId,
-    question_key,
-    response,
-  }));
-  const { error } = await supabase
-    .from("onboarding_responses")
-    .upsert(rows, { onConflict: "member_id,question_key" });
-  return { error: error?.message ?? null };
+  try {
+    await apiRequest("/v1/member/onboarding", {
+      method: "PUT",
+      body: JSON.stringify({ memberId, entries }),
+    });
+    return { error: null };
+  } catch (error) {
+    return { error: apiError(error) };
+  }
 }
 
 /** Finishing the profile flow: persist basics, mark onboarding complete, and
@@ -91,19 +91,13 @@ export async function completeOnboarding(
   },
   memberId: string,
 ) {
-  const { error } = await supabase
-    .from("member_profiles")
-    .update({
-      preferred_name: basics.preferredName || null,
-      age: basics.age,
-      sex: basics.sex,
-      height_cm: basics.heightCm,
-      weight_kg: basics.weightKg,
-      onboarding_status: "completed",
-      current_stage: "consult_upcoming",
-      profile_confirmed_at: new Date().toISOString(),
-    })
-    .eq("member_id", memberId)
-    .eq("current_stage", "profile_incomplete");
-  return { error: error?.message ?? null };
+  try {
+    await apiRequest("/v1/member/onboarding/complete", {
+      method: "POST",
+      body: JSON.stringify({ memberId, ...basics }),
+    });
+    return { error: null };
+  } catch (error) {
+    return { error: apiError(error) };
+  }
 }
