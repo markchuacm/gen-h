@@ -11,7 +11,7 @@ const PORTAL_URL = window.location.hostname === "app.veraehealth.com"
   ? window.location.origin
   : `${window.location.origin}/member.html`;
 
-type Mode = "signIn" | "signUp" | "twoFactor";
+type Mode = "signIn" | "signUp" | "forgotPassword" | "twoFactor";
 const SIGNUP_CONFIRMATION_PARAM = "signup";
 
 function signupConfirmationIsActive() {
@@ -72,6 +72,111 @@ function EmailVerificationScreen() {
   );
 }
 
+function PasswordResetScreen() {
+  const token = useRef<string | null>(null);
+  const initialized = useRef(false);
+  const [status, setStatus] = useState<"ready" | "working" | "succeeded" | "failed">("ready");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    token.current = fragment.get("token");
+    // Remove the credential from the address bar before the member enters a password.
+    window.history.replaceState(null, "", window.location.pathname);
+    if (!token.current) setStatus("failed");
+  }, []);
+
+  async function submitNewPassword(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+
+    if (!token.current) {
+      setStatus("failed");
+      return;
+    }
+    if (password !== confirmation) {
+      setError("The passwords do not match.");
+      return;
+    }
+
+    setStatus("working");
+    const result = await authClient.resetPassword({ newPassword: password, token: token.current });
+    if (result.error) {
+      token.current = null;
+      setStatus("failed");
+      return;
+    }
+
+    token.current = null;
+    setPassword("");
+    setConfirmation("");
+    setStatus("succeeded");
+  }
+
+  if (status === "failed" || status === "succeeded") {
+    return (
+      <main className="auth-screen">
+        <div className="auth-card">
+          <span className="auth-brand">Verae</span>
+          <h1 className="auth-title">{status === "succeeded" ? "Password updated" : "Link unavailable"}</h1>
+          <p className="auth-copy">
+            {status === "succeeded"
+              ? "Your password has been changed and your other sessions have been signed out."
+              : "This password reset link is invalid or has expired. Request a new link from the sign-in screen."}
+          </p>
+          <button type="button" className="auth-link auth-link-action" onClick={() => window.location.replace(PORTAL_URL)}>
+            {status === "succeeded" ? "Continue to sign in" : "Back to sign in"}
+          </button>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="auth-screen">
+      <div className="auth-card">
+        <span className="auth-brand">Verae</span>
+        <h1 className="auth-title">Choose a new password</h1>
+        <p className="auth-copy">Use at least 10 characters and avoid a password you use elsewhere.</p>
+        <form className="auth-form" onSubmit={submitNewPassword}>
+          <label className="auth-field">
+            <span>New password</span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="new-password"
+              minLength={10}
+              required
+              autoFocus
+            />
+          </label>
+          <label className="auth-field">
+            <span>Confirm new password</span>
+            <input
+              type="password"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              autoComplete="new-password"
+              minLength={10}
+              required
+            />
+          </label>
+          {error ? <p className="auth-error" role="alert">{error}</p> : null}
+          <button type="submit" className="auth-submit" disabled={status === "working"}>
+            {status === "working" ? "Updating password…" : "Update password"}
+          </button>
+        </form>
+      </div>
+    </main>
+  );
+}
+
 function LoginScreen() {
   const [mode, setMode] = useState<Mode>("signIn");
   const [email, setEmail] = useState("");
@@ -79,11 +184,13 @@ function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmationSent, setConfirmationSent] = useState(signupConfirmationIsActive);
+  const [resetRequested, setResetRequested] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaHeaders = captchaToken ? { "x-captcha-response": captchaToken } : undefined;
 
   if (window.location.pathname === "/verify-email") return <EmailVerificationScreen />;
+  if (window.location.pathname === "/reset-password") return <PasswordResetScreen />;
 
   async function signInWithGoogle() {
     setError(null);
@@ -148,6 +255,22 @@ function LoginScreen() {
     if (result.error) setError(result.error.message ?? "That code was not accepted.");
   }
 
+  async function requestPasswordReset(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    const result = await authClient.requestPasswordReset(
+      { email, redirectTo: `${window.location.origin}/reset-password` },
+      { headers: captchaHeaders },
+    );
+    setBusy(false);
+    if (result.error) {
+      setError(result.error.message ?? "We couldn't send the reset email. Please try again.");
+      return;
+    }
+    setResetRequested(true);
+  }
+
   if (mode === "twoFactor") {
     return (
       <main className="auth-screen">
@@ -192,6 +315,57 @@ function LoginScreen() {
           >
             Back to sign in
           </button>
+        </div>
+      </main>
+    );
+  }
+
+  if (mode === "forgotPassword") {
+    return (
+      <main className="auth-screen">
+        <div className="auth-card">
+          <span className="auth-brand">Verae</span>
+          <h1 className="auth-title">{resetRequested ? "Check your email" : "Reset your password"}</h1>
+          <p className="auth-copy">
+            {resetRequested
+              ? "If an account exists for that address, we sent a password reset link. It will expire in 15 minutes."
+              : "Enter your email address and we'll send you a secure reset link."}
+          </p>
+          {resetRequested ? (
+            <button
+              type="button"
+              className="auth-link auth-link-action"
+              onClick={() => {
+                setMode("signIn");
+                setResetRequested(false);
+                setError(null);
+              }}
+            >
+              Back to sign in
+            </button>
+          ) : (
+            <form className="auth-form" onSubmit={requestPasswordReset}>
+              <label className="auth-field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
+                  required
+                  autoFocus
+                />
+              </label>
+              <TurnstileWidget onToken={setCaptchaToken} />
+              {error ? <p className="auth-error" role="alert">{error}</p> : null}
+              <button type="submit" className="auth-submit" disabled={busy || (captchaEnabled() && !captchaToken)}>
+                {busy ? "Sending…" : "Send reset link"}
+              </button>
+              <button type="button" className="auth-link auth-link-action" onClick={() => setMode("signIn")}>
+                Back to sign in
+              </button>
+            </form>
+          )}
         </div>
       </main>
     );
@@ -258,6 +432,19 @@ function LoginScreen() {
               required
             />
           </label>
+          {mode === "signIn" ? (
+            <button
+              type="button"
+              className="auth-link auth-forgot-link"
+              onClick={() => {
+                setMode("forgotPassword");
+                setError(null);
+                setPassword("");
+              }}
+            >
+              Forgot password?
+            </button>
+          ) : null}
           <TurnstileWidget onToken={setCaptchaToken} />
           {error ? <p className="auth-error" role="alert">{error}</p> : null}
           <button type="submit" className="auth-submit" disabled={busy || (captchaEnabled() && !captchaToken)}>
