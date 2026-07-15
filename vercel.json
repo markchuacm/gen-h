@@ -1,10 +1,13 @@
 {
-  "rewrites": [
+  "redirects": [
     {
       "source": "/",
       "has": [{ "type": "host", "value": "app.veraehealth.com" }],
-      "destination": "/member.html"
-    },
+      "destination": "/member",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "app.veraehealth.com" }],
