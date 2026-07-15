@@ -20,7 +20,7 @@ function Gate() {
     return (
       <main className="auth-screen">
         <div className="auth-card">
-          <span className="auth-brand">Gen-H</span>
+          <span className="auth-brand">Verae</span>
           <h1 className="auth-title">Something went wrong</h1>
           <p className="auth-copy">
             We couldn't load your profile ({profileError}). Try again in a moment.

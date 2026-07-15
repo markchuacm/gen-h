@@ -655,7 +655,7 @@ function ProfileFlow({
   return (
     <div className="pf-flow" role="dialog" aria-label="Health profile">
       <div className="pf-flow-top">
-        <span className="pf-flow-wordmark">Gen-H</span>
+        <span className="pf-flow-wordmark">Verae</span>
         <div className="pf-flow-bar" aria-hidden="true">
           <span style={{ width: `${progress}%` }} />
         </div>
