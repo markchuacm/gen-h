@@ -20,6 +20,8 @@ import processPlanImage from "../../assets/generated/process-step-plan.png";
 import deannaImage from "../../assets/doctors/deanna-abdul-halim.png";
 import ongImage from "../../assets/doctors/ong-shiau-ying.png";
 import farheenImage from "../../assets/doctors/farheen-nafisa.png";
+import luqmeyImage from "../../assets/doctors/luqmey-fahmin.png";
+import deannaReeshaImage from "../../assets/doctors/deanna-reesha.png";
 import agingStressImage from "../../assets/biomarkers/aging-stress-hd.png";
 import bloodIronImage from "../../assets/biomarkers/blood-iron-hd.png";
 import heartMetabolicImage from "../../assets/biomarkers/heart-metabolic-hd.png";
@@ -27,14 +29,14 @@ import hormonesThyroidImage from "../../assets/biomarkers/hormones-thyroid-hd.pn
 import inflammationImmunityImage from "../../assets/biomarkers/inflammation-immunity-hd.png";
 import liverKidneyImage from "../../assets/biomarkers/liver-kidney-hd.png";
 import nutrientsVitaminsImage from "../../assets/biomarkers/nutrients-vitamins-hd.png";
-import deeperTestingImage from "../../assets/future-health/deeper-testing.png";
+import deeperTestingImage from "../../assets/future-health/deeper-testing2.png";
 import earlierSignalsImage from "../../assets/future-health/earlier-signals.png";
-import lifestyleImpactsImage from "../../assets/future-health/lifestyle-impacts-landing.png";
+import lifestyleImpactsImage from "../../assets/future-health/lifestyle-impacts-verae.png";
 import bpHealthcareLogo from "../../assets/partners/bp-healthcare.png";
 import innoquestLogo from "../../assets/partners/innoquest.png";
 
 const whatsappMessage =
-  "Hi, I'm interested in the Gen-H Founding Members program. Could you share availability and next steps?";
+  "Hi, I'm interested in the Verae Health Founding Members program. Could you share availability and next steps?";
 export const whatsappHref = `https://wa.me/60173280063?text=${encodeURIComponent(whatsappMessage)}`;
 
 export { heroVideo, heroMountainImage, bpHealthcareLogo, innoquestLogo };
@@ -268,34 +270,41 @@ export const launchPriceSteps = [
 export const doctors = [
   {
     name: "Dr. Deanna Abdul Halim",
-    role: "Functional Medicine Doctor",
-    credential: "MBBS (Egypt)",
+    credential: "MBBS Mansoura University School of Medicine",
     image: deannaImage,
   },
   {
     name: "Dr. Ong Shiau Ying",
-    role: "Medical Director",
     credential: "MD, Volgograd State Medical University",
     image: ongImage,
   },
   {
     name: "Dr. Farheen Nafisa",
-    role: "Functional Medicine Doctor",
-    credential: "MB BCh BAO (Ireland), RCSI",
+    credential: "Mb BCh BAO, Royal College of Surgeons in Ireland",
     image: farheenImage,
+  },
+  {
+    name: "Dr. Luqmey Fahmin",
+    credential: "MBBCh Mansoura University School of Medicine",
+    image: luqmeyImage,
+  },
+  {
+    name: "Dr. Deanna Reesha",
+    credential: "MD Universiti Sains Malaysia",
+    image: deannaReeshaImage,
   },
 ];
 
 export const faqs = [
   {
-    question: "Who is Gen-H for?",
+    question: "Who is Verae Health for?",
     answer:
       "Adults who want a deeper, doctor-led view of their health before obvious symptoms appear.",
   },
   {
     question: "Is this a clinic?",
     answer:
-      "Gen-H is not a clinic, we are a health intelligence platform that helps you understand your long-term health risks and helps you achieve your health goals.",
+      "Verae Health is not a clinic, we are a health intelligence platform that helps you understand your long-term health risks and helps you achieve your health goals.",
   },
   {
     question: "Why is the full test RM1,800?",
@@ -310,7 +319,7 @@ export const faqs = [
   {
     question: "Where do I do the blood test?",
     answer:
-      "Gen-H coordinates your blood draw with Innoquest or BP Healthcare in Klang Valley.",
+      "Verae Health coordinates your blood draw with Innoquest or BP Healthcare in Klang Valley.",
   },
   {
     question: "What happens after my results are ready?",
@@ -325,12 +334,12 @@ export const faqs = [
   {
     question: "How is this different from a normal check-up?",
     answer:
-      "A normal check-up usually looks for disease today. Gen-H looks at 100+ biomarkers to help you understand your disease risks for the future, and tells you how to address them now.",
+      "A normal check-up usually looks for disease today. Verae Health looks at 100+ biomarkers to help you understand your disease risks for the future, and tells you how to address them now.",
   },
   {
     question: "Is this suitable if my normal screening is fine?",
     answer:
-      "Yes. Gen-H is designed for people who want to look beyond standard screening and understand long-term risks earlier.",
+      "Yes. Verae Health is designed for people who want to look beyond standard screening and understand long-term risks earlier.",
   },
   {
     question: "What happens if something abnormal is found?",
@@ -338,7 +347,7 @@ export const faqs = [
       "Your doctor will explain what it may mean, recommend next steps, and guide you on whether further care or testing is needed.",
   },
   {
-    question: "Where is Gen-H available?",
+    question: "Where is Verae Health available?",
     answer:
       "We are currently only in the Klang Valley, but we are coming to all major Malaysian cities soon.",
   },

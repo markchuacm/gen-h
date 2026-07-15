@@ -72,8 +72,8 @@ export default function Hero() {
       </div>
       <div className="l-hero-scrim" aria-hidden="true" />
       <div className="l-hero-content">
-        <a className="l-hero-wordmark" href="#top" aria-label="Gen-H home">
-          Gen-H
+        <a className="l-hero-wordmark" href="#top" aria-label="Verae home">
+          Verae
         </a>
         <h1 className="l-display-1">
           Helping you stay well for <em>life&rsquo;s best moments</em>

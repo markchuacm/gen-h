@@ -31,7 +31,7 @@ export default function Nav() {
   return (
     <nav ref={ref} className="l-nav" aria-label="Main">
       <a className="l-nav-wordmark" href="#top">
-        Gen-H
+        Verae
       </a>
       <div className="l-nav-links">
         <a href="#what-we-test">What we test</a>
