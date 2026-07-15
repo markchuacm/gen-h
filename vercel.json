@@ -1,6 +1,11 @@
 {
   "rewrites": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app.veraehealth.com" }],
+      "destination": "/member.html"
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "app.veraehealth.com" }],
       "destination": "/member.html"
