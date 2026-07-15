@@ -1,0 +1,135 @@
+name: verae-production
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge, internal]
+    logging: *default-logging
+
+  api:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ../../server/.env.production
+    expose: ["4000"]
+    command: ["node", "server/dist/index.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4000/health/live"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks: [edge, internal]
+    logging: *default-logging
+
+  tools:
+    profiles: ["tools"]
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    env_file: ../../server/.env.production
+    environment:
+      DATABASE_ADMIN_URL: ${DATABASE_ADMIN_URL}
+    command: ["node", "server/dist/db/migrate.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [edge, internal]
+    logging: *default-logging
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ../../server/.env.production
+    environment:
+      PROCESS_ROLE: worker
+    command: ["node", "server/dist/worker.js"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clamav:
+        condition: service_started
+    networks: [edge, internal]
+    logging: *default-logging
+
+  postgres:
+    build:
+      context: .
+      dockerfile: postgres.Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-verae}
+      POSTGRES_USER: ${POSTGRES_USER:-verae_owner}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PGBACKREST_REPO1_TYPE: s3
+      PGBACKREST_REPO1_S3_BUCKET: ${PGBACKREST_S3_BUCKET}
+      PGBACKREST_REPO1_S3_ENDPOINT: ${PGBACKREST_S3_ENDPOINT}
+      PGBACKREST_REPO1_S3_REGION: ${PGBACKREST_S3_REGION:-my-1}
+      PGBACKREST_REPO1_S3_KEY: ${PGBACKREST_S3_KEY}
+      PGBACKREST_REPO1_S3_KEY_SECRET: ${PGBACKREST_S3_KEY_SECRET}
+      PGBACKREST_REPO1_S3_URI_STYLE: path
+      PGBACKREST_REPO1_PATH: /postgres
+      PGBACKREST_REPO1_CIPHER_TYPE: aes-256-cbc
+      PGBACKREST_REPO1_CIPHER_PASS: ${PGBACKREST_CIPHER_PASS}
+    volumes:
+      - verae_postgres_data:/var/lib/postgresql/data
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./pgbackrest.conf:/etc/pgbackrest/pgbackrest.conf:ro
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [edge, internal]
+    logging: *default-logging
+
+  clamav:
+    image: clamav/clamav:1.4
+    restart: unless-stopped
+    expose: ["3310"]
+    volumes:
+      - clamav_signatures:/var/lib/clamav
+    # The edge network provides outbound access for FreshClam signature
+    # updates. No host port is published, so clamd remains private.
+    networks: [edge, internal]
+    logging: *default-logging
+
+networks:
+  edge:
+  internal:
+    internal: true
+
+volumes:
+  caddy_data:
+  caddy_config:
+  clamav_signatures:
+  verae_postgres_data:
+    external: true

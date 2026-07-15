@@ -1,0 +1,10 @@
+[Unit]
+Description=Verae PostgreSQL %i backup
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/verae
+ExecStart=/usr/bin/flock -w 1800 /run/verae-pgbackrest.lock /opt/verae/infra/scripts/backup.sh %i

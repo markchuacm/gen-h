@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Verae full PostgreSQL backup weekly
+
+[Timer]
+OnCalendar=Sun *-*-* 19:15:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=verae-backup@full.service
+
+[Install]
+WantedBy=timers.target

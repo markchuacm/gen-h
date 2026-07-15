@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Verae differential PostgreSQL backup daily
+
+[Timer]
+OnCalendar=*-*-* 18:15:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=verae-backup@diff.service
+
+[Install]
+WantedBy=timers.target

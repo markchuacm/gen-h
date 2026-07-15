@@ -6,6 +6,7 @@ import {
   fetchAdminDoctors,
   fetchAdminLabReports,
   setStage,
+  setAccountStatus,
   STAGE_LABELS,
   STAGE_OPTIONS,
   uploadDocumentForMember,
@@ -101,6 +102,14 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
     setBusy(false);
   };
 
+  const onAccountStatusChange = async (accountStatus: "active" | "suspended") => {
+    setBusy(true);
+    const { error: err } = await setAccountStatus(memberId, accountStatus);
+    if (err) setError(err);
+    else await reload();
+    setBusy(false);
+  };
+
   const onAssign = async (doctorId: string) => {
     if (!doctorId) return;
     setBusy(true);
@@ -190,6 +199,16 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
           </select>
         </label>
       </header>
+
+      {detail.accountStatus !== "active" && (
+        <div className="adm-card">
+          <h2>Account activation</h2>
+          <p className="adm-muted">Confirm the member's Verae invitation or order before granting portal access.</p>
+          <button type="button" className="adm-btn" disabled={busy} onClick={() => void onAccountStatusChange("active")}>
+            Activate member account
+          </button>
+        </div>
+      )}
 
       <CaseTimeline
         onboardingCompleted={detail.onboardingStatus === "completed"}

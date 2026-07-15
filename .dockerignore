@@ -1,0 +1,8 @@
+.git
+.env*
+node_modules
+dist
+coverage
+ocr-sample
+supabase
+*.log

@@ -1,0 +1,11 @@
+[Unit]
+Description=Verify Verae PostgreSQL backup repository daily
+
+[Timer]
+OnCalendar=*-*-* 20:15:00 UTC
+RandomizedDelaySec=5m
+Persistent=true
+Unit=verae-backup-check.service
+
+[Install]
+WantedBy=timers.target

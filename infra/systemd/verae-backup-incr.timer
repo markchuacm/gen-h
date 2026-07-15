@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Verae incremental PostgreSQL backup hourly
+
+[Timer]
+OnCalendar=hourly
+RandomizedDelaySec=10m
+Persistent=true
+Unit=verae-backup@incr.service
+
+[Install]
+WantedBy=timers.target
