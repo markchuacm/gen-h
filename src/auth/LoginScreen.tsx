@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { authClient } from "./authClient";
 import TurnstileWidget, { captchaEnabled } from "./TurnstileWidget";
@@ -25,6 +25,53 @@ function setSignupConfirmationInUrl(active: boolean) {
   window.history.replaceState(null, "", url);
 }
 
+function EmailVerificationScreen() {
+  const started = useRef(false);
+  const [status, setStatus] = useState<"working" | "failed">("working");
+
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
+    const fragment = new URLSearchParams(window.location.hash.slice(1));
+    const token = fragment.get("token");
+    // Remove the credential from the address bar before making any request.
+    window.history.replaceState(null, "", window.location.pathname);
+
+    if (!token) {
+      setStatus("failed");
+      return;
+    }
+
+    void authClient.verifyEmail({ query: { token } }).then((result) => {
+      if (result.error) {
+        setStatus("failed");
+        return;
+      }
+      window.location.replace(PORTAL_URL);
+    });
+  }, []);
+
+  return (
+    <main className="auth-screen">
+      <div className="auth-card">
+        <span className="auth-brand">Verae</span>
+        <h1 className="auth-title">{status === "working" ? "Verifying your email" : "Link unavailable"}</h1>
+        <p className="auth-copy">
+          {status === "working"
+            ? "Please wait while we securely confirm your email address."
+            : "This verification link is invalid or has expired. Return to sign in to request a new one."}
+        </p>
+        {status === "failed" ? (
+          <button type="button" className="auth-link" onClick={() => window.location.replace(PORTAL_URL)}>
+            Back to sign in
+          </button>
+        ) : null}
+      </div>
+    </main>
+  );
+}
+
 function LoginScreen() {
   const [mode, setMode] = useState<Mode>("signIn");
   const [email, setEmail] = useState("");
@@ -35,6 +82,8 @@ function LoginScreen() {
   const [totpCode, setTotpCode] = useState("");
   const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const captchaHeaders = captchaToken ? { "x-captcha-response": captchaToken } : undefined;
+
+  if (window.location.pathname === "/verify-email") return <EmailVerificationScreen />;
 
   async function signInWithGoogle() {
     setError(null);

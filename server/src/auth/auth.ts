@@ -45,11 +45,14 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     sendOnSignIn: true,
     autoSignInAfterVerification: true,
-    sendVerificationEmail: async ({ user, url }) => {
+    expiresIn: 15 * 60,
+    sendVerificationEmail: async ({ user, token }) => {
+      const verificationUrl = new URL("/verify-email", env.APP_ORIGIN);
+      verificationUrl.hash = new URLSearchParams({ token }).toString();
       void sendAccountEmail({
         to: user.email,
         subject: "Verify your Verae Health email",
-        text: `Verify your email using this secure link: ${url}`,
+        text: `Verify your email using this secure link: ${verificationUrl.toString()}`,
       }).catch((error) => console.error(JSON.stringify({ event: "verification_email_failed", message: String(error) })));
     },
   },
