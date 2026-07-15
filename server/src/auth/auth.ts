@@ -13,6 +13,7 @@ export const authPool = new Pool({
 const plugins = [
   twoFactor({
     issuer: "Verae Health",
+    allowPasswordless: true,
     accountLockout: { enabled: true, maxFailedAttempts: 8, durationSeconds: 900 },
   }),
   ...(env.TURNSTILE_SECRET_KEY
