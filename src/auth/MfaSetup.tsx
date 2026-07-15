@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { authClient } from "./authClient";
 
@@ -7,13 +7,34 @@ export default function MfaSetup() {
   const [code, setCode] = useState("");
   const [qr, setQr] = useState<string | null>(null);
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [requiresPassword, setRequiresPassword] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void authClient.listAccounts().then((result) => {
+      if (cancelled) return;
+      if (result.error || !result.data) {
+        setError(result.error?.message ?? "We couldn't verify your sign-in method.");
+        return;
+      }
+      setRequiresPassword(result.data.some((account) => account.providerId === "credential"));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function begin() {
     setBusy(true);
     setError(null);
-    const result = await authClient.twoFactor.enable({ password });
+    if (requiresPassword === null) {
+      setError("We couldn't verify your sign-in method.");
+      setBusy(false);
+      return;
+    }
+    const result = await authClient.twoFactor.enable(requiresPassword ? { password } : {});
     if (result.error || !result.data) {
       setError(result.error?.message ?? "MFA setup failed.");
     } else {
@@ -43,13 +64,24 @@ export default function MfaSetup() {
         <h1 className="auth-title">Secure your staff account</h1>
         {!qr ? (
           <>
-            <p className="auth-copy">Doctors and administrators must use an authenticator app. Confirm your password to begin.</p>
-            <label className="auth-field">
-              <span>Current password</span>
-              <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
-            </label>
+            <p className="auth-copy">
+              {requiresPassword
+                ? "Doctors and administrators must use an authenticator app. Confirm your password to begin."
+                : "Doctors and administrators must use an authenticator app. Continue to connect yours."}
+            </p>
+            {requiresPassword && (
+              <label className="auth-field">
+                <span>Current password</span>
+                <input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              </label>
+            )}
             {error && <p className="auth-error" role="alert">{error}</p>}
-            <button type="button" className="auth-submit" disabled={busy || password.length < 10} onClick={() => void begin()}>
+            <button
+              type="button"
+              className="auth-submit"
+              disabled={busy || requiresPassword === null || (requiresPassword && password.length < 10)}
+              onClick={() => void begin()}
+            >
               {busy ? "One moment…" : "Set up authenticator"}
             </button>
           </>
