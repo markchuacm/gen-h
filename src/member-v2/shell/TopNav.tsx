@@ -20,8 +20,8 @@ type TopNavProps = {
 function TopNav({ activeTab, onNav, journeyState, onJourneyStateChange }: TopNavProps) {
   return (
     <header className="p-nav">
-      <a className="p-nav-wordmark" href="/" aria-label="Gen-H home">
-        Gen-H
+      <a className="p-nav-wordmark" href="/" aria-label="Verae home">
+        Verae
       </a>
       <nav className="p-nav-tabs" aria-label="Portal">
         {TABS.map(({ tab, label, Icon }) => (

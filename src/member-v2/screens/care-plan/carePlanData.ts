@@ -5,9 +5,9 @@ import sleepBedroomImage from "../../../../assets/care-plan/sleep-bedroom.png";
 import sunlitPlantImage from "../../../../assets/care-plan/sunlit-plant.png";
 import farheenAvatarImage from "../../../../assets/dashboard/doctors/farheen-nafisa-avatar.png";
 // Placeholder crops reused until dedicated action photography exists.
-import heartMetabolicImage from "../../../../assets/biomarkers/heart-metabolic.jpg";
-import agingStressImage from "../../../../assets/biomarkers/aging-stress.jpg";
-import nutrientsVitaminsImage from "../../../../assets/biomarkers/nutrients-vitamins.jpg";
+import heartMetabolicImage from "../../../../assets/biomarkers/heart-metabolic-hd.png";
+import agingStressImage from "../../../../assets/biomarkers/aging-stress-hd.png";
+import nutrientsVitaminsImage from "../../../../assets/biomarkers/nutrients-vitamins-hd.png";
 import lifestyleImpactsImage from "../../../../assets/future-health/lifestyle-impacts.png";
 import morningMountainImage from "../../../../assets/genh-hero-mountain.jpg";
 

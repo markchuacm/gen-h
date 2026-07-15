@@ -27,7 +27,7 @@ type HomeScreenProps = {
 
 function JourneyRail({ steps }: { steps: Step[] }) {
   return (
-    <ol className="home-rail" aria-label="Your Gen-H journey">
+    <ol className="home-rail" aria-label="Your Verae journey">
       {steps.map((step, index) => (
         <li
           key={step.label}

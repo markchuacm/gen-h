@@ -191,7 +191,7 @@ function CarePlanScreen({
   const [loading, setLoading] = useState(true);
   const [focusAreas, setFocusAreas] = useState<FocusArea[]>([]);
   const [doctor, setDoctor] = useState<DoctorIdentity>({
-    doctorName: "Your Gen-H doctor",
+    doctorName: "Your Verae doctor",
     avatarUrl: defaultDoctorAvatar,
   });
 
@@ -204,7 +204,7 @@ function CarePlanScreen({
       }
       const doctorProfile = await fetchDoctorProfile(plan.doctor_id);
       const identity: DoctorIdentity = {
-        doctorName: doctorProfile.data?.full_name ?? "Your Gen-H doctor",
+        doctorName: doctorProfile.data?.full_name ?? "Your Verae doctor",
         avatarUrl: doctorProfile.data?.avatar_url ?? defaultDoctorAvatar,
       };
       if (cancelled) return;
