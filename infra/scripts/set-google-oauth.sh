@@ -3,10 +3,16 @@ set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 APP_ENV="$ROOT_DIR/server/.env.production"
+COMPOSE_ENV="$ROOT_DIR/infra/docker/.env.production"
 COMPOSE_FILE="$ROOT_DIR/infra/docker/compose.production.yml"
 
 if [ ! -f "$APP_ENV" ]; then
   echo "Production environment file was not found at $APP_ENV" >&2
+  exit 1
+fi
+
+if [ ! -f "$COMPOSE_ENV" ]; then
+  echo "Production Compose environment file was not found at $COMPOSE_ENV" >&2
   exit 1
 fi
 
@@ -60,7 +66,7 @@ chmod 600 "$APP_ENV"
 
 unset client_id client_secret REPLY
 
-docker compose --env-file "$APP_ENV" -f "$COMPOSE_FILE" up -d --force-recreate api
+sudo docker compose --env-file "$COMPOSE_ENV" -f "$COMPOSE_FILE" up -d --no-deps --force-recreate api
 
 attempt=1
 while [ "$attempt" -le 12 ]; do
