@@ -25,6 +25,7 @@ export async function requireActor(request: FastifyRequest, reply: FastifyReply)
     userId: session.user.id,
     role: profile.role,
     accountStatus: profile.account_status,
+    emailVerified: session.user.emailVerified,
     twoFactorEnabled,
     requestId: request.id,
   };
