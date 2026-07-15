@@ -48,7 +48,6 @@ export default function Doctors() {
               <img src={doctor.image} alt={`Portrait of ${doctor.name}`} loading="lazy" />
               <div className="l-doctor-meta">
                 <h3>{doctor.name}</h3>
-                <p className="l-doctor-role">{doctor.role}</p>
                 <p className="l-doctor-credential">{doctor.credential}</p>
               </div>
             </article>

@@ -121,7 +121,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "PROFILE_INCOMPLETE",
     switcherLabel: "Profile incomplete",
     stageLabel: "Step 1 of 5 · Profile",
-    greetingPrefix: "Welcome to Gen-H",
+    greetingPrefix: "Welcome to Verae",
     hero: {
       pill: "Health profile",
       titleBefore: "Complete your ",

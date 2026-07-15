@@ -17,7 +17,7 @@ function AdminApp() {
     <div className="adm-shell">
       <header className="adm-topbar">
         <div className="adm-brand">
-          <span className="adm-brand-mark">Gen-H</span>
+          <span className="adm-brand-mark">Verae</span>
           <span className="p-chip">Admin</span>
         </div>
         <nav className="adm-tabs" aria-label="Admin sections">

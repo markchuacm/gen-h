@@ -20,6 +20,8 @@ import processPlanImage from "../assets/generated/process-step-plan.png";
 import deannaImage from "../assets/doctors/deanna-abdul-halim.png";
 import ongImage from "../assets/doctors/ong-shiau-ying.png";
 import farheenImage from "../assets/doctors/farheen-nafisa.png";
+import luqmeyImage from "../assets/doctors/luqmey-fahmin.png";
+import deannaReeshaImage from "../assets/doctors/deanna-reesha.png";
 import agingStressImage from "../assets/biomarkers/aging-stress-hd.png";
 import bloodIronImage from "../assets/biomarkers/blood-iron-hd.png";
 import heartMetabolicImage from "../assets/biomarkers/heart-metabolic-hd.png";
@@ -27,12 +29,12 @@ import hormonesThyroidImage from "../assets/biomarkers/hormones-thyroid-hd.png";
 import inflammationImmunityImage from "../assets/biomarkers/inflammation-immunity-hd.png";
 import liverKidneyImage from "../assets/biomarkers/liver-kidney-hd.png";
 import nutrientsVitaminsImage from "../assets/biomarkers/nutrients-vitamins-hd.png";
-import deeperTestingImage from "../assets/future-health/deeper-testing.png";
+import deeperTestingImage from "../assets/future-health/deeper-testing2.png";
 import earlierSignalsImage from "../assets/future-health/earlier-signals.png";
-import lifestyleImpactsImage from "../assets/future-health/lifestyle-impacts-landing.png";
+import lifestyleImpactsImage from "../assets/future-health/lifestyle-impacts-verae.png";
 
 const whatsappMessage =
-  "Hi, I'm interested in the Gen-H Founding Members program. Could you share availability and next steps?";
+  "Hi, I'm interested in the Verae Health Founding Members program. Could you share availability and next steps?";
 const whatsappHref = `https://wa.me/60173280063?text=${encodeURIComponent(whatsappMessage)}`;
 
 const futureHealthCards = [
@@ -393,34 +395,41 @@ const launchPriceSteps = [
 const doctors = [
   {
     name: "Dr. Deanna Abdul Halim",
-    role: "Functional Medicine Doctor",
-    credential: "MBBS (Egypt)",
+    credential: "MBBS Mansoura University School of Medicine",
     image: deannaImage,
   },
   {
     name: "Dr. Ong Shiau Ying",
-    role: "Medical Director",
     credential: "MD, Volgograd State Medical University",
     image: ongImage,
   },
   {
     name: "Dr. Farheen Nafisa",
-    role: "Functional Medicine Doctor",
-    credential: "MB BCh BAO (Ireland), RCSI",
+    credential: "Mb BCh BAO, Royal College of Surgeons in Ireland",
     image: farheenImage,
+  },
+  {
+    name: "Dr. Luqmey Fahmin",
+    credential: "MBBCh Mansoura University School of Medicine",
+    image: luqmeyImage,
+  },
+  {
+    name: "Dr. Deanna Reesha",
+    credential: "MD Universiti Sains Malaysia",
+    image: deannaReeshaImage,
   },
 ];
 
 const faqs = [
   {
-    question: "Who is Gen-H for?",
+    question: "Who is Verae Health for?",
     answer:
       "Adults who want a deeper, doctor-led view of their health before obvious symptoms appear.",
   },
   {
     question: "Is this a clinic?",
     answer:
-      "Gen-H is not a clinic, we are a health intelligence platform that helps you understand your long-term health risks and helps you achieve your health goals.",
+      "Verae Health is not a clinic, we are a health intelligence platform that helps you understand your long-term health risks and helps you achieve your health goals.",
   },
   {
     question: "Why is the full test RM1,800?",
@@ -435,7 +444,7 @@ const faqs = [
   {
     question: "Where do I do the blood test?",
     answer:
-      "Gen-H coordinates your blood draw with Innoquest or BP Healthcare in Klang Valley.",
+      "Verae Health coordinates your blood draw with Innoquest or BP Healthcare in Klang Valley.",
   },
   {
     question: "What happens after my results are ready?",
@@ -450,12 +459,12 @@ const faqs = [
   {
     question: "How is this different from a normal check-up?",
     answer:
-      "A normal check-up usually looks for disease today. Gen-H looks at 100+ biomarkers to help you understand your disease risks for the future, and tells you how to address them now.",
+      "A normal check-up usually looks for disease today. Verae Health looks at 100+ biomarkers to help you understand your disease risks for the future, and tells you how to address them now.",
   },
   {
     question: "Is this suitable if my normal screening is fine?",
     answer:
-      "Yes. Gen-H is designed for people who want to look beyond standard screening and understand long-term risks earlier.",
+      "Yes. Verae Health is designed for people who want to look beyond standard screening and understand long-term risks earlier.",
   },
   {
     question: "What happens if something abnormal is found?",
@@ -463,7 +472,7 @@ const faqs = [
       "Your doctor will explain what it may mean, recommend next steps, and guide you on whether further care or testing is needed.",
   },
   {
-    question: "Where is Gen-H available?",
+    question: "Where is Verae Health available?",
     answer:
       "We are currently only in the Klang Valley, but we are coming to all major Malaysian cities soon.",
   },
@@ -1103,8 +1112,8 @@ function App() {
           className={`site-header ${isHeaderScrolled ? "site-header-scrolled" : ""}`}
           aria-label="Main navigation"
         >
-          <a className="brand" href="#top" aria-label="Gen-H home">
-            <span>Gen-H</span>
+          <a className="brand" href="#top" aria-label="Verae home">
+            <span>Verae</span>
           </a>
           <nav className="nav-links" aria-label="Page sections">
             <a href="#how-it-works">How it works</a>
@@ -1119,14 +1128,14 @@ function App() {
             <source src={heroVideo} type="video/mp4" />
           </video>
           <div className="hero-overlay" />
-          <div className="hero-content" aria-label="Gen-H preventive health introduction">
+          <div className="hero-content" aria-label="Verae Health preventive health introduction">
             <h1>Helping you stay well for life's best moments</h1>
             <p className="hero-copy">It starts with understanding your health early.</p>
             <div className="hero-actions">
               <WhatsAppCta />
             </div>
           </div>
-          <div className="hero-proof-strip" aria-label="Gen-H highlights">
+          <div className="hero-proof-strip" aria-label="Verae highlights">
             <div>
               <strong>100+ biomarkers</strong>
               <span>Tailored to long-term health</span>
@@ -1170,7 +1179,7 @@ function App() {
       <section className="future-health-section" id="future-health" aria-label="Future health preview">
         <div className="future-health-heading">
           <h2>
-            That&apos;s why <span className="keep-together">Gen-H</span> <em>connects the dots</em>
+            That&apos;s why <span className="keep-together">Verae</span> <em>connects the dots</em>
           </h2>
         </div>
         <div className="future-card-grid">
@@ -1265,7 +1274,7 @@ function App() {
         </div>
 
         <div className="process-layout">
-          <aside className="process-rail" aria-label="Gen-H process steps">
+          <aside className="process-rail" aria-label="Verae Health process steps">
             <div className="process-rail-inner">
               <p className="process-rail-label">Process</p>
               <ol>
@@ -1311,7 +1320,7 @@ function App() {
         </div>
       </section>
 
-      <section className="doctors-section" id="doctors" aria-label="Gen-H doctors">
+      <section className="doctors-section" id="doctors" aria-label="Verae Health doctors">
         <div className="doctor-section-heading">
           <p className="eyebrow">Doctors</p>
           <h2>
@@ -1328,7 +1337,6 @@ function App() {
               </div>
               <div className="doctor-profile-content">
                 <h3>{doctor.name}</h3>
-                <p className="doctor-role">{doctor.role}</p>
                 <div className="doctor-rule" aria-hidden="true" />
                 <p className="doctor-credential">{doctor.credential}</p>
               </div>
@@ -1345,18 +1353,18 @@ function App() {
         <div className="comparison-heading">
           <div>
             <h2>
-              A <em>Gen-H</em> check-up vs. a standard screening.
+              A <em>Verae Health</em> check-up vs. a standard screening.
             </h2>
             <p>
-              Most screenings tell you whether you're sick today. Gen-H is built to help you stay well for decades.
+              Most screenings tell you whether you're sick today. Verae Health is built to help you stay well for decades.
             </p>
           </div>
         </div>
 
-        <div className="comparison-table" role="table" aria-label="Gen-H compared with standard screening">
+        <div className="comparison-table" role="table" aria-label="Verae Health compared with standard screening">
           <div className="comparison-row comparison-header" role="row">
             <div role="columnheader">Criterion</div>
-            <div role="columnheader">Gen-H</div>
+            <div role="columnheader">Verae</div>
             <div role="columnheader">Standard screening</div>
           </div>
           {comparisonRows.map((row) => (
@@ -1401,7 +1409,7 @@ function App() {
             </h2>
           </div>
 
-          <div className="launch-price-timeline" aria-label="Early Gen-H baseline programme price breakdown">
+          <div className="launch-price-timeline" aria-label="Early Verae Health baseline programme price breakdown">
             <div className="launch-timeline-track" aria-hidden="true">
               <span className="launch-timeline-line" />
               <span className="launch-timeline-fill" />
@@ -1472,8 +1480,8 @@ function App() {
       </section>
 
       <footer className="footer">
-        <a className="brand" href="#top" aria-label="Gen-H home">
-          <span>Gen-H</span>
+        <a className="brand" href="#top" aria-label="Verae home">
+          <span>Verae</span>
         </a>
         <p>Helping you stay well for life's best moments</p>
         <nav aria-label="Footer navigation">
@@ -1488,7 +1496,7 @@ function App() {
           <h2>
             Do it for the <em>people</em> who matter most
           </h2>
-          <p>Take care of yourself, with Gen-H.</p>
+          <p>Take care of yourself, with Verae.</p>
           <WhatsAppCta>Book a consult</WhatsAppCta>
         </div>
       </section>

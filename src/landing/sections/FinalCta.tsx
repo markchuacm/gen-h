@@ -51,7 +51,7 @@ export default function FinalCta() {
             <h2 className="l-display-1">
               Do it for the <em>people</em> who matter most
             </h2>
-            <p className="l-final-sub">Take care of yourself, with Gen-H.</p>
+            <p className="l-final-sub">Take care of yourself, with Verae.</p>
             <WhatsAppCta />
           </div>
         </section>
@@ -59,7 +59,7 @@ export default function FinalCta() {
       <footer className="l-footer">
         <div className="l-container l-footer-inner">
           <div className="l-footer-brand">
-            <span className="l-footer-wordmark">Gen-H</span>
+            <span className="l-footer-wordmark">Verae</span>
             <span className="l-footer-tagline">
               Helping you stay well for life&rsquo;s best moments
             </span>

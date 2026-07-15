@@ -9,7 +9,7 @@ function DoctorNav() {
 
   return (
     <header className="doc-topbar">
-      <span className="doc-topbar-wordmark">Gen-H</span>
+      <span className="doc-topbar-wordmark">Verae</span>
       <button type="button" className="doc-topbar-signout" title={name} onClick={() => void signOut()}>
         Sign out
       </button>

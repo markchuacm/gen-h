@@ -45,18 +45,18 @@ export default function Comparison() {
       <div className="l-container">
         <div className="l-compare-head">
           <h2 className="l-display-3">
-            A <em>Gen-H</em> check-up vs. a standard screening.
+            A <em>Verae Health</em> check-up vs. a standard screening.
           </h2>
           <p className="l-compare-sub">
-            Most screenings tell you whether you&rsquo;re sick today. Gen-H is built to help
+            Most screenings tell you whether you&rsquo;re sick today. Verae Health is built to help
             you stay well for decades.
           </p>
         </div>
-        <div className="l-compare-table" role="table" aria-label="Gen-H compared with a standard screening">
+        <div className="l-compare-table" role="table" aria-label="Verae Health compared with a standard screening">
           <div className="l-compare-row l-compare-header" role="row">
             <div className="l-compare-cell" role="columnheader" />
             <div className="l-compare-cell l-compare-genh" role="columnheader">
-              Gen-H
+              Verae
             </div>
             <div className="l-compare-cell l-compare-standard" role="columnheader">
               Standard screening

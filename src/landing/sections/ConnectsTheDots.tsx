@@ -55,7 +55,7 @@ export default function ConnectsTheDots() {
     <section ref={ref} className="l-section">
       <div className="l-container">
         <h2 className="l-display-2 l-dots-heading">
-          That&rsquo;s why Gen-H <em>connects the dots</em>
+          That&rsquo;s why Verae Health <em>connects the dots</em>
         </h2>
         <div className="l-dots-grid">
           {futureHealthCards.map((card) => (
