@@ -33,11 +33,14 @@ export const auth = betterAuth({
     minPasswordLength: 10,
     requireEmailVerification: true,
     revokeSessionsOnPasswordReset: true,
-    sendResetPassword: async ({ user, url }) => {
+    resetPasswordTokenExpiresIn: 15 * 60,
+    sendResetPassword: async ({ user, token }) => {
+      const resetUrl = new URL("/reset-password", env.APP_ORIGIN);
+      resetUrl.hash = new URLSearchParams({ token }).toString();
       void sendAccountEmail({
         to: user.email,
         subject: "Reset your Verae Health password",
-        text: `Reset your password using this secure link: ${url}`,
+        text: `Reset your password using this secure link: ${resetUrl.toString()}`,
       }).catch((error) => console.error(JSON.stringify({ event: "reset_email_failed", message: String(error) })));
     },
   },
