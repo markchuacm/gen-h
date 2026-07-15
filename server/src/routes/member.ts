@@ -22,12 +22,20 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     const current = actor(request);
     return withActor(current, async (client) => {
       const result = await client.query(
-        `select p.id, p.role, p.email, p.full_name, p.avatar_url, p.account_status,
-                u."emailVerified" as email_verified, u."twoFactorEnabled" as two_factor_enabled
-         from app.profiles p join identity."user" u on u.id = p.id where p.id = $1`,
+        `select p.id, p.role, p.email, p.full_name, p.avatar_url, p.account_status
+         from app.profiles p where p.id = $1`,
         [current.userId],
       );
-      return { profile: result.rows[0] ?? null };
+      const profile = result.rows[0];
+      return {
+        profile: profile
+          ? {
+              ...profile,
+              email_verified: current.emailVerified,
+              two_factor_enabled: current.twoFactorEnabled,
+            }
+          : null,
+      };
     });
   });
 
