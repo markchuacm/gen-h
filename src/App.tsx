@@ -381,7 +381,7 @@ const launchPriceSteps = [
     note: "if unsatisfied with the consult",
   },
   {
-    value: "RM1,800",
+    value: "RM1,400",
     label: "Full test",
     note: "Personalized blood panel configured by your doctor",
   },
