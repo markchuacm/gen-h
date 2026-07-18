@@ -38,5 +38,9 @@ systemctl reload ssh
 
 timedatectl set-timezone UTC
 install -d -o ubuntu -g ubuntu /opt/verae
+install -d -o root -g root -m 755 /etc/verae
+curl -fsSL https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+  -o /etc/verae/aws-rds-global-bundle.pem
+chmod 644 /etc/verae/aws-rds-global-bundle.pem
 
 echo "Instance ready. Deploy the repo to /opt/verae."

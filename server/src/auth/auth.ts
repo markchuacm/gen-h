@@ -10,6 +10,10 @@ export const authPool = new Pool({
   application_name: "verae-auth",
 });
 
+export async function closeAuthDatabase(): Promise<void> {
+  await authPool.end();
+}
+
 const plugins = [
   twoFactor({
     issuer: "Verae Health",

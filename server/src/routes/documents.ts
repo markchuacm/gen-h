@@ -83,9 +83,33 @@ export async function documentRoutes(app: FastifyInstance): Promise<void> {
         Number(document.size_bytes),
       );
       if (!validation.ok) return reply.code(validation.statusCode).send({ error: validation.error, code: validation.code });
-      await putDocumentObject(document.object_key, document.mime_type, validation.bytes);
-      const boss = await getBoss();
-      await boss.send("scan-document", { documentId: document.id }, { singletonKey: document.id });
+
+      const claimed = await withActor(current, async (client) => {
+        const result = await client.query<{ id: string }>(
+          `update app.health_documents set scan_status = 'scanning'
+           where id = $1 and scan_status = 'pending' returning id`,
+          [document.id],
+        );
+        return result.rowCount === 1;
+      });
+      if (!claimed) {
+        return reply.code(409).send({ error: "Document upload is no longer pending", code: "UPLOAD_NOT_PENDING" });
+      }
+
+      try {
+        await putDocumentObject(document.object_key, document.mime_type, validation.bytes);
+        const boss = await getBoss();
+        await boss.send("scan-document", { documentId: document.id }, { singletonKey: document.id });
+      } catch (error) {
+        await deleteDocumentObject(document.object_key).catch(() => undefined);
+        await withActor(current, async (client) => {
+          await client.query(
+            "update app.health_documents set scan_status = 'pending' where id = $1 and scan_status = 'scanning'",
+            [document.id],
+          );
+        });
+        throw error;
+      }
       return reply.code(202).send({ status: "scanning" });
     },
   );

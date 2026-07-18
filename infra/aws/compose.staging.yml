@@ -46,7 +46,7 @@ services:
       clamav:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4000/health/live"]
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:4000/health/ready"]
       interval: 30s
       timeout: 5s
       retries: 3

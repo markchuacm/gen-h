@@ -12,13 +12,18 @@
 
 ## Infrastructure and privacy
 
-- [ ] Written IPServerOne Malaysia location/encryption confirmation is filed for VM, volume, snapshots, documents, and backups.
+- [ ] Production resources are in AWS `ap-southeast-5`; production and staging use separate instances, databases/data, buckets, and credentials.
 - [ ] PostgreSQL port 5432 is unreachable from the internet.
-- [ ] SSH is key-only and restricted to a fixed IP/VPN.
+- [ ] SSH is key-only and restricted to approved IPv4 and IPv6 operator/VPN CIDRs; port 22 is not open to the world.
+- [ ] Every production PostgreSQL URL uses `sslmode=verify-full` and the mounted AWS RDS CA bundle.
+- [ ] Lightsail document buckets are private, public overrides are disabled, account-level S3 block public access is enabled, and versioning is enabled.
 - [ ] Document keys are opaque; upload, malware scan, download authorisation, and expiry tests pass.
+- [ ] Concurrent/repeated document PUT tests prove that bytes cannot be replaced after scanning starts.
 - [ ] Logs, analytics, browser storage, email, and object keys contain no PHI or secrets.
-- [ ] Full backup and document restore succeed in an isolated temporary Malaysia environment.
-- [ ] Hourly WAL/incremental backup and alerting are observed working.
+- [ ] Lightsail database point-in-time recovery is enabled and a manual snapshot is taken before every migration.
+- [ ] Database and versioned-document restore tests succeed in an isolated temporary Malaysia environment.
+- [ ] Instance/database alarms and external `/health/ready` monitoring are observed working.
+- [ ] Caddy and application logs reach a centralized, access-controlled destination.
 - [ ] Restore exercise meets one-hour RPO and four-hour RTO.
 
 ## Identity and clinical access
@@ -32,6 +37,7 @@
 ## Partner and cutover
 
 - [ ] First lab adapter passes partner UAT for normal, abnormal, duplicate, unknown-code, corrected, and cancelled results.
+- [ ] Lab job redelivery is idempotent and unit-changing mappings either perform a verified conversion or quarantine the event.
 - [ ] `api.veraehealth.com` TLS, health, OpenAPI, rate limiting, and monitoring pass.
 - [ ] `app.veraehealth.com` uses only `https://api.veraehealth.com` with credentialed CORS.
 - [ ] Supabase project data/files are exported only if personally wanted, then erased; keys and OAuth callbacks revoked; project deleted.

@@ -1,10 +1,25 @@
 import "dotenv/config";
 import { z } from "zod";
 
-const boolFromString = z
+const boolFromString = (defaultValue: "true" | "false" = "false") => z
   .enum(["true", "false"])
-  .default("false")
+  .default(defaultValue)
   .transform((value) => value === "true");
+
+export function databaseTlsIssues(urlValue: string): string[] {
+  try {
+    const url = new URL(urlValue);
+    if (!["postgres:", "postgresql:"].includes(url.protocol)) return ["must be a PostgreSQL URL"];
+    const localDatabase = ["localhost", "127.0.0.1", "postgres"].includes(url.hostname);
+    if (localDatabase) return [];
+    const issues: string[] = [];
+    if (url.searchParams.get("sslmode") !== "verify-full") issues.push("must use sslmode=verify-full");
+    if (!url.searchParams.get("sslrootcert")) issues.push("must provide sslrootcert");
+    return issues;
+  } catch {
+    return ["must be a valid PostgreSQL URL"];
+  }
+}
 
 const envSchema = z
   .object({
@@ -31,11 +46,13 @@ const envSchema = z
     S3_SECRET_ACCESS_KEY: z.string().default("verae-local-secret"),
     S3_DOCUMENTS_BUCKET: z.string().default("verae-documents"),
     S3_BACKUPS_BUCKET: z.string().default("verae-backups"),
-    S3_FORCE_PATH_STYLE: boolFromString,
+    // Local MinIO requires path-style bucket URLs. AWS environments set this
+    // explicitly to false in their server environment files.
+    S3_FORCE_PATH_STYLE: boolFromString("true"),
     CLAMAV_HOST: z.string().optional(),
     CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
     PARTNER_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
-    REQUIRE_STAFF_MFA: boolFromString,
+    REQUIRE_STAFF_MFA: boolFromString(),
     LAB_TIMESTAMP_TOLERANCE_SECONDS: z.coerce.number().int().positive().default(300),
     LAB_MAX_BODY_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     BOOTSTRAP_ADMIN_TOKEN: z.string().min(32).optional(),
@@ -54,6 +71,20 @@ const envSchema = z
       if (!value.PARTNER_CREDENTIAL_ENCRYPTION_KEY) ctx.addIssue({ code: "custom", path: ["PARTNER_CREDENTIAL_ENCRYPTION_KEY"], message: "Partner credential encryption key is required in production" });
       if (value.BETTER_AUTH_SECRET.includes("development-only")) {
         ctx.addIssue({ code: "custom", path: ["BETTER_AUTH_SECRET"], message: "Set a production Better Auth secret" });
+      }
+
+      const databaseUrls = [
+        ["DATABASE_URL", value.DATABASE_URL],
+        ["AUTH_DATABASE_URL", value.AUTH_DATABASE_URL],
+        ["WORKER_DATABASE_URL", value.WORKER_DATABASE_URL],
+        ["JOBS_DATABASE_URL", value.JOBS_DATABASE_URL],
+        ["DATABASE_ADMIN_URL", value.DATABASE_ADMIN_URL],
+      ] as const;
+      for (const [key, urlValue] of databaseUrls) {
+        if (!urlValue) continue;
+        for (const issue of databaseTlsIssues(urlValue)) {
+          ctx.addIssue({ code: "custom", path: [key], message: `${key} ${issue}` });
+        }
       }
     }
   });
