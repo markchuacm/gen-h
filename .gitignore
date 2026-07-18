@@ -16,3 +16,8 @@ vite.config.d.ts
 
 # Real lab reports used to tune the ingest parser — PHI, never commit.
 ocr-sample/
+
+# AWS Lightsail staging env + provisioning secrets (never commit)
+.env.staging
+**/.env.staging
+/outputs/aws-setup/

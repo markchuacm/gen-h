@@ -61,9 +61,14 @@ const envSchema = z
 export const env = envSchema.parse(process.env);
 
 export function authDatabaseUrl(): string {
-  if (env.AUTH_DATABASE_URL) return env.AUTH_DATABASE_URL;
-  const url = new URL(env.DATABASE_URL);
-  url.searchParams.set("options", "-c search_path=identity");
+  // Better Auth queries its tables unqualified, so the auth connection must
+  // resolve them in the `identity` schema. Apply the search_path whether the
+  // URL comes from AUTH_DATABASE_URL (production) or the DATABASE_URL fallback,
+  // unless the caller already set connection options explicitly.
+  const url = new URL(env.AUTH_DATABASE_URL ?? env.DATABASE_URL);
+  if (!url.searchParams.has("options")) {
+    url.searchParams.set("options", "-c search_path=identity");
+  }
   return url.toString();
 }
 
