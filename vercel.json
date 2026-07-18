@@ -5,12 +5,23 @@
       "has": [{ "type": "host", "value": "app.veraehealth.com" }],
       "destination": "/member",
       "permanent": false
+    },
+    {
+      "source": "/",
+      "has": [{ "type": "host", "value": "app-uat.veraehealth.com" }],
+      "destination": "/member",
+      "permanent": false
     }
   ],
   "rewrites": [
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "app.veraehealth.com" }],
+      "destination": "/member.html"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "app-uat.veraehealth.com" }],
       "destination": "/member.html"
     },
     { "source": "/member", "destination": "/member.html" },
