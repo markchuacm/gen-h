@@ -1,5 +1,9 @@
 import { writeFile } from "node:fs/promises";
-import { buildApp } from "../app.js";
+
+// /docs is gated behind EXPOSE_API_DOCS, but generating the committed spec must
+// always work. Set the flag before app.js (and its config parse) is loaded.
+process.env.EXPOSE_API_DOCS = "true";
+const { buildApp } = await import("../app.js");
 
 const app = await buildApp();
 await app.ready();

@@ -53,6 +53,10 @@ const envSchema = z
     CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
     PARTNER_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
     REQUIRE_STAFF_MFA: boolFromString(),
+    // Serves the Scalar API reference + OpenAPI spec at /docs. Off by default:
+    // the full route map is recon material, so production keeps it closed and
+    // only staging (which also runs NODE_ENV=production) opts in.
+    EXPOSE_API_DOCS: boolFromString(),
     LAB_TIMESTAMP_TOLERANCE_SECONDS: z.coerce.number().int().positive().default(300),
     LAB_MAX_BODY_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     BOOTSTRAP_ADMIN_TOKEN: z.string().min(32).optional(),

@@ -1,0 +1,33 @@
+{
+  "agent": {
+    "metrics_collection_interval": 300,
+    "run_as_user": "root"
+  },
+  "metrics": {
+    "namespace": "Verae",
+    "metrics_collected": {
+      "disk": {
+        "measurement": ["used_percent"],
+        "resources": ["/"],
+        "ignore_file_system_types": ["sysfs", "devtmpfs", "tmpfs", "overlay"]
+      },
+      "mem": {
+        "measurement": ["mem_used_percent"]
+      }
+    }
+  },
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/lib/docker/containers/*/*-json.log",
+            "log_group_name": "__LOG_GROUP__",
+            "log_stream_name": "__LOG_STREAM__",
+            "retention_in_days": 30
+          }
+        ]
+      }
+    }
+  }
+}
