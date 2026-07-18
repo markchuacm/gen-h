@@ -405,100 +405,93 @@ function LoginScreen() {
     );
   }
 
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setPassword("");
+  }
+
   return (
     <main className="auth-screen">
       <div className="auth-card">
         <span className="auth-brand">Verae</span>
-        <h1 className="auth-title">
-          {mode === "signIn" ? "Welcome back" : "Start your health journey"}
-        </h1>
-        <p className="auth-copy">
-          {mode === "signIn"
-            ? "Sign in to your member portal."
-            : "Create your account to begin."}
-        </p>
+        <div className="auth-step" key={mode}>
+          <h1 className="auth-title">
+            {mode === "signIn" ? (
+              <>Welcome <em>back</em></>
+            ) : (
+              <>Start your <em>journey</em></>
+            )}
+          </h1>
+          <p className="auth-copy">
+            {mode === "signIn"
+              ? "Sign in to your member portal"
+              : "Create your account to begin"}
+          </p>
 
-        <button type="button" className="auth-google" onClick={signInWithGoogle} disabled={busy}>
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-            <path
-              fill="#4285F4"
-              d="M23.5 12.3c0-.9-.1-1.5-.3-2.3H12v4.5h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.9z"
-            />
-            <path
-              fill="#34A853"
-              d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.1 0-5.8-2.1-6.8-5l-3.9 3C3.3 21.3 7.3 24 12 24z"
-            />
-            <path
-              fill="#FBBC05"
-              d="M5.2 14.4c-.2-.7-.4-1.5-.4-2.4s.2-1.7.4-2.4l-3.9-3C.5 8.2 0 10 0 12s.5 3.8 1.3 5.4l3.9-3z"
-            />
-            <path
-              fill="#EA4335"
-              d="M12 4.6c1.8 0 3 .7 3.7 1.4l3.3-3.2C17.9 1 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l3.9 3c1-2.9 3.7-5 6.8-5z"
-            />
-          </svg>
-          Continue with Google
-        </button>
+          <button type="button" className="auth-option" onClick={signInWithGoogle} disabled={busy}>
+            <svg className="auth-option-icon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor">
+              <path d="M23.5 12.3c0-.9-.1-1.5-.3-2.3H12v4.5h6.5c-.1 1.1-.8 2.7-2.4 3.8l3.7 2.9c2.3-2.1 3.7-5.2 3.7-8.9z" />
+              <path d="M12 24c3.2 0 5.9-1.1 7.9-2.9l-3.7-2.9c-1 .7-2.4 1.2-4.2 1.2-3.1 0-5.8-2.1-6.8-5l-3.9 3C3.3 21.3 7.3 24 12 24z" />
+              <path d="M5.2 14.4c-.2-.7-.4-1.5-.4-2.4s.2-1.7.4-2.4l-3.9-3C.5 8.2 0 10 0 12s.5 3.8 1.3 5.4l3.9-3z" />
+              <path d="M12 4.6c1.8 0 3 .7 3.7 1.4l3.3-3.2C17.9 1 15.2 0 12 0 7.3 0 3.3 2.7 1.3 6.6l3.9 3c1-2.9 3.7-5 6.8-5z" />
+            </svg>
+            Continue with Google
+          </button>
 
-        <div className="auth-divider">
-          <span>or</span>
-        </div>
+          <form className="auth-form" onSubmit={submitEmailForm}>
+            <label className="auth-field">
+              <span>Email</span>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </label>
+            <label className="auth-field">
+              <span>Password</span>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === "signIn" ? "current-password" : "new-password"}
+                minLength={10}
+                required
+              />
+            </label>
+            {mode === "signIn" ? (
+              <button
+                type="button"
+                className="auth-link auth-forgot-link"
+                onClick={() => {
+                  setMode("forgotPassword");
+                  setError(null);
+                  setPassword("");
+                }}
+              >
+                Forgot password?
+              </button>
+            ) : null}
+            <TurnstileWidget onToken={setCaptchaToken} />
+            {error ? <p className="auth-error" role="alert">{error}</p> : null}
+            <button type="submit" className="auth-submit" disabled={busy || (captchaEnabled() && !captchaToken)}>
+              {busy ? "One moment…" : mode === "signIn" ? "Sign in" : "Create account"}
+            </button>
+          </form>
 
-        <form className="auth-form" onSubmit={submitEmailForm}>
-          <label className="auth-field">
-            <span>Email</span>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              autoComplete="email"
-              required
-            />
-          </label>
-          <label className="auth-field">
-            <span>Password</span>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === "signIn" ? "current-password" : "new-password"}
-              minLength={10}
-              required
-            />
-          </label>
-          {mode === "signIn" ? (
+          <p className="auth-switch">
+            {mode === "signIn" ? "New to Verae?" : "Already have an account?"}{" "}
             <button
               type="button"
-              className="auth-link auth-forgot-link"
-              onClick={() => {
-                setMode("forgotPassword");
-                setError(null);
-                setPassword("");
-              }}
+              className="auth-link"
+              onClick={() => switchMode(mode === "signIn" ? "signUp" : "signIn")}
             >
-              Forgot password?
+              {mode === "signIn" ? "Create an account" : "Sign in"}
             </button>
-          ) : null}
-          <TurnstileWidget onToken={setCaptchaToken} />
-          {error ? <p className="auth-error" role="alert">{error}</p> : null}
-          <button type="submit" className="auth-submit" disabled={busy || (captchaEnabled() && !captchaToken)}>
-            {busy ? "One moment…" : mode === "signIn" ? "Sign in" : "Create account"}
-          </button>
-        </form>
-
-        <p className="auth-switch">
-          {mode === "signIn" ? "New to Verae?" : "Already have an account?"}{" "}
-          <button
-            type="button"
-            className="auth-link"
-            onClick={() => {
-              setMode(mode === "signIn" ? "signUp" : "signIn");
-              setError(null);
-            }}
-          >
-            {mode === "signIn" ? "Create an account" : "Sign in"}
-          </button>
-        </p>
+          </p>
+        </div>
       </div>
     </main>
   );
