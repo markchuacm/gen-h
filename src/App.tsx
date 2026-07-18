@@ -432,9 +432,9 @@ const faqs = [
       "Verae Health is not a clinic, we are a health intelligence platform that helps you understand your long-term health risks and helps you achieve your health goals.",
   },
   {
-    question: "Why is the full test RM1,800?",
+    question: "Why is the full test RM1,400?",
     answer:
-      "Your doctor configures the panel around what you need. The RM1,800 test includes your personalized blood panel, lab processing, doctor review, and follow-up consult.",
+      "Your doctor configures the panel around what you need. The RM1,400 test includes your personalized blood panel, lab processing, doctor review, and follow-up consult.",
   },
   {
     question: "Are the consults virtual?",
