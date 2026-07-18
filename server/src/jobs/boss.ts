@@ -17,6 +17,7 @@ export async function getBoss(): Promise<PgBoss> {
   await instance.start();
   await instance.createQueue("process-lab-event", { retryLimit: 8, retryDelay: 30, retryBackoff: true });
   await instance.createQueue("scan-document", { retryLimit: 5, retryDelay: 60, retryBackoff: true });
+  await instance.createQueue("send-consult-email", { retryLimit: 5, retryDelay: 60, retryBackoff: true });
   return instance;
 }
 

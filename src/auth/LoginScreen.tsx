@@ -13,6 +13,7 @@ const PORTAL_URL = window.location.hostname === "app.veraehealth.com"
 
 type Mode = "signIn" | "signUp" | "forgotPassword" | "twoFactor";
 const SIGNUP_CONFIRMATION_PARAM = "signup";
+const TWO_FACTOR_PARAM = "twofactor";
 
 function signupConfirmationIsActive() {
   return new URL(window.location.href).searchParams.get(SIGNUP_CONFIRMATION_PARAM) === "check-email";
@@ -22,6 +23,21 @@ function setSignupConfirmationInUrl(active: boolean) {
   const url = new URL(window.location.href);
   if (active) url.searchParams.set(SIGNUP_CONFIRMATION_PARAM, "check-email");
   else url.searchParams.delete(SIGNUP_CONFIRMATION_PARAM);
+  window.history.replaceState(null, "", url);
+}
+
+// The two-factor prompt lives in component state, but signIn.email triggers a
+// session refetch whose pending flip makes the Gate unmount this screen (the
+// same remount the signup flow guards against). Persist the step in the URL so
+// the code-entry screen survives the remount instead of resetting to sign-in.
+function twoFactorPromptIsActive() {
+  return new URL(window.location.href).searchParams.get(TWO_FACTOR_PARAM) === "1";
+}
+
+function setTwoFactorPromptInUrl(active: boolean) {
+  const url = new URL(window.location.href);
+  if (active) url.searchParams.set(TWO_FACTOR_PARAM, "1");
+  else url.searchParams.delete(TWO_FACTOR_PARAM);
   window.history.replaceState(null, "", url);
 }
 
@@ -178,7 +194,7 @@ function PasswordResetScreen() {
 }
 
 function LoginScreen() {
-  const [mode, setMode] = useState<Mode>("signIn");
+  const [mode, setMode] = useState<Mode>(() => (twoFactorPromptIsActive() ? "twoFactor" : "signIn"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -240,6 +256,8 @@ function LoginScreen() {
               : (err.message ?? "Sign-in failed."),
         );
       } else if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+        // Persist the step before the session refetch can remount this screen.
+        setTwoFactorPromptInUrl(true);
         setMode("twoFactor");
       }
       // On success onAuthStateChange swaps this screen out.
@@ -253,6 +271,9 @@ function LoginScreen() {
     const result = await authClient.twoFactor.verifyTotp({ code: totpCode, trustDevice: true });
     setBusy(false);
     if (result.error) setError(result.error.message ?? "That code was not accepted.");
+    // On success the session becomes valid and the Gate swaps this screen out;
+    // drop the URL flag so a later sign-out doesn't reopen the code prompt.
+    else setTwoFactorPromptInUrl(false);
   }
 
   async function requestPasswordReset(event: FormEvent) {
@@ -286,6 +307,19 @@ function LoginScreen() {
             {error ? <p className="auth-error" role="alert">{error}</p> : null}
             <button type="submit" className="auth-submit" disabled={busy || totpCode.length !== 6}>
               {busy ? "Checking…" : "Verify and sign in"}
+            </button>
+            <button
+              type="button"
+              className="auth-link auth-link-action"
+              onClick={() => {
+                setTwoFactorPromptInUrl(false);
+                setMode("signIn");
+                setError(null);
+                setTotpCode("");
+                setPassword("");
+              }}
+            >
+              Back to sign in
             </button>
           </form>
         </div>

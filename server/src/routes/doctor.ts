@@ -40,6 +40,23 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  app.get("/v1/doctor/appointments", { preHandler: doctorOnly }, async (request) => {
+    const current = actor(request);
+    return withActor(current, async (client) => {
+      const result = await client.query(
+        `select a.id, a.member_id as "memberId", p.full_name as "memberName",
+                a.scheduled_at as "scheduledAt", a.duration_minutes as "durationMinutes",
+                a.meeting_url as "meetingUrl"
+         from app.appointments a join app.profiles p on p.id = a.member_id
+         where a.doctor_id = $1 and a.status = 'scheduled'
+           and a.scheduled_at > now() - interval '1 hour'
+         order by a.scheduled_at asc`,
+        [current.userId],
+      );
+      return { data: result.rows };
+    });
+  });
+
   app.get<{ Params: { memberId: string } }>("/v1/doctor/cases/:memberId", { preHandler: doctorOnly }, async (request) => {
     const current = actor(request);
     return withActor(current, async (client) => {
@@ -50,7 +67,7 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
         [request.params.memberId],
       );
       if (!member.rows[0]) return { data: null };
-      const [responses, docs, results] = await Promise.all([
+      const [responses, docs, results, appointment] = await Promise.all([
         client.query<{ question_key: string; response: unknown }>(
           "select question_key, response from app.onboarding_responses where member_id = $1",
           [request.params.memberId],
@@ -61,6 +78,11 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
           [request.params.memberId],
         ),
         client.query("select 1 from app.biomarker_results where member_id = $1 limit 1", [request.params.memberId]),
+        client.query(
+          `select scheduled_at, meeting_url from app.appointments
+           where member_id = $1 and status = 'scheduled' limit 1`,
+          [request.params.memberId],
+        ),
       ]);
       const onboarding = Object.fromEntries(responses.rows.map((row) => [row.question_key, row.response]));
       const basics = onboarding.basics && typeof onboarding.basics === "object" && !Array.isArray(onboarding.basics)
@@ -74,6 +96,7 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
           onboarding,
           documents: docs.rows,
           hasResults: results.rowCount === 1,
+          appointment: appointment.rows[0] ?? null,
         },
       };
     });

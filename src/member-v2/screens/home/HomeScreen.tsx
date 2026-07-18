@@ -65,10 +65,18 @@ function HeroCard({
         </h2>
         <p>{hero.body}</p>
         <div className="home-hero-actions">
-          <button className="p-btn" type="button" onClick={() => onAction(hero.primaryAction)}>
-            {hero.primaryCta}
-            <ChevronRight strokeWidth={2} />
-          </button>
+          {hero.primaryCta && (
+            <button
+              className="p-btn"
+              type="button"
+              disabled={hero.primaryDisabled}
+              title={hero.primaryDisabled ? hero.primaryHint : undefined}
+              onClick={() => onAction(hero.primaryAction)}
+            >
+              {hero.primaryCta}
+              <ChevronRight strokeWidth={2} />
+            </button>
+          )}
           {hero.secondaryCta && (
             <button
               className="p-btn-ghost"
@@ -127,9 +135,16 @@ function DetailsContent({
             <dd>{data.location}</dd>
           </div>
         </dl>
-        <button className="p-btn-ghost" type="button">
-          {data.primaryCta}
-        </button>
+        {data.meetingUrl ? (
+          <a className="p-btn" href={data.meetingUrl} target="_blank" rel="noopener noreferrer">
+            Join consult
+            <ChevronRight strokeWidth={2} />
+          </a>
+        ) : (
+          <button className="p-btn-ghost" type="button" disabled title="Your join link will appear here soon">
+            Join link coming soon
+          </button>
+        )}
       </section>
     );
   }
@@ -291,6 +306,7 @@ function HomeScreen({ config, firstName, onNav, onStartProfile }: HomeScreenProp
   const handleHeroAction = (action: HeroAction) => {
     if (action.kind === "tab") onNav(action.tab);
     if (action.kind === "profileFlow") onStartProfile();
+    if (action.kind === "link") window.open(action.url, "_blank", "noopener");
   };
 
   return (

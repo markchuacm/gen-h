@@ -324,6 +324,48 @@ export async function setStage(memberId: string, stage: string) {
   return mutation(`/v1/admin/members/${encodeURIComponent(memberId)}/stage`, "PATCH", { stage });
 }
 
+// ---- Teleconsult scheduling ----------------------------------------------
+
+export type AdminAppointment = {
+  id: string;
+  memberId: string;
+  doctorId: string;
+  doctorName: string | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  meetingUrl: string | null;
+  status: "scheduled" | "cancelled" | "completed";
+};
+
+export async function fetchAdminAppointment(memberId: string): Promise<{
+  data: AdminAppointment | null;
+  error: string | null;
+}> {
+  try {
+    return await apiRequest<{ data: AdminAppointment | null }>(
+      `/v1/admin/members/${encodeURIComponent(memberId)}/appointment`,
+    ).then(({ data }) => ({ data, error: null }));
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
+}
+
+/** Create or reschedule the member's consult. scheduledAt is an ISO string;
+    meetingUrl is an optional Google Meet link. */
+export async function scheduleAppointment(
+  memberId: string,
+  input: { scheduledAt: string; meetingUrl: string | null },
+) {
+  return mutation(`/v1/admin/members/${encodeURIComponent(memberId)}/appointment`, "PUT", {
+    scheduledAt: input.scheduledAt,
+    meetingUrl: input.meetingUrl,
+  });
+}
+
+export async function cancelAppointment(memberId: string) {
+  return mutation(`/v1/admin/members/${encodeURIComponent(memberId)}/appointment`, "DELETE");
+}
+
 // ---- Shared labels -------------------------------------------------------
 
 export const STAGE_OPTIONS = [

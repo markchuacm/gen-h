@@ -64,6 +64,22 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  app.get<{ Querystring: { memberId?: string } }>("/v1/member/appointment", { preHandler: requireActor }, async (request) => {
+    const current = actor(request);
+    const memberId = request.query.memberId ?? current.userId;
+    return withActor(current, async (client) => {
+      // member_consult is security-definer: it returns the doctor's name (which
+      // members can't read from app.profiles directly, per migration 0002) while
+      // re-checking that the caller may see this member's consult.
+      const result = await client.query(
+        `select id, doctor_id, doctor_name, scheduled_at, duration_minutes, meeting_url, status
+         from app.member_consult($1)`,
+        [memberId],
+      );
+      return { data: result.rows[0] ?? null };
+    });
+  });
+
   app.get("/v1/member/onboarding", { preHandler: requireActor }, async (request) => {
     const current = actor(request);
     return withActor(current, async (client) => {
