@@ -23,7 +23,7 @@
 - [ ] Lightsail database point-in-time recovery is enabled and a manual snapshot is taken before every migration.
 - [ ] Database and versioned-document restore tests succeed in an isolated temporary Malaysia environment.
 - [ ] Instance/database alarms and external `/health/ready` monitoring are observed working.
-- [ ] Caddy and application logs reach a centralized, access-controlled destination.
+- [ ] CloudWatch agent installed on both instances: container logs reach `/verae/<env>/docker` and the `disk_used_percent` alarm is armed.
 - [ ] Restore exercise meets one-hour RPO and four-hour RTO.
 
 ## Identity and clinical access
@@ -38,6 +38,6 @@
 
 - [ ] First lab adapter passes partner UAT for normal, abnormal, duplicate, unknown-code, corrected, and cancelled results.
 - [ ] Lab job redelivery is idempotent and unit-changing mappings either perform a verified conversion or quarantine the event.
-- [ ] `api.veraehealth.com` TLS, health, OpenAPI, rate limiting, and monitoring pass.
+- [ ] `api.veraehealth.com` TLS, health, rate limiting, and monitoring pass; `/docs` returns 404 in production (OpenAPI is served only on staging via `EXPOSE_API_DOCS`).
 - [ ] `app.veraehealth.com` uses only `https://api.veraehealth.com` with credentialed CORS.
 - [ ] Supabase project data/files are exported only if personally wanted, then erased; keys and OAuth callbacks revoked; project deleted.

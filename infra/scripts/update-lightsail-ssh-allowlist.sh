@@ -60,7 +60,7 @@ for instance_name in "${INSTANCES[@]}"; do
         toPort,
         protocol,
         cidrs: (if .protocol == "tcp" and .fromPort == 22 and .toPort == 22 then [$ssh_cidr] else (.cidrs // []) end),
-        ipv6Cidrs: (.ipv6Cidrs // []),
+        ipv6Cidrs: (if .protocol == "tcp" and .fromPort == 22 and .toPort == 22 then [] else (.ipv6Cidrs // []) end),
         cidrListAliases: (if .protocol == "tcp" and .fromPort == 22 and .toPort == 22 then ["lightsail-connect"] else (.cidrListAliases // []) end)
       }]
     }' "$state_file" >"$input_file"
@@ -72,4 +72,4 @@ for instance_name in "${INSTANCES[@]}"; do
   echo "Updated $instance_name"
 done
 
-echo "Done. Terminal SSH is restricted to $ssh_cidr; Lightsail browser SSH remains available as a fallback."
+echo "Done. Terminal SSH is restricted to $ssh_cidr over IPv4; the SSH rule's IPv6 allowlist is cleared. Lightsail browser SSH remains available as a fallback."

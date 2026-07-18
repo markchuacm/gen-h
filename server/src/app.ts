@@ -37,12 +37,14 @@ export async function buildApp() {
   await app.register(helmet, { contentSecurityPolicy: false });
   await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
   await app.register(sensible);
-  await app.register(swagger, {
-    openapi: {
-      info: { title: "Verae Health API", version: "0.1.0" },
-      servers: [{ url: env.BETTER_AUTH_URL }],
-    },
-  });
+  if (env.EXPOSE_API_DOCS) {
+    await app.register(swagger, {
+      openapi: {
+        info: { title: "Verae Health API", version: "0.1.0" },
+        servers: [{ url: env.BETTER_AUTH_URL }],
+      },
+    });
+  }
   await app.register(rawBody, { field: "rawBody", global: false, encoding: false, runFirst: true });
 
   app.route({
@@ -93,6 +95,8 @@ export async function buildApp() {
     });
   });
 
-  await app.register(apiReference, { routePrefix: "/docs", configuration: { spec: { content: () => app.swagger() } } });
+  if (env.EXPOSE_API_DOCS) {
+    await app.register(apiReference, { routePrefix: "/docs", configuration: { spec: { content: () => app.swagger() } } });
+  }
   return app;
 }
