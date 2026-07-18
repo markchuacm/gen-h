@@ -7,6 +7,7 @@ import swagger from "@fastify/swagger";
 import apiReference from "@scalar/fastify-api-reference";
 import rawBody from "fastify-raw-body";
 import { fromNodeHeaders } from "better-auth/node";
+import { ZodError } from "zod";
 import { auth } from "./auth/auth.js";
 import { env } from "./config.js";
 import { databaseReady } from "./db/pools.js";
@@ -76,6 +77,14 @@ export async function buildApp() {
 
   app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error({ err: error, requestId: request.id }, "request failed");
+    if (error instanceof ZodError) {
+      return reply.code(400).send({
+        error: "Request validation failed",
+        code: "VALIDATION_ERROR",
+        requestId: request.id,
+        issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
+      });
+    }
     const status = typeof error.statusCode === "number" && error.statusCode >= 400 ? error.statusCode : 500;
     reply.code(status).send({
       error: status >= 500 ? "Internal server error" : error.message,

@@ -65,7 +65,10 @@ export async function matchesDeclaredFileType(bytes: Uint8Array, declaredMime: s
 
 export async function scanDocument(documentId: string): Promise<void> {
   const document = await withWorker(documentId, async (client) => {
-    const result = await client.query<{ object_key: string; mime_type: string }>("select object_key, mime_type from app.health_documents where id=$1", [documentId]);
+    const result = await client.query<{ object_key: string; mime_type: string }>(
+      "select object_key, mime_type from app.health_documents where id=$1 and scan_status='scanning'",
+      [documentId],
+    );
     return result.rows[0];
   });
   if (!document) return;
@@ -75,7 +78,10 @@ export async function scanDocument(documentId: string): Promise<void> {
   const checksum = createHash("sha256").update(bytes).digest("hex");
   if (!await matchesDeclaredFileType(bytes, document.mime_type)) {
     await withWorker(documentId, async (client) => {
-      await client.query("update app.health_documents set checksum_sha256=$2,scan_status='failed' where id=$1", [documentId, checksum]);
+      await client.query(
+        "update app.health_documents set checksum_sha256=$2,scan_status='failed' where id=$1 and scan_status='scanning'",
+        [documentId, checksum],
+      );
     });
     await deleteDocumentObject(document.object_key);
     return;
@@ -85,12 +91,18 @@ export async function scanDocument(documentId: string): Promise<void> {
     status = await scanWithClamAv(bytes);
   } catch (error) {
     await withWorker(documentId, async (client) => {
-      await client.query("update app.health_documents set checksum_sha256=$2,scan_status='failed' where id=$1", [documentId, checksum]);
+      await client.query(
+        "update app.health_documents set checksum_sha256=$2,scan_status='failed' where id=$1 and scan_status='scanning'",
+        [documentId, checksum],
+      );
     });
     throw error;
   }
   await withWorker(documentId, async (client) => {
-    await client.query("update app.health_documents set checksum_sha256=$2,scan_status=$3 where id=$1", [documentId, checksum, status]);
+    await client.query(
+      "update app.health_documents set checksum_sha256=$2,scan_status=$3 where id=$1 and scan_status='scanning'",
+      [documentId, checksum, status],
+    );
   });
   if (status === "infected") await deleteDocumentObject(document.object_key);
 }

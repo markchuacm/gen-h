@@ -6,6 +6,21 @@ const boolFromString = (defaultValue: "true" | "false" = "false") => z
   .default(defaultValue)
   .transform((value) => value === "true");
 
+export function databaseTlsIssues(urlValue: string): string[] {
+  try {
+    const url = new URL(urlValue);
+    if (!["postgres:", "postgresql:"].includes(url.protocol)) return ["must be a PostgreSQL URL"];
+    const localDatabase = ["localhost", "127.0.0.1", "postgres"].includes(url.hostname);
+    if (localDatabase) return [];
+    const issues: string[] = [];
+    if (url.searchParams.get("sslmode") !== "verify-full") issues.push("must use sslmode=verify-full");
+    if (!url.searchParams.get("sslrootcert")) issues.push("must provide sslrootcert");
+    return issues;
+  } catch {
+    return ["must be a valid PostgreSQL URL"];
+  }
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -56,6 +71,20 @@ const envSchema = z
       if (!value.PARTNER_CREDENTIAL_ENCRYPTION_KEY) ctx.addIssue({ code: "custom", path: ["PARTNER_CREDENTIAL_ENCRYPTION_KEY"], message: "Partner credential encryption key is required in production" });
       if (value.BETTER_AUTH_SECRET.includes("development-only")) {
         ctx.addIssue({ code: "custom", path: ["BETTER_AUTH_SECRET"], message: "Set a production Better Auth secret" });
+      }
+
+      const databaseUrls = [
+        ["DATABASE_URL", value.DATABASE_URL],
+        ["AUTH_DATABASE_URL", value.AUTH_DATABASE_URL],
+        ["WORKER_DATABASE_URL", value.WORKER_DATABASE_URL],
+        ["JOBS_DATABASE_URL", value.JOBS_DATABASE_URL],
+        ["DATABASE_ADMIN_URL", value.DATABASE_ADMIN_URL],
+      ] as const;
+      for (const [key, urlValue] of databaseUrls) {
+        if (!urlValue) continue;
+        for (const issue of databaseTlsIssues(urlValue)) {
+          ctx.addIssue({ code: "custom", path: [key], message: `${key} ${issue}` });
+        }
       }
     }
   });

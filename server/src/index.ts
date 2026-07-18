@@ -1,4 +1,5 @@
 import { buildApp } from "./app.js";
+import { closeAuthDatabase } from "./auth/auth.js";
 import { env } from "./config.js";
 import { closeDatabase } from "./db/pools.js";
 import { getBoss, stopBoss } from "./jobs/boss.js";
@@ -11,9 +12,10 @@ await getBoss();
 const shutdown = async () => {
   await app.close();
   await stopBoss();
+  await closeAuthDatabase();
   await closeDatabase();
 };
-process.on("SIGTERM", () => void shutdown());
-process.on("SIGINT", () => void shutdown());
+process.once("SIGTERM", () => void shutdown());
+process.once("SIGINT", () => void shutdown());
 
 await app.listen({ host: env.HOST, port: env.PORT });

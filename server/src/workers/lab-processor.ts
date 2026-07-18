@@ -9,6 +9,16 @@ function numericValue(value: string): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function canonicalUnit(unit: string): string {
+  return unit.trim().toLowerCase().replace(/\s+/g, "");
+}
+
+export function unitsEquivalent(sourceUnit: string | null | undefined, normalizedUnit: string | null): boolean {
+  if (!normalizedUnit) return true;
+  if (!sourceUnit) return false;
+  return canonicalUnit(sourceUnit) === canonicalUnit(normalizedUnit);
+}
+
 function statusFor(observation: CanonicalObservation, value: number | null): "optimal" | "at_risk" | "needs_attention" {
   const flag = observation.flag?.toUpperCase() ?? "";
   if (["HH", "LL", "CRITICAL", "PANIC"].includes(flag)) return "needs_attention";
@@ -43,14 +53,18 @@ export async function processLabEvent(eventId: string): Promise<void> {
       partner_id: string;
       adapter_type: string;
       source_system: string | null;
+      processing_status: "received" | "processing" | "imported" | "quarantined" | "failed";
     }>(
-      `select e.raw_payload, e.partner_event_id, e.partner_id, p.adapter_type, p.source_system
+      `select e.raw_payload, e.partner_event_id, e.partner_id, e.processing_status,
+              p.adapter_type, p.source_system
        from integration.inbound_events e join integration.lab_partners p on p.id=e.partner_id
        where e.id=$1 for update`,
       [eventId],
     );
-    if (result.rows[0]) await client.query("update integration.inbound_events set processing_status='processing' where id=$1", [eventId]);
-    return result.rows[0];
+    const event = result.rows[0];
+    if (!event || event.processing_status === "imported" || event.processing_status === "quarantined") return null;
+    await client.query("update integration.inbound_events set processing_status='processing' where id=$1", [eventId]);
+    return event;
   });
   if (!source) return;
   const parsed = parseLabPayload(source.adapter_type, source.raw_payload);
@@ -83,10 +97,26 @@ export async function processLabEvent(eventId: string): Promise<void> {
          order by version desc limit 1`,
         [source.partner_id, observation.source_code, observation.unit ?? ""],
       );
-      if (!mapping.rows[0]) {
+      const approved = mapping.rows[0];
+      if (!approved) {
         issues.push({ code: "UNKNOWN_CODE_OR_UNIT", message: `No approved mapping for ${observation.source_code}`, details: { source_code: observation.source_code, unit: observation.unit ?? null } });
+      } else if (!unitsEquivalent(observation.unit, approved.normalized_unit)) {
+        issues.push({
+          code: "UNSAFE_UNIT_MAPPING",
+          message: `Mapping for ${observation.source_code} would relabel a value without converting it`,
+          details: {
+            source_code: observation.source_code,
+            source_unit: observation.unit ?? null,
+            normalized_unit: approved.normalized_unit,
+          },
+        });
       } else {
-        mapped.push({ observation, biomarkerCode: mapping.rows[0].biomarker_code, normalizedUnit: mapping.rows[0].normalized_unit, version: mapping.rows[0].version });
+        mapped.push({
+          observation,
+          biomarkerCode: approved.biomarker_code,
+          normalizedUnit: approved.normalized_unit,
+          version: approved.version,
+        });
       }
     }
     if (issues.length) {
@@ -96,7 +126,10 @@ export async function processLabEvent(eventId: string): Promise<void> {
           [eventId, issue.code, issue.message, JSON.stringify(issue.details)],
         );
       }
-      await client.query("update integration.inbound_events set processing_status='quarantined',processed_at=now(),error_code='UNKNOWN_CODE_OR_UNIT' where id=$1", [eventId]);
+      await client.query(
+        "update integration.inbound_events set processing_status='quarantined',processed_at=now(),error_code=$2 where id=$1",
+        [eventId, issues[0]?.code ?? "VALIDATION_FAILED"],
+      );
       return;
     }
 
