@@ -2,11 +2,18 @@
 set -eu
 
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-APP_ENV="$ROOT_DIR/server/.env.production"
+# Target env file: pass a path (relative to repo root or absolute) as the first
+# argument to target another environment, e.g. server/.env.staging. Defaults to
+# production so existing usage is unchanged.
+TARGET=${1:-server/.env.production}
+case "$TARGET" in
+  /*) APP_ENV="$TARGET" ;;
+  *)  APP_ENV="$ROOT_DIR/$TARGET" ;;
+esac
 DEFAULT_FROM="Verae Health <noreply@veraehealth.com>"
 
 if [ ! -f "$APP_ENV" ]; then
-  echo "Production environment file was not found at $APP_ENV" >&2
+  echo "Environment file was not found at $APP_ENV" >&2
   exit 1
 fi
 

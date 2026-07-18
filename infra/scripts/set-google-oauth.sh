@@ -1,20 +1,38 @@
 #!/usr/bin/env sh
 set -eu
 
+# Usage: set-google-oauth.sh [production|staging]   (defaults to production)
+# Prompts (hidden) for the Google OAuth client ID + secret, writes them into
+# the environment's server env file, and recreates the api container.
 ROOT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
-APP_ENV="$ROOT_DIR/server/.env.production"
-COMPOSE_ENV="$ROOT_DIR/infra/docker/.env.production"
-COMPOSE_FILE="$ROOT_DIR/infra/docker/compose.production.yml"
+ENVIRONMENT=${1:-production}
 
-if [ ! -f "$APP_ENV" ]; then
-  echo "Production environment file was not found at $APP_ENV" >&2
-  exit 1
-fi
+case "$ENVIRONMENT" in
+  production)
+    APP_ENV="$ROOT_DIR/server/.env.production"
+    COMPOSE_ENV="$ROOT_DIR/infra/aws/.env.production"
+    COMPOSE_FILE="$ROOT_DIR/infra/aws/compose.production.yml"
+    ;;
+  staging)
+    APP_ENV="$ROOT_DIR/server/.env.staging"
+    COMPOSE_ENV="$ROOT_DIR/infra/aws/.env.staging"
+    COMPOSE_FILE="$ROOT_DIR/infra/aws/compose.staging.yml"
+    ;;
+  *)
+    echo "Usage: $0 [production|staging]" >&2
+    exit 1
+    ;;
+esac
 
-if [ ! -f "$COMPOSE_ENV" ]; then
-  echo "Production Compose environment file was not found at $COMPOSE_ENV" >&2
-  exit 1
-fi
+for f in "$APP_ENV" "$COMPOSE_ENV" "$COMPOSE_FILE"; do
+  if [ ! -f "$f" ]; then
+    echo "Required file not found: $f" >&2
+    exit 1
+  fi
+done
+
+API_DOMAIN=$(awk -F= '/^API_DOMAIN=/{print $2; exit}' "$COMPOSE_ENV")
+HEALTH_URL="https://${API_DOMAIN}/health/live"
 
 replace_env() {
   key=$1
@@ -66,12 +84,12 @@ chmod 600 "$APP_ENV"
 
 unset client_id client_secret REPLY
 
-sudo docker compose --env-file "$COMPOSE_ENV" -f "$COMPOSE_FILE" up -d --no-deps --force-recreate api
+docker compose --env-file "$COMPOSE_ENV" -f "$COMPOSE_FILE" up -d --no-deps --force-recreate api
 
 attempt=1
 while [ "$attempt" -le 12 ]; do
-  if curl -fsS https://api.veraehealth.com/health/live >/dev/null 2>&1; then
-    echo "Google OAuth configured and the Verae API is healthy."
+  if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
+    echo "Google OAuth configured for $ENVIRONMENT and the API is healthy."
     exit 0
   fi
   sleep 5
