@@ -26,6 +26,9 @@ services:
 
   clamav:
     image: clamav/clamav:1.4
+    # clamav/clamav currently publishes an amd64 image only. Docker Desktop
+    # on Apple Silicon runs it through its built-in emulation for local use.
+    platform: linux/amd64
     ports: ["127.0.0.1:3310:3310"]
     volumes: ["local_clamav:/var/lib/clamav"]
 

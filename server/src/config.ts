@@ -1,9 +1,9 @@
 import "dotenv/config";
 import { z } from "zod";
 
-const boolFromString = z
+const boolFromString = (defaultValue: "true" | "false" = "false") => z
   .enum(["true", "false"])
-  .default("false")
+  .default(defaultValue)
   .transform((value) => value === "true");
 
 const envSchema = z
@@ -31,11 +31,13 @@ const envSchema = z
     S3_SECRET_ACCESS_KEY: z.string().default("verae-local-secret"),
     S3_DOCUMENTS_BUCKET: z.string().default("verae-documents"),
     S3_BACKUPS_BUCKET: z.string().default("verae-backups"),
-    S3_FORCE_PATH_STYLE: boolFromString,
+    // Local MinIO requires path-style bucket URLs. AWS environments set this
+    // explicitly to false in their server environment files.
+    S3_FORCE_PATH_STYLE: boolFromString("true"),
     CLAMAV_HOST: z.string().optional(),
     CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
     PARTNER_CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
-    REQUIRE_STAFF_MFA: boolFromString,
+    REQUIRE_STAFF_MFA: boolFromString(),
     LAB_TIMESTAMP_TOLERANCE_SECONDS: z.coerce.number().int().positive().default(300),
     LAB_MAX_BODY_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     BOOTSTRAP_ADMIN_TOKEN: z.string().min(32).optional(),
