@@ -137,6 +137,7 @@
 .adm-upload select,
 .adm-upload input,
 .adm-assign-controls select,
+.adm-consult-fields input,
 .adm-bio-grid input,
 .adm-bio-grid select,
 .adm-new-report input,
@@ -156,12 +157,32 @@
 .adm-upload select:focus-visible,
 .adm-upload input:focus-visible,
 .adm-assign-controls select:focus-visible,
+.adm-consult-fields input:focus-visible,
 .adm-bio-grid input:focus-visible,
 .adm-bio-grid select:focus-visible,
 .adm-new-report input:focus-visible,
 .adm-new-report select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 0;
+}
+
+.adm-consult-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.adm-consult-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 220px;
+}
+
+.adm-consult-fields label span {
+  font-size: var(--adm-text-sm);
+  color: var(--muted);
 }
 
 .adm-search::placeholder {

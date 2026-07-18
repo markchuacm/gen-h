@@ -31,7 +31,28 @@ export type DoctorCaseDetail = {
   /** Whether any released biomarker results exist — decides whether the case
       opens the panel builder (order) or the results view (review). */
   hasResults: boolean;
+  /** The member's scheduled teleconsult, if the admin has booked one. */
+  appointment: { scheduled_at: string; meeting_url: string | null } | null;
 };
+
+export type DoctorAppointment = {
+  id: string;
+  memberId: string;
+  memberName: string | null;
+  scheduledAt: string;
+  durationMinutes: number;
+  meetingUrl: string | null;
+};
+
+/** Upcoming consults across the signed-in doctor's assigned members. */
+export async function fetchDoctorAppointments(): Promise<{ data: DoctorAppointment[]; error: string | null }> {
+  try {
+    const { data } = await apiRequest<{ data: DoctorAppointment[] }>("/v1/doctor/appointments");
+    return { data, error: null };
+  } catch (error) {
+    return { data: [], error: apiError(error) };
+  }
+}
 
 /** Everything a doctor needs to review an assigned case. Each query is RLS-gated
     on is_doctor_of, so an unassigned member returns nothing. */

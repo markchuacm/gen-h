@@ -2,6 +2,13 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { actor, requireRoles } from "../auth/guards.js";
 import { withActor } from "../db/pools.js";
+import { scheduleConsultEmails } from "../services/appointments.js";
+
+const appointmentSchema = z.object({
+  scheduledAt: z.iso.datetime(),
+  durationMinutes: z.number().int().min(5).max(240).default(30),
+  meetingUrl: z.string().regex(/^https:\/\/meet\.google\.com\/.+/, "must be a Google Meet URL").nullable().optional(),
+});
 
 const biomarkerSchema = z.object({
   biomarker_code: z.string().min(1).max(100),
@@ -40,6 +47,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
                      when exists(select 1 from app.lab_reports lr where lr.member_id = p.id) then 'draft' else 'none' end as "resultsStatus",
                 case when exists(select 1 from app.care_plans cp where cp.member_id = p.id and cp.status = 'released') then 'released'
                      when exists(select 1 from app.care_plans cp where cp.member_id = p.id) then 'draft' else 'none' end as "carePlanStatus",
+                exists(select 1 from app.appointments ap where ap.member_id = p.id and ap.status = 'scheduled') as "hasAppointment",
                 greatest(p.updated_at, m.updated_at) as "updatedAt"
          from app.profiles p
          join app.member_profiles m on m.member_id = p.id
@@ -51,6 +59,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         let nextAction = "Complete health profile";
         let nextOwner: "admin" | "member" | "doctor" | "done" = "member";
         if (row.onboardingStatus === "completed" && !row.doctorId) [nextAction, nextOwner] = ["Assign a doctor", "admin"];
+        else if (row.currentStage === "consult_upcoming" && !row.hasAppointment) [nextAction, nextOwner] = ["Schedule teleconsult", "admin"];
         else if (row.currentStage === "consult_upcoming") [nextAction, nextOwner] = ["Prepare blood panel", "doctor"];
         else if (row.currentStage === "blood_form_ready") [nextAction, nextOwner] = ["Complete blood draw", "member"];
         else if (row.resultsStatus === "draft") [nextAction, nextOwner] = ["Review and release results", "admin"];
@@ -286,6 +295,11 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         "insert into app.doctor_assignments (member_id, doctor_id, assigned_by) values ($1,$2,$3)",
         [body.memberId, body.doctorId, current.userId],
       );
+      // Carry any already-scheduled consult over to the new doctor.
+      await client.query(
+        "update app.appointments set doctor_id = $2 where member_id = $1 and status = 'scheduled'",
+        [body.memberId, body.doctorId],
+      );
       return { ok: true };
     });
   });
@@ -317,6 +331,77 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     return withActor(current, async (client) => {
       await client.query("update app.member_profiles set current_stage=$2 where member_id=$1", [request.params.memberId, body.stage]);
       return { ok: true };
+    });
+  });
+
+  app.get<{ Params: { memberId: string } }>("/v1/admin/members/:memberId/appointment", { preHandler: adminOnly }, async (request) => {
+    const current = actor(request);
+    return withActor(current, async (client) => {
+      const result = await client.query(
+        `select a.id, a.member_id as "memberId", a.doctor_id as "doctorId", d.full_name as "doctorName",
+                a.scheduled_at as "scheduledAt", a.duration_minutes as "durationMinutes",
+                a.meeting_url as "meetingUrl", a.status
+         from app.appointments a join app.profiles d on d.id = a.doctor_id
+         where a.member_id = $1 and a.status = 'scheduled' limit 1`,
+        [request.params.memberId],
+      );
+      return { data: result.rows[0] ?? null };
+    });
+  });
+
+  app.put<{ Params: { memberId: string } }>("/v1/admin/members/:memberId/appointment", { preHandler: adminOnly }, async (request, reply) => {
+    const current = actor(request);
+    const body = appointmentSchema.parse(request.body);
+    const scheduledAt = new Date(body.scheduledAt);
+    if (scheduledAt.getTime() <= Date.now()) return reply.code(400).send({ error: "scheduled_at_in_past" });
+    const memberId = request.params.memberId;
+    const meetingUrl = body.meetingUrl ?? null;
+    const outcome = await withActor(current, async (client) => {
+      const assignment = await client.query<{ doctor_id: string }>(
+        "select doctor_id from app.doctor_assignments where member_id = $1 and status = 'active' limit 1",
+        [memberId],
+      );
+      const doctorId = assignment.rows[0]?.doctor_id;
+      if (!doctorId) return { error: "no_active_doctor" as const };
+
+      const existing = await client.query<{ id: string; scheduled_at: Date }>(
+        "select id, scheduled_at from app.appointments where member_id = $1 and status = 'scheduled' for update",
+        [memberId],
+      );
+      let id: string;
+      if (existing.rows[0]) {
+        id = existing.rows[0].id;
+        await client.query(
+          "update app.appointments set scheduled_at = $2, duration_minutes = $3, meeting_url = $4, doctor_id = $5 where id = $1",
+          [id, scheduledAt.toISOString(), body.durationMinutes, meetingUrl, doctorId],
+        );
+      } else {
+        const inserted = await client.query<{ id: string }>(
+          `insert into app.appointments (member_id, doctor_id, scheduled_at, duration_minutes, meeting_url, created_by)
+           values ($1, $2, $3, $4, $5, $6) returning id`,
+          [memberId, doctorId, scheduledAt.toISOString(), body.durationMinutes, meetingUrl, current.userId],
+        );
+        id = inserted.rows[0]!.id;
+      }
+      // Only (re)send emails when the time actually moved. A pure meeting-URL
+      // edit needs nothing new: already-queued reminders re-read the URL at send.
+      const timeChanged = !existing.rows[0] || existing.rows[0].scheduled_at.toISOString() !== scheduledAt.toISOString();
+      return { id, timeChanged };
+    });
+
+    if ("error" in outcome) return reply.code(409).send({ error: outcome.error });
+    if (outcome.timeChanged) await scheduleConsultEmails(outcome.id, scheduledAt);
+    return reply.send({ ok: true, id: outcome.id });
+  });
+
+  app.delete<{ Params: { memberId: string } }>("/v1/admin/members/:memberId/appointment", { preHandler: adminOnly }, async (request) => {
+    const current = actor(request);
+    return withActor(current, async (client) => {
+      const cancelled = await client.query(
+        "update app.appointments set status = 'cancelled', cancelled_at = now() where member_id = $1 and status = 'scheduled'",
+        [request.params.memberId],
+      );
+      return { cancelled: cancelled.rowCount === 1 };
     });
   });
 

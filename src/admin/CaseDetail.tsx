@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   assignDoctor,
+  cancelAppointment,
   deactivateAssignment,
+  fetchAdminAppointment,
   fetchAdminCaseDetail,
   fetchAdminDoctors,
   fetchAdminLabReports,
+  scheduleAppointment,
   setStage,
   setAccountStatus,
   STAGE_LABELS,
   STAGE_OPTIONS,
   uploadDocumentForMember,
 } from "../lib/api/admin";
-import type { AdminCaseDetail, AdminDoctorRow, AdminLabReport } from "../lib/api/admin";
+import type { AdminAppointment, AdminCaseDetail, AdminDoctorRow, AdminLabReport } from "../lib/api/admin";
+import { formatConsultDate, formatConsultTime } from "../lib/api/appointments";
 import { createDocumentSignedUrl } from "../lib/api/healthDocuments";
 import { CLEAR_ANSWERS, lifestyleConcerns, toAnswers } from "../doctor/caseSignals";
 import LabResultsSection from "./LabResultsSection";
@@ -23,6 +27,26 @@ const DOC_TYPES = [
   { value: "other_tests", label: "Other tests" },
   { value: "other", label: "Other" },
 ];
+
+const MEET_URL_PATTERN = /^https:\/\/meet\.google\.com\/.+/;
+
+// Malaysia observes a fixed UTC+08:00 offset year-round, so a datetime-local
+// value (wall-clock, no zone) can be pinned to KL time regardless of the admin's
+// own browser timezone.
+function klInputToIso(value: string): string {
+  return new Date(`${value}:00+08:00`).toISOString();
+}
+
+function isoToKlInput(iso: string): string {
+  const date = new Date(iso);
+  const day = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kuala_Lumpur", year: "numeric", month: "2-digit", day: "2-digit",
+  }).format(date);
+  const time = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Kuala_Lumpur", hour: "2-digit", minute: "2-digit", hour12: false,
+  }).format(date);
+  return `${day}T${time}`;
+}
 
 function TagGroup({
   label,
@@ -52,19 +76,28 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const [detail, setDetail] = useState<AdminCaseDetail | null>(null);
   const [reports, setReports] = useState<AdminLabReport[]>([]);
   const [doctors, setDoctors] = useState<AdminDoctorRow[]>([]);
+  const [appointment, setAppointment] = useState<AdminAppointment | null>(null);
+  const [consultAt, setConsultAt] = useState("");
+  const [consultUrl, setConsultUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [docType, setDocType] = useState(DOC_TYPES[0].value);
 
   const reload = useCallback(async () => {
-    const [d, r] = await Promise.all([
+    const [d, r, a] = await Promise.all([
       fetchAdminCaseDetail(memberId),
       fetchAdminLabReports(memberId),
+      fetchAdminAppointment(memberId),
     ]);
     if (d.error) setError(d.error);
     else setDetail(d.data);
     if (!r.error) setReports(r.data ?? []);
+    if (!a.error) {
+      setAppointment(a.data);
+      setConsultAt(a.data ? isoToKlInput(a.data.scheduledAt) : "");
+      setConsultUrl(a.data?.meetingUrl ?? "");
+    }
   }, [memberId]);
 
   useEffect(() => {
@@ -122,6 +155,34 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const onUnassign = async () => {
     setBusy(true);
     const { error: err } = await deactivateAssignment(memberId);
+    if (err) setError(err);
+    else await reload();
+    setBusy(false);
+  };
+
+  const onScheduleConsult = async () => {
+    if (!consultAt) return;
+    const iso = klInputToIso(consultAt);
+    if (new Date(iso).getTime() <= Date.now()) {
+      setError("Pick a consult time in the future.");
+      return;
+    }
+    const meetingUrl = consultUrl.trim() || null;
+    if (meetingUrl && !MEET_URL_PATTERN.test(meetingUrl)) {
+      setError("The meeting link must be a Google Meet URL (https://meet.google.com/…).");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const { error: err } = await scheduleAppointment(memberId, { scheduledAt: iso, meetingUrl });
+    if (err) setError(err === "no_active_doctor" ? "Assign a doctor before scheduling." : err);
+    else await reload();
+    setBusy(false);
+  };
+
+  const onCancelConsult = async () => {
+    setBusy(true);
+    const { error: err } = await cancelAppointment(memberId);
     if (err) setError(err);
     else await reload();
     setBusy(false);
@@ -387,6 +448,62 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
             </button>
           )}
         </div>
+      </div>
+
+      <div className="adm-card">
+        <h2>Teleconsult</h2>
+        <p className="adm-assign-current">
+          {appointment ? (
+            <>
+              Scheduled: <strong>{formatConsultDate(appointment.scheduledAt)} at {formatConsultTime(appointment.scheduledAt)}</strong>
+              {appointment.doctorName ? <> with {appointment.doctorName}</> : null}
+              {appointment.meetingUrl ? (
+                <> · <a href={appointment.meetingUrl} target="_blank" rel="noopener noreferrer">Meet link</a></>
+              ) : (
+                <> · <span className="adm-warn">no meeting link yet</span></>
+              )}
+            </>
+          ) : (
+            <span className="adm-warn">Not scheduled</span>
+          )}
+        </p>
+        {!detail.doctorId ? (
+          <p className="adm-hint">Assign a doctor first to schedule a consult.</p>
+        ) : (
+          <>
+            <div className="adm-consult-fields">
+              <label>
+                <span>Date &amp; time (Malaysia time)</span>
+                <input
+                  type="datetime-local"
+                  value={consultAt}
+                  disabled={busy}
+                  onChange={(e) => setConsultAt(e.target.value)}
+                />
+              </label>
+              <label>
+                <span>Google Meet link (optional)</span>
+                <input
+                  type="url"
+                  placeholder="https://meet.google.com/xxx-xxxx-xxx"
+                  value={consultUrl}
+                  disabled={busy}
+                  onChange={(e) => setConsultUrl(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="adm-assign-controls">
+              <button type="button" className="adm-btn" disabled={busy || !consultAt} onClick={() => void onScheduleConsult()}>
+                {appointment ? "Reschedule" : "Schedule"}
+              </button>
+              {appointment && (
+                <button type="button" className="adm-btn-ghost" disabled={busy} onClick={() => void onCancelConsult()}>
+                  Cancel consult
+                </button>
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="adm-card">

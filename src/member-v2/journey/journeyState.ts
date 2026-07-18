@@ -1,6 +1,7 @@
 // Journey-state config for the v2 Home screen. Content adapted from the
 // earlier member portal and owned here by v2.
 
+import { formatConsultDate, formatConsultTime } from "../../lib/api/appointments";
 import heroProfileImage from "../../../assets/dashboard/health-profile-hero.png";
 import heroConsultImage from "../../../assets/dashboard/pre-consult-hero.png";
 import heroBloodFormImage from "../../../assets/dashboard/blood-test-form-hero.png";
@@ -38,6 +39,7 @@ export type Step = {
 export type HeroAction =
   | { kind: "tab"; tab: MemberTab }
   | { kind: "profileFlow" }
+  | { kind: "link"; url: string }
   | { kind: "none" };
 
 export type ConsultCardData = {
@@ -49,6 +51,7 @@ export type ConsultCardData = {
   time: string;
   location: string;
   primaryCta: string;
+  meetingUrl?: string | null;
 };
 
 export type BloodDrawCardData = {
@@ -95,8 +98,12 @@ export type JourneyStateConfig = {
     titleEm?: string;
     titleAfter?: string;
     body: string;
-    primaryCta: string;
+    primaryCta?: string;
     primaryAction: HeroAction;
+    // Rendered but non-actionable — e.g. a scheduled consult whose join link
+    // has not been added yet. `primaryHint` becomes the button's tooltip.
+    primaryDisabled?: boolean;
+    primaryHint?: string;
     secondaryCta?: string;
     image: string;
   };
@@ -105,15 +112,18 @@ export type JourneyStateConfig = {
   contextCard: ContextCardData;
 };
 
+// Placeholder shown until the admin schedules the consult. resolveJourneyConfig
+// swaps in the real doctor, date, time, and join link once an appointment exists.
 const CONSULT_CARD: ConsultCardData = {
   type: "consult",
-  doctorName: "Dr. Lim Wen Qi",
-  doctorRole: "Functional Medicine Physician",
-  doctorInitials: "LW",
-  date: "3 July 2026 (Fri)",
-  time: "10:00 AM",
-  location: "Online (Teleconsult)",
+  doctorName: "Your Verae doctor",
+  doctorRole: "Verae physician",
+  doctorInitials: "V",
+  date: "To be confirmed",
+  time: "—",
+  location: "Online (Google Meet)",
   primaryCta: "View consult details",
+  meetingUrl: null,
 };
 
 export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
@@ -152,10 +162,9 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     greetingPrefix: "Welcome back",
     hero: {
       pill: "Upcoming consult",
-      titleBefore: "Get ready for ",
+      titleBefore: "We're scheduling ",
       titleEm: "your consult",
-      body: "Meet Dr. Lim Wen Qi on 3 July 2026 (Fri) at 10:00 AM.",
-      primaryCta: "Join consult",
+      body: "We're finding the right time for your consult — we'll email you once it's booked.",
       primaryAction: { kind: "none" },
       secondaryCta: "View consult details",
       image: heroConsultImage,
@@ -171,7 +180,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       title: "Before your consult",
       body: "Review your goals, symptoms and questions before meeting your doctor.",
     },
-    contextCard: { ...CONSULT_CARD, primaryCta: "Join consult" },
+    contextCard: CONSULT_CARD,
   },
   BLOOD_FORM_READY: {
     id: "BLOOD_FORM_READY",
@@ -324,3 +333,62 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
 };
 
 export const JOURNEY_STATE_IDS = Object.keys(JOURNEY_STATES) as JourneyStateId[];
+
+/** The fields resolveJourneyConfig needs from a scheduled appointment. */
+export type AppointmentForJourney = {
+  doctor_name: string | null;
+  scheduled_at: string;
+  meeting_url: string | null;
+};
+
+function initialsFrom(name: string): string {
+  const words = name.replace(/^dr\.?\s+/i, "").trim().split(/\s+/).filter(Boolean);
+  const initials = words.slice(0, 2).map((word) => word[0]!.toUpperCase()).join("");
+  return initials || "V";
+}
+
+/**
+ * The static JOURNEY_STATES config, with the consult-upcoming state filled in
+ * from the member's real appointment when one exists. Every other state is
+ * returned unchanged. Without an appointment the consult state stays in its
+ * "we're scheduling your consult" placeholder form.
+ */
+export function resolveJourneyConfig(
+  id: JourneyStateId,
+  appointment: AppointmentForJourney | null,
+): JourneyStateConfig {
+  const base = JOURNEY_STATES[id];
+  if (id !== "CONSULT_UPCOMING" || !appointment) return base;
+
+  const doctorName = appointment.doctor_name?.trim() || "your Verae doctor";
+  const date = formatConsultDate(appointment.scheduled_at);
+  const time = formatConsultTime(appointment.scheduled_at);
+  const meetingUrl = appointment.meeting_url;
+
+  return {
+    ...base,
+    hero: {
+      ...base.hero,
+      titleBefore: "Get ready for ",
+      titleEm: "your consult",
+      titleAfter: undefined,
+      body: `Meet ${doctorName} on ${date} at ${time}.`,
+      primaryCta: "Join consult",
+      primaryAction: meetingUrl ? { kind: "link", url: meetingUrl } : { kind: "none" },
+      primaryDisabled: !meetingUrl,
+      primaryHint: meetingUrl ? undefined : "Your join link will appear here soon",
+      secondaryCta: "View consult details",
+    },
+    contextCard: {
+      type: "consult",
+      doctorName,
+      doctorRole: "Verae physician",
+      doctorInitials: initialsFrom(doctorName),
+      date,
+      time,
+      location: "Online (Google Meet)",
+      primaryCta: "Join consult",
+      meetingUrl,
+    },
+  };
+}

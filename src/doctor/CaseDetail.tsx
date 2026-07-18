@@ -94,15 +94,30 @@ function CaseDetail({
                   stage belongs up here. */}
               <p className="doc-sub">{stageLabel(detail.stage)}</p>
             </div>
-            {detail.hasResults ? (
-              <button type="button" className="p-btn" onClick={() => setView("results")}>
-                View results
-              </button>
-            ) : (
-              <button type="button" className="p-btn" onClick={() => setView("panel")}>
-                Order blood panel
-              </button>
-            )}
+            <div className="doc-head-actions">
+              {detail.appointment && (
+                <button
+                  type="button"
+                  className="p-btn-ghost"
+                  disabled={!detail.appointment.meeting_url}
+                  title={detail.appointment.meeting_url ? undefined : "The join link hasn't been added yet"}
+                  onClick={() => {
+                    if (detail.appointment?.meeting_url) window.open(detail.appointment.meeting_url, "_blank", "noopener");
+                  }}
+                >
+                  Join consult
+                </button>
+              )}
+              {detail.hasResults ? (
+                <button type="button" className="p-btn" onClick={() => setView("results")}>
+                  View results
+                </button>
+              ) : (
+                <button type="button" className="p-btn" onClick={() => setView("panel")}>
+                  Order blood panel
+                </button>
+              )}
+            </div>
           </header>
 
           <CaseBrief detail={detail} />

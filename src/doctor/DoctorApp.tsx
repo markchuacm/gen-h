@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { Video } from "lucide-react";
 import { useAuth } from "../auth/AuthProvider";
-import { fetchDoctorCases } from "../lib/api/doctor";
-import type { DoctorCase } from "../lib/api/doctor";
+import { fetchDoctorAppointments, fetchDoctorCases } from "../lib/api/doctor";
+import type { DoctorAppointment, DoctorCase } from "../lib/api/doctor";
+import { formatConsultDate, formatConsultTime } from "../lib/api/appointments";
 import CaseDetail from "./CaseDetail";
 import DoctorNav from "./DoctorNav";
 import { STAGE_LABELS } from "./stageLabels";
@@ -11,6 +13,7 @@ import "./doctor.css";
 function DoctorApp() {
   const { profile } = useAuth();
   const [cases, setCases] = useState<DoctorCase[] | null>(null);
+  const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [openMemberId, setOpenMemberId] = useState<string | null>(null);
 
@@ -19,6 +22,7 @@ function DoctorApp() {
       if (err) setError(err);
       else setCases(data);
     });
+    fetchDoctorAppointments().then(({ data }) => setAppointments(data));
   }, []);
 
   if (openMemberId) {
@@ -52,6 +56,34 @@ function DoctorApp() {
         </header>
 
         {error && <p role="alert" className="doc-error">Couldn't load cases ({error}).</p>}
+
+        {appointments.length > 0 && (
+          <section className="doc-consults" aria-label="Upcoming consults">
+            <h2 className="p-eyebrow">Upcoming consults</h2>
+            <ul className="doc-consult-list">
+              {appointments.map((appt) => (
+                <li key={appt.id} className="doc-consult">
+                  <button type="button" className="doc-consult-main" onClick={() => setOpenMemberId(appt.memberId)}>
+                    <strong>{appt.memberName ?? "Member"}</strong>
+                    <span>{formatConsultDate(appt.scheduledAt)} · {formatConsultTime(appt.scheduledAt)}</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="p-btn-ghost doc-consult-join"
+                    disabled={!appt.meetingUrl}
+                    title={appt.meetingUrl ? undefined : "The join link hasn't been added yet"}
+                    onClick={() => {
+                      if (appt.meetingUrl) window.open(appt.meetingUrl, "_blank", "noopener");
+                    }}
+                  >
+                    <Video strokeWidth={1.7} aria-hidden="true" />
+                    Join
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {cases === null && !error && <p className="doc-muted">Loading cases…</p>}
 
