@@ -118,6 +118,17 @@
   flex-wrap: wrap;
 }
 
+.adm-page-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.adm-member-name .adm-pill {
+  margin-left: 8px;
+}
+
 .adm-page-head .p-eyebrow,
 .adm-case-head .p-eyebrow {
   margin-bottom: 14px;
@@ -980,6 +991,75 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+/* ── Add-patient / invite ────────────────────────────────────────────────── */
+
+.adm-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.92rem;
+  color: var(--muted);
+}
+
+.adm-field input,
+.adm-field select {
+  font: inherit;
+  font-size: var(--adm-text-md);
+  color: var(--ink);
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+}
+
+.adm-field input:focus-visible,
+.adm-field select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+}
+
+.adm-invite-reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.adm-invite-code {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 14px;
+  background: var(--adm-fill);
+}
+
+.adm-invite-code > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.adm-invite-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.adm-invite-code code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.05rem;
+  color: var(--ink);
+  word-break: break-all;
+}
+
+.adm-invite-status {
+  font-weight: 600;
+}
+
+.adm-invite-status.is-expired {
+  color: #b3261e;
 }
 
 .adm-ing-check {

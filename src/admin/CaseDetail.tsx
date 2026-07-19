@@ -7,14 +7,15 @@ import {
   fetchAdminCaseDetail,
   fetchAdminDoctors,
   fetchAdminLabReports,
+  resetInvite,
   scheduleAppointment,
   setStage,
-  setAccountStatus,
   STAGE_LABELS,
   STAGE_OPTIONS,
   uploadDocumentForMember,
 } from "../lib/api/admin";
 import type { AdminAppointment, AdminCaseDetail, AdminDoctorRow, AdminLabReport } from "../lib/api/admin";
+import InviteReveal from "./InviteReveal";
 import { formatConsultDate, formatConsultTime } from "../lib/api/appointments";
 import { createDocumentSignedUrl } from "../lib/api/healthDocuments";
 import { CLEAR_ANSWERS, lifestyleConcerns, toAnswers } from "../doctor/caseSignals";
@@ -81,6 +82,7 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const [consultUrl, setConsultUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [invite, setInvite] = useState<{ tempPassword: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [docType, setDocType] = useState(DOC_TYPES[0].value);
 
@@ -135,11 +137,13 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
     setBusy(false);
   };
 
-  const onAccountStatusChange = async (accountStatus: "active" | "suspended") => {
+  const onResetInvite = async () => {
     setBusy(true);
-    const { error: err } = await setAccountStatus(memberId, accountStatus);
+    setError(null);
+    const { data, error: err } = await resetInvite(memberId);
     if (err) setError(err);
-    else await reload();
+    else if (data) setInvite({ tempPassword: data.tempPassword });
+    await reload();
     setBusy(false);
   };
 
@@ -207,6 +211,12 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
 
   const activeDoctors = doctors.filter((d) => d.isActive);
 
+  // Setup not done + a temp-password window that has lapsed = expired invite.
+  const inviteExpired =
+    !detail.setupCompletedAt &&
+    !!detail.tempPasswordExpiresAt &&
+    new Date(detail.tempPasswordExpiresAt).getTime() < Date.now();
+
   const hasOnboarding = Object.keys(detail.onboarding).length > 0;
   const answers = hasOnboarding ? toAnswers(detail.onboarding) : null;
   const concerns = answers ? lifestyleConcerns(answers) : new Set<string>();
@@ -261,13 +271,45 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
         </label>
       </header>
 
-      {detail.accountStatus !== "active" && (
+      {!detail.setupCompletedAt && (
         <div className="adm-card">
-          <h2>Account activation</h2>
-          <p className="adm-muted">Confirm the member's Verae invitation or order before granting portal access.</p>
-          <button type="button" className="adm-btn" disabled={busy} onClick={() => void onAccountStatusChange("active")}>
-            Activate member account
-          </button>
+          <h2>Portal invite</h2>
+          <p className="adm-muted">
+            The member hasn't finished setting up their portal yet. Share their temporary password to let them
+            sign in.
+          </p>
+          <div className="adm-facts">
+            {detail.phone && (
+              <div className="adm-fact"><span>Phone</span><strong>{detail.phone}</strong></div>
+            )}
+            {detail.invitedAt && (
+              <div className="adm-fact">
+                <span>Invited</span>
+                <strong>{formatConsultDate(detail.invitedAt)}</strong>
+              </div>
+            )}
+            <div className="adm-fact">
+              <span>Status</span>
+              {inviteExpired ? (
+                <strong className="adm-invite-status is-expired">Invite expired</strong>
+              ) : detail.tempPasswordExpiresAt ? (
+                <strong className="adm-invite-status">Valid until {formatConsultDate(detail.tempPasswordExpiresAt)}</strong>
+              ) : (
+                <strong className="adm-invite-status">Password already set</strong>
+              )}
+            </div>
+          </div>
+          {invite ? (
+            <InviteReveal
+              email={detail.memberEmail ?? ""}
+              tempPassword={invite.tempPassword}
+              fullName={detail.memberName}
+            />
+          ) : (
+            <button type="button" className="adm-btn" disabled={busy} onClick={() => void onResetInvite()}>
+              Generate new temporary password
+            </button>
+          )}
         </div>
       )}
 

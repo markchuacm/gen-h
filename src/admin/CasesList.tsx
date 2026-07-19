@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAdminCases, STAGE_LABELS } from "../lib/api/admin";
 import type { AdminCaseRow } from "../lib/api/admin";
+import AddPatientModal from "./AddPatientModal";
 
 type FilterKey =
   | "all"
@@ -33,13 +34,17 @@ function CasesList({ onOpen }: { onOpen: (memberId: string) => void }) {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
+
+  const reload = useCallback(async () => {
+    const { data, error: err } = await fetchAdminCases();
+    if (err) setError(err);
+    else setCases(data);
+  }, []);
 
   useEffect(() => {
-    fetchAdminCases().then(({ data, error: err }) => {
-      if (err) setError(err);
-      else setCases(data);
-    });
-  }, []);
+    void reload();
+  }, [reload]);
 
   const activeTest = FILTERS.find((f) => f.key === filter)!.test;
 
@@ -67,14 +72,26 @@ function CasesList({ onOpen }: { onOpen: (memberId: string) => void }) {
           <p className="p-eyebrow">Admin · Cases</p>
           <h1 className="p-h1">Member cases</h1>
         </div>
-        <input
-          className="adm-search"
-          type="search"
-          placeholder="Search name or email…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+        <div className="adm-page-head-actions">
+          <input
+            className="adm-search"
+            type="search"
+            placeholder="Search name or email…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <button type="button" className="adm-btn" onClick={() => setAddOpen(true)}>
+            Add patient
+          </button>
+        </div>
       </div>
+
+      {addOpen && (
+        <AddPatientModal
+          onClose={() => setAddOpen(false)}
+          onCreated={reload}
+        />
+      )}
 
       <div className="adm-filters" role="tablist" aria-label="Filter cases">
         {FILTERS.map((f) => (
@@ -115,7 +132,10 @@ function CasesList({ onOpen }: { onOpen: (memberId: string) => void }) {
                 <tr key={c.memberId} onClick={() => onOpen(c.memberId)} tabIndex={0}
                     onKeyDown={(e) => e.key === "Enter" && onOpen(c.memberId)}>
                   <td>
-                    <span className="adm-member-name">{c.fullName ?? "—"}</span>
+                    <span className="adm-member-name">
+                      {c.fullName ?? "—"}
+                      {c.accountStatus === "pending" && <span className="adm-pill adm-pill-draft">Invited</span>}
+                    </span>
                     <span className="adm-member-email">{c.email}</span>
                   </td>
                   <td>{STAGE_LABELS[c.currentStage ?? ""] ?? c.currentStage ?? "—"}</td>

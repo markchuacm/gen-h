@@ -74,6 +74,10 @@ export type AdminCaseDetail = {
   preferredName: string | null;
   currentStage: string | null;
   onboardingStatus: string | null;
+  phone: string | null;
+  invitedAt: string | null;
+  tempPasswordExpiresAt: string | null;
+  setupCompletedAt: string | null;
   onboarding: Record<string, unknown>;
   documents: AdminDocument[];
   doctorId: string | null;
@@ -94,6 +98,43 @@ export async function fetchAdminCaseDetail(memberId: string): Promise<{
     return await apiRequest<{ data: AdminCaseDetail | null }>(
       `/v1/admin/cases/${encodeURIComponent(memberId)}`,
     ).then(({ data }) => ({ data, error: null }));
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
+}
+
+// ---- Patient invites -----------------------------------------------------
+
+export type InviteResult = { memberId: string; tempPassword: string; expiresAt: string };
+
+/** Create an invited patient account. Returns the one-time temp password. */
+export async function createPatient(input: {
+  fullName: string;
+  email: string;
+  phone: string;
+  doctorId?: string;
+}): Promise<{ data: InviteResult | null; error: string | null }> {
+  try {
+    const { data } = await apiRequest<{ data: InviteResult }>("/v1/admin/patients", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
+}
+
+/** Issue a fresh temporary password for a member who hasn't finished setup. */
+export async function resetInvite(
+  memberId: string,
+): Promise<{ data: { tempPassword: string; expiresAt: string } | null; error: string | null }> {
+  try {
+    const { data } = await apiRequest<{ data: { tempPassword: string; expiresAt: string } }>(
+      `/v1/admin/patients/${encodeURIComponent(memberId)}/reset-invite`,
+      { method: "POST" },
+    );
+    return { data, error: null };
   } catch (error) {
     return { data: null, error: apiError(error) };
   }

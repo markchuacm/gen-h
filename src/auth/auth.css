@@ -190,6 +190,28 @@
   text-align: center;
 }
 
+.auth-switch-trigger {
+  cursor: pointer;
+}
+
+/* The hint keeps its place in the layout and only fades in, so revealing it
+   never resizes the card. One tight line keeps the reserved space unobtrusive. */
+.auth-switch-hint {
+  margin-top: 7px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--muted);
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.32s var(--ease-ui), transform 0.32s var(--ease-ui);
+  pointer-events: none;
+}
+
+.auth-switch-hint.is-open {
+  opacity: 1;
+  transform: none;
+}
+
 .auth-link {
   color: var(--accent);
   font-size: inherit;

@@ -1,0 +1,77 @@
+/* First-login setup wizard — builds on auth.css primitives. */
+
+.setup-steps {
+  font-size: 0.78rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: -6px;
+}
+
+.setup-callback-error {
+  width: min(420px, 100%);
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.setup-otp-input {
+  letter-spacing: 0.5em;
+  text-align: center;
+  font-size: 1.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.setup-consent-card {
+  width: min(520px, 100%);
+}
+
+.setup-consent-doc {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--cream);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.setup-consent-doc:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.setup-consent-heading {
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.setup-consent-section h3 {
+  font-size: 0.9rem;
+  color: var(--ink);
+  margin-bottom: 2px;
+}
+
+.setup-consent-section p {
+  font-size: 0.86rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.setup-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.setup-check input {
+  margin-top: 2px;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}

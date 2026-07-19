@@ -7,6 +7,7 @@ type AccountEmail = {
   to: string;
   subject: string;
   text: string;
+  html?: string;
 };
 
 export async function sendAccountEmail(message: AccountEmail): Promise<void> {
