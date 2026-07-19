@@ -25,7 +25,12 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     return withActor(current, async (client) => {
       const result = await client.query(
         `select p.id, p.role, p.email, p.full_name, p.avatar_url, p.account_status,
-                p.setup_completed_at, p.password_set_at, p.email_verified_at, p.temp_password_expires_at
+                p.setup_completed_at, p.password_set_at, p.email_verified_at, p.temp_password_expires_at,
+                (select c.signature_name
+                   from app.member_consents c
+                  where c.member_id = p.id
+                  order by c.accepted_at desc
+                  limit 1) as consent_name
          from app.profiles p where p.id = $1`,
         [current.userId],
       );
@@ -69,6 +74,7 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
           role: profile.role,
           email: profile.email,
           full_name: profile.full_name,
+          consent_name: profile.consent_name,
           avatar_url: profile.avatar_url,
           account_status: profile.account_status,
           email_verified: current.emailVerified,
