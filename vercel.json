@@ -1,6 +1,11 @@
 {
   "redirects": [
     {
+      "source": "/member.html",
+      "destination": "/member",
+      "permanent": true
+    },
+    {
       "source": "/",
       "has": [{ "type": "host", "value": "app.veraehealth.com" }],
       "destination": "/member",
