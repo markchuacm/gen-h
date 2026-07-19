@@ -62,7 +62,10 @@ COMPOSE="docker compose --env-file $ENV_FILE -f $COMPOSE_FILE"
 # shellcheck disable=SC2087
 ssh "$TARGET" "set -eu
   cd $REMOTE_DIR
-  $COMPOSE build api worker
+  # `tools` has its own Compose build target. Rebuild it alongside the long-
+  # running services so migrations from the release being deployed are present
+  # when the one-off migration command runs.
+  $COMPOSE build api worker tools
   $COMPOSE --profile tools run --rm tools
   $COMPOSE up -d
   $COMPOSE ps"
