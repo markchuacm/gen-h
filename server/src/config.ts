@@ -60,6 +60,9 @@ const envSchema = z
     LAB_TIMESTAMP_TOLERANCE_SECONDS: z.coerce.number().int().positive().default(300),
     LAB_MAX_BODY_BYTES: z.coerce.number().int().positive().default(5 * 1024 * 1024),
     BOOTSTRAP_ADMIN_TOKEN: z.string().min(32).optional(),
+    // Hash only: generate interactively with `pnpm --filter @verae/api developer:password`.
+    // When omitted, developer mode remains unavailable.
+    DEVELOPER_MODE_PASSWORD_HASH: z.string().regex(/^[a-f0-9]+:[a-f0-9]+$/).optional(),
     LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
   })
   .superRefine((value, ctx) => {

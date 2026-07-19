@@ -1,12 +1,23 @@
 import type { FastifyInstance } from "fastify";
 import { randomUUID } from "node:crypto";
-import { hashPassword } from "better-auth/crypto";
+import { generateRandomString, hashPassword, verifyPassword } from "better-auth/crypto";
 import { z } from "zod";
 import { actor, requireRoles } from "../auth/guards.js";
 import { auth, authPool } from "../auth/auth.js";
+import { env } from "../config.js";
 import { withActor } from "../db/pools.js";
 import { scheduleConsultEmails } from "../services/appointments.js";
+import {
+  clearDeveloperModeCookie,
+  createDeveloperModeToken,
+  DEVELOPER_MODE_COOKIE,
+  developerModeCookie,
+  readCookie,
+  verifyDeveloperModeToken,
+} from "../services/developer-mode.js";
+import { sendAccountEmail } from "../services/email.js";
 import { generateTempPassword, inviteExpiresAt } from "../services/invites.js";
+import { deleteDocumentObject } from "../services/storage.js";
 
 const appointmentSchema = z.object({
   scheduledAt: z.iso.datetime(),
@@ -38,6 +49,54 @@ const reportFieldsSchema = z.object({
 
 export async function adminRoutes(app: FastifyInstance): Promise<void> {
   const adminOnly = requireRoles("admin");
+  const developerGrant = (request: Parameters<typeof actor>[0]) => {
+    const current = actor(request);
+    return verifyDeveloperModeToken(
+      readCookie(request.headers.cookie, DEVELOPER_MODE_COOKIE),
+      current.userId,
+      env.BETTER_AUTH_SECRET,
+    );
+  };
+  const developerOnly = async (request: Parameters<typeof actor>[0], reply: Parameters<ReturnType<typeof requireRoles>>[1]) => {
+    await adminOnly(request, reply);
+    if (reply.sent) return;
+    if (!developerGrant(request)) {
+      await reply.code(403).send({ error: "Developer mode is required", code: "DEVELOPER_MODE_REQUIRED", requestId: request.id });
+    }
+  };
+
+  app.get("/v1/admin/developer-mode", { preHandler: adminOnly }, async (request) => {
+    const grant = developerGrant(request);
+    return {
+      available: Boolean(env.DEVELOPER_MODE_PASSWORD_HASH),
+      enabled: Boolean(grant),
+      expiresAt: grant ? new Date(grant.expiresAt).toISOString() : null,
+    };
+  });
+
+  app.post(
+    "/v1/admin/developer-mode",
+    { preHandler: adminOnly, config: { rateLimit: { max: 5, timeWindow: "15 minutes" } } },
+    async (request, reply) => {
+      if (!env.DEVELOPER_MODE_PASSWORD_HASH) {
+        return reply.code(503).send({ error: "Developer mode is not configured", code: "DEVELOPER_MODE_UNAVAILABLE", requestId: request.id });
+      }
+      const { password } = z.object({ password: z.string().min(1).max(200) }).parse(request.body);
+      const valid = await verifyPassword({ hash: env.DEVELOPER_MODE_PASSWORD_HASH, password });
+      if (!valid) {
+        return reply.code(403).send({ error: "Incorrect developer password", code: "INVALID_DEVELOPER_PASSWORD", requestId: request.id });
+      }
+      const current = actor(request);
+      const { token, expiresAt } = createDeveloperModeToken(current.userId, env.BETTER_AUTH_SECRET);
+      reply.header("set-cookie", developerModeCookie(token, env.NODE_ENV === "production"));
+      return { enabled: true, expiresAt: expiresAt.toISOString() };
+    },
+  );
+
+  app.delete("/v1/admin/developer-mode", { preHandler: adminOnly }, async (_request, reply) => {
+    reply.header("set-cookie", clearDeveloperModeCookie(env.NODE_ENV === "production"));
+    return reply.code(204).send();
+  });
 
   app.get("/v1/admin/cases", { preHandler: adminOnly }, async (request) => {
     const current = actor(request);
@@ -355,23 +414,62 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  app.post("/v1/admin/doctors", { preHandler: adminOnly }, async (request, reply) => {
+    const current = actor(request);
+    const body = z.object({
+      fullName: z.string().trim().min(1).max(200),
+      email: z.string().trim().max(320).refine((value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value), "must be a valid email"),
+    }).parse(request.body);
+
+    const existing = await authPool.query(`select 1 from identity."user" where lower(email) = lower($1) limit 1`, [body.email]);
+    if (existing.rowCount) return reply.code(409).send({ error: "email_exists" });
+
+    let doctorId: string | null = null;
+    try {
+      const temporaryPassword = generateRandomString(32, "a-z", "A-Z", "0-9");
+      const created = await auth.api.signUpEmail({ body: { name: body.fullName, email: body.email, password: temporaryPassword } });
+      doctorId = created.user.id;
+      await authPool.query(
+        `update app.profiles
+           set role = 'doctor', account_status = 'pending', doctor_active = true,
+               full_name = $2, invited_by = $3, invited_at = now(), temp_password_expires_at = null
+         where id = $1`,
+        [doctorId, body.fullName, current.userId],
+      );
+      await withActor(current, async (client) => {
+        await client.query("delete from app.member_profiles where member_id = $1", [doctorId]);
+      });
+
+      const activationToken = generateRandomString(32, "a-z", "A-Z", "0-9");
+      await authPool.query(
+        `insert into identity.verification (id, identifier, value, "expiresAt", "createdAt", "updatedAt")
+         values ($1, $2, $3, now() + interval '7 days', now(), now())`,
+        [randomUUID(), `reset-password:${activationToken}`, doctorId],
+      );
+      const activationUrl = new URL("/activate-account", env.APP_ORIGIN);
+      activationUrl.hash = new URLSearchParams({ token: activationToken }).toString();
+      await sendAccountEmail({
+        to: body.email,
+        subject: "Activate your Verae Health doctor account",
+        text: `Welcome to Verae Health. Activate your doctor account and choose a password within 7 days: ${activationUrl.toString()}`,
+      });
+      return reply.code(201).send({ data: { doctorId } });
+    } catch (error) {
+      if (doctorId) await authPool.query(`delete from identity."user" where id = $1`, [doctorId]).catch(() => undefined);
+      request.log.error({ err: error }, "doctor invitation failed");
+      return reply.code(502).send({ error: "doctor_invite_failed" });
+    }
+  });
+
   app.get("/v1/admin/doctors", { preHandler: adminOnly }, async (request) => {
     const current = actor(request);
     return withActor(current, async (client) => {
       const result = await client.query(
         `select p.id as "doctorId", p.full_name as "fullName", p.email,
-                p.doctor_active as "isActive", count(a.id)::int as "assignedCount"
+                p.doctor_active as "isActive", p.account_status as "accountStatus", count(a.id)::int as "assignedCount"
          from app.profiles p left join app.doctor_assignments a on a.doctor_id=p.id and a.status='active'
          where p.role='doctor' group by p.id order by p.full_name nulls last`,
       );
-      return { data: result.rows };
-    });
-  });
-
-  app.get("/v1/admin/users/promotable", { preHandler: adminOnly }, async (request) => {
-    const current = actor(request);
-    return withActor(current, async (client) => {
-      const result = await client.query("select id, email, full_name from app.profiles where role='member' order by email");
       return { data: result.rows };
     });
   });
@@ -417,15 +515,38 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.patch<{ Params: { userId: string } }>("/v1/admin/users/:userId", { preHandler: adminOnly }, async (request) => {
     const current = actor(request);
-    const body = z.object({ role: z.enum(["member", "doctor"]).optional(), doctorActive: z.boolean().optional(), accountStatus: z.enum(["pending", "active", "suspended"]).optional() }).parse(request.body);
+    const body = z.object({ doctorActive: z.boolean().optional(), accountStatus: z.enum(["pending", "active", "suspended"]).optional() }).parse(request.body);
     return withActor(current, async (client) => {
       await client.query(
-        `update app.profiles set role=coalesce($2,role), doctor_active=coalesce($3,doctor_active),
-          account_status=coalesce($4,account_status) where id=$1`,
-        [request.params.userId, body.role ?? null, body.doctorActive ?? null, body.accountStatus ?? null],
+        `update app.profiles set doctor_active=coalesce($2,doctor_active),
+          account_status=coalesce($3,account_status) where id=$1`,
+        [request.params.userId, body.doctorActive ?? null, body.accountStatus ?? null],
       );
       return { ok: true };
     });
+  });
+
+  app.delete<{ Params: { userId: string } }>("/v1/admin/users/:userId", { preHandler: developerOnly }, async (request, reply) => {
+    const current = actor(request);
+    if (request.params.userId === current.userId) {
+      return reply.code(409).send({ error: "You cannot delete your own account", code: "SELF_DELETE_FORBIDDEN" });
+    }
+    const target = await withActor(current, async (client) => {
+      const profile = await client.query<{ role: string }>("select role from app.profiles where id = $1", [request.params.userId]);
+      if (!profile.rows[0] || !["member", "doctor"].includes(profile.rows[0].role)) return null;
+      const documents = profile.rows[0].role === "member"
+        ? await client.query<{ object_key: string }>("select object_key from app.health_documents where member_id = $1", [request.params.userId])
+        : { rows: [] };
+      await client.query("select app.delete_account($1)", [request.params.userId]);
+      return { role: profile.rows[0].role, objectKeys: documents.rows.map((row) => row.object_key) };
+    });
+    if (!target) return reply.code(404).send({ error: "Account not found", code: "NOT_FOUND" });
+
+    const deletedObjects = await Promise.allSettled(target.objectKeys.map((key) => deleteDocumentObject(key)));
+    if (deletedObjects.some((result) => result.status === "rejected")) {
+      request.log.error({ userId: request.params.userId }, "account deleted with orphaned document objects");
+    }
+    return reply.code(204).send();
   });
 
   app.patch<{ Params: { memberId: string } }>("/v1/admin/members/:memberId/stage", { preHandler: adminOnly }, async (request) => {

@@ -25,7 +25,7 @@ function setTwoFactorPromptInUrl(active: boolean) {
   window.history.replaceState(null, "", url);
 }
 
-function PasswordResetScreen() {
+function PasswordResetScreen({ activation = false }: { activation?: boolean }) {
   const token = useRef<string | null>(null);
   const initialized = useRef(false);
   const [status, setStatus] = useState<"ready" | "working" | "succeeded" | "failed">("ready");
@@ -77,11 +77,17 @@ function PasswordResetScreen() {
         <div className="auth-card">
           <span className="auth-brand">Verae</span>
           <div className="auth-step">
-            <h1 className="auth-title">{status === "succeeded" ? "Password updated" : "Link unavailable"}</h1>
+            <h1 className="auth-title">
+              {status === "succeeded" ? (activation ? "Account activated" : "Password updated") : "Link unavailable"}
+            </h1>
             <p className="auth-copy">
               {status === "succeeded"
-                ? "Your password has been changed and your other sessions have been signed out."
-                : "This password reset link is invalid or has expired. Request a new link from the sign-in screen."}
+                ? activation
+                  ? "Your doctor account is ready. Continue to sign in and secure it with your authenticator app."
+                  : "Your password has been changed and your other sessions have been signed out."
+                : activation
+                  ? "This activation link is invalid or has expired. Ask an administrator to invite you again."
+                  : "This password reset link is invalid or has expired. Request a new link from the sign-in screen."}
             </p>
             <button type="button" className="auth-link auth-link-action" onClick={() => window.location.replace(PORTAL_URL)}>
               {status === "succeeded" ? "Continue to sign in" : "Back to sign in"}
@@ -97,7 +103,7 @@ function PasswordResetScreen() {
       <div className="auth-card">
         <span className="auth-brand">Verae</span>
         <div className="auth-step">
-          <h1 className="auth-title">Choose a new <em>password</em></h1>
+          <h1 className="auth-title">{activation ? <>Activate your <em>account</em></> : <>Choose a new <em>password</em></>}</h1>
           <p className="auth-copy">Use at least 10 characters and avoid a password you use elsewhere.</p>
           <form className="auth-form" onSubmit={submitNewPassword}>
             <label className="auth-field">
@@ -147,6 +153,7 @@ function LoginScreen() {
   const captchaHeaders = captchaToken ? { "x-captcha-response": captchaToken } : undefined;
 
   if (window.location.pathname === "/reset-password") return <PasswordResetScreen />;
+  if (window.location.pathname === "/activate-account") return <PasswordResetScreen activation />;
 
   async function signInWithGoogle() {
     setError(null);
