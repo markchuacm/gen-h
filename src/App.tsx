@@ -144,7 +144,7 @@ const processSteps = [
     railNumber: "3.",
     railTitle: "Blood draw",
     title: "Blood draw",
-    summary: "We coordinate your blood draw and route you to an established BP Healthcare or Innoquest facility.",
+    summary: "We coordinate your blood draw and route you to an established Innoquest facility.",
     visual: "labs",
     image: processLabsImage,
     imageAlt: "A close-up of an arm with a bandage after a blood draw",
@@ -444,7 +444,7 @@ const faqs = [
   {
     question: "Where do I do the blood test?",
     answer:
-      "Verae Health coordinates your blood draw with Innoquest or BP Healthcare in Klang Valley.",
+      "Verae Health coordinates your blood draw with Innoquest in Klang Valley.",
   },
   {
     question: "What happens after my results are ready?",

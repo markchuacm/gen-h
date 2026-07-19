@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchAdminCases, STAGE_LABELS } from "../lib/api/admin";
 import type { AdminCaseRow } from "../lib/api/admin";
 import AddPatientModal from "./AddPatientModal";
+import DeleteAccountDialog from "./DeleteAccountDialog";
 
 type FilterKey =
   | "all"
@@ -29,12 +30,13 @@ function StatusPill({ value }: { value: "none" | "draft" | "released" }) {
   return <span className={`adm-pill adm-pill-${value}`}>{label}</span>;
 }
 
-function CasesList({ onOpen }: { onOpen: (memberId: string) => void }) {
+function CasesList({ onOpen, developerMode }: { onOpen: (memberId: string) => void; developerMode: boolean }) {
   const [cases, setCases] = useState<AdminCaseRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterKey>("all");
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminCaseRow | null>(null);
 
   const reload = useCallback(async () => {
     const { data, error: err } = await fetchAdminCases();
@@ -92,6 +94,15 @@ function CasesList({ onOpen }: { onOpen: (memberId: string) => void }) {
           onCreated={reload}
         />
       )}
+      {deleteTarget && (
+        <DeleteAccountDialog
+          userId={deleteTarget.memberId}
+          label={deleteTarget.fullName ?? deleteTarget.email ?? "This member"}
+          kind="member"
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={reload}
+        />
+      )}
 
       <div className="adm-filters" role="tablist" aria-label="Filter cases">
         {FILTERS.map((f) => (
@@ -125,6 +136,7 @@ function CasesList({ onOpen }: { onOpen: (memberId: string) => void }) {
                 <th>Results</th>
                 <th>Care plan</th>
                 <th>Next action</th>
+                {developerMode && <th />}
               </tr>
             </thead>
             <tbody>
@@ -146,6 +158,21 @@ function CasesList({ onOpen }: { onOpen: (memberId: string) => void }) {
                   <td>
                     <span className={`adm-next adm-next-${c.nextOwner}`}>{c.nextAction}</span>
                   </td>
+                  {developerMode && (
+                    <td className="adm-row-actions">
+                      <button
+                        type="button"
+                        className="adm-link adm-link-danger"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDeleteTarget(c);
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

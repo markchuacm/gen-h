@@ -73,6 +73,7 @@
 }
 
 .adm-user {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -80,14 +81,174 @@
   color: var(--muted);
 }
 
-.adm-signout {
+.adm-user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 7px 10px 7px 14px;
+  border-radius: 999px;
   color: var(--muted);
   font-size: var(--adm-text-sm);
-  transition: color 180ms var(--ease-ui);
+  transition:
+    color 180ms var(--ease-ui),
+    background-color 180ms var(--ease-ui),
+    scale 180ms var(--ease-ui);
 }
 
-.adm-signout:hover {
+.adm-user-trigger:hover,
+.adm-user-trigger[aria-expanded="true"] {
   color: var(--ink);
+  background: var(--adm-fill);
+}
+
+.adm-user-trigger:active {
+  scale: 0.96;
+}
+
+.adm-user-trigger svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: rotate 180ms var(--ease-ui);
+}
+
+.adm-user-trigger[aria-expanded="true"] svg {
+  rotate: 180deg;
+}
+
+.adm-user-menu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(320px, calc(100vw - 32px));
+  padding: 8px;
+  border-radius: 18px;
+  background: #fff;
+  color: var(--ink);
+  box-shadow:
+    0 18px 48px rgba(15, 23, 42, 0.14),
+    0 0 0 1px rgba(15, 23, 42, 0.06);
+  animation: adm-menu-in 180ms var(--ease-ui);
+}
+
+@keyframes adm-menu-in {
+  from { opacity: 0; translate: 0 -6px; }
+}
+
+.adm-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  min-height: 42px;
+  padding: 9px 11px;
+  border-radius: 11px;
+  text-align: left;
+  font-size: var(--adm-text-sm);
+  transition: background-color 160ms var(--ease-ui);
+}
+
+.adm-menu-item:hover:not(:disabled) {
+  background: var(--adm-fill);
+}
+
+.adm-menu-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.adm-menu-status {
+  color: var(--muted);
+  font-size: var(--adm-text-xs);
+}
+
+.adm-menu-status.is-on {
+  color: var(--adm-ok);
+  font-weight: 600;
+}
+
+.adm-menu-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--adm-hairline);
+}
+
+.adm-developer-form {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 8px 10px 10px;
+}
+
+.adm-developer-form label {
+  font-size: var(--adm-text-sm);
+  font-weight: 560;
+}
+
+.adm-developer-form input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--adm-fill);
+  color: var(--ink);
+  font: inherit;
+}
+
+.adm-developer-form input:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+.adm-developer-form p {
+  color: var(--danger);
+  font-size: var(--adm-text-xs);
+}
+
+.adm-developer-form > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.adm-menu-confirm,
+.adm-menu-cancel {
+  min-height: 36px;
+  font-size: var(--adm-text-sm);
+  font-weight: 560;
+}
+
+.adm-menu-confirm {
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+}
+
+.adm-menu-confirm:disabled {
+  opacity: 0.5;
+}
+
+.adm-menu-cancel {
+  color: var(--muted);
+}
+
+.adm-developer-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--danger-tint);
+  color: var(--danger-dark);
+  font-size: 0.72rem;
+  font-weight: 650;
 }
 
 /* ── Page scaffold ───────────────────────────────────────────────────────── */
@@ -951,6 +1112,48 @@
   overflow-y: auto;
   box-shadow: var(--shadow-lift);
   animation: adm-step-in 300ms var(--ease-spring);
+}
+
+.adm-form-panel,
+.adm-delete-panel {
+  width: min(520px, 100%);
+}
+
+.adm-form-intro {
+  color: var(--muted);
+  font-size: var(--adm-text-sm);
+  text-wrap: pretty;
+}
+
+.adm-success-note,
+.adm-danger-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 16px;
+  text-wrap: pretty;
+}
+
+.adm-success-note {
+  background: var(--adm-ok-tint);
+  color: var(--adm-ok);
+}
+
+.adm-danger-note {
+  background: var(--danger-tint);
+  color: var(--danger-dark);
+}
+
+.adm-success-note strong,
+.adm-danger-note strong {
+  font-weight: 650;
+}
+
+.adm-success-note p,
+.adm-danger-note p {
+  font-size: var(--adm-text-sm);
+  line-height: 1.5;
 }
 
 .adm-ing-panel-head {

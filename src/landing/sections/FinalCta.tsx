@@ -2,6 +2,7 @@ import { gsap, MOTION, maskedLines } from "../lib/scroll";
 import { useMotion } from "../lib/useGsapContext";
 import { heroMountainImage } from "../data";
 import WhatsAppCta from "./WhatsAppCta";
+import { LEGAL_PATHS } from "../../legal/legalDocuments";
 
 export default function FinalCta() {
   const ref = useMotion<HTMLDivElement>((mm, wrapper) => {
@@ -68,6 +69,9 @@ export default function FinalCta() {
             <a href="#how-it-works">How it works</a>
             <a href="#what-we-test">What we test</a>
             <a href="#founding-members">Pricing</a>
+            <a href={LEGAL_PATHS.terms}>Terms of Service</a>
+            <a href={LEGAL_PATHS.privacy}>Privacy Policy</a>
+            <a href={LEGAL_PATHS.informedConsent}>Informed Consent Policy</a>
           </div>
         </div>
       </footer>

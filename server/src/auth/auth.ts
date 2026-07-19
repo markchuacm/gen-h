@@ -88,13 +88,30 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
     resetPasswordTokenExpiresIn: 15 * 60,
     sendResetPassword: async ({ user, token }) => {
-      const resetUrl = new URL("/reset-password", env.APP_ORIGIN);
+      const profile = await authPool.query<{ role: string; account_status: string }>(
+        "select role, account_status from app.profiles where id = $1",
+        [user.id],
+      );
+      const isDoctorActivation = profile.rows[0]?.role === "doctor" && profile.rows[0]?.account_status === "pending";
+      const resetUrl = new URL(isDoctorActivation ? "/activate-account" : "/reset-password", env.APP_ORIGIN);
       resetUrl.hash = new URLSearchParams({ token }).toString();
-      void sendAccountEmail({
+      await sendAccountEmail({
         to: user.email,
-        subject: "Reset your Verae Health password",
-        text: `Reset your password using this secure link: ${resetUrl.toString()}`,
-      }).catch((error) => console.error(JSON.stringify({ event: "reset_email_failed", message: String(error) })));
+        subject: isDoctorActivation ? "Activate your Verae Health doctor account" : "Reset your Verae Health password",
+        text: isDoctorActivation
+          ? `Welcome to Verae Health. Activate your doctor account and choose a password using this secure link: ${resetUrl.toString()}`
+          : `Reset your password using this secure link: ${resetUrl.toString()}`,
+      });
+    },
+    onPasswordReset: async ({ user }) => {
+      // A doctor invitation is completed by choosing a password from the one-time
+      // activation link. Ordinary password resets leave account status unchanged.
+      await authPool.query(
+        `update app.profiles
+           set account_status = 'active', password_set_at = coalesce(password_set_at, now()), updated_at = now()
+         where id = $1 and role = 'doctor' and account_status = 'pending'`,
+        [user.id],
+      );
     },
   },
   socialProviders: env.GOOGLE_CLIENT_ID

@@ -36,6 +36,7 @@ export type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supple
 
 type ProfileFlowProps = {
   answers: ProfileAnswers;
+  preferredNamePlaceholder?: string;
   uploadErrors: string[];
   startAt?: number;
   onPatch: (patch: Partial<ProfileAnswers>) => void;
@@ -358,6 +359,7 @@ function ReportUploadStep({
 function StepInputs({
   step,
   answers,
+  preferredNamePlaceholder,
   uploadErrors,
   onPatch,
   onToggle,
@@ -367,6 +369,7 @@ function StepInputs({
 }: {
   step: StepDef;
   answers: ProfileAnswers;
+  preferredNamePlaceholder?: string;
   uploadErrors: string[];
   onPatch: (patch: Partial<ProfileAnswers>) => void;
   onToggle: (key: ToggleListKey, option: string) => void;
@@ -402,6 +405,7 @@ function StepInputs({
             className="pf-other-input"
             type="text"
             value={basics.preferredName}
+            placeholder={preferredNamePlaceholder}
             onChange={(event) =>
               onPatch({ basics: { ...basics, preferredName: event.target.value } })
             }
@@ -546,6 +550,7 @@ function StepInputs({
 
 function ProfileFlow({
   answers,
+  preferredNamePlaceholder,
   uploadErrors,
   startAt,
   onPatch,
@@ -685,6 +690,7 @@ function ProfileFlow({
           <StepInputs
             step={step}
             answers={answers}
+            preferredNamePlaceholder={preferredNamePlaceholder}
             uploadErrors={uploadErrors}
             onPatch={onPatch}
             onToggle={onToggle}

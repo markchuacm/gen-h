@@ -32,14 +32,13 @@ import nutrientsVitaminsImage from "../../assets/biomarkers/nutrients-vitamins-h
 import deeperTestingImage from "../../assets/future-health/deeper-testing2.png";
 import earlierSignalsImage from "../../assets/future-health/earlier-signals.png";
 import lifestyleImpactsImage from "../../assets/future-health/lifestyle-impacts-verae.png";
-import bpHealthcareLogo from "../../assets/partners/bp-healthcare.png";
 import innoquestLogo from "../../assets/partners/innoquest.png";
 
 const whatsappMessage =
   "Hi, I'm interested in the Verae Health Founding Members program. Could you share availability and next steps?";
 export const whatsappHref = `https://wa.me/60173280063?text=${encodeURIComponent(whatsappMessage)}`;
 
-export { heroVideo, heroMountainImage, bpHealthcareLogo, innoquestLogo };
+export { heroVideo, heroMountainImage, innoquestLogo };
 
 export const heroProofs = [
   { title: "100+ biomarkers", text: "Tailored to long-term health" },
@@ -214,7 +213,7 @@ export const processSteps = [
     index: "03",
     title: "Blood draw",
     summary:
-      "We coordinate your blood draw and route you to an established BP Healthcare or Innoquest facility.",
+      "We coordinate your blood draw and route you to an established Innoquest facility.",
     image: processLabsImage,
     imageAlt: "A close-up of an arm with a bandage after a blood draw",
   },
@@ -319,7 +318,7 @@ export const faqs = [
   {
     question: "Where do I do the blood test?",
     answer:
-      "Verae Health coordinates your blood draw with Innoquest or BP Healthcare in Klang Valley.",
+      "Verae Health coordinates your blood draw with Innoquest in Klang Valley.",
   },
   {
     question: "What happens after my results are ready?",

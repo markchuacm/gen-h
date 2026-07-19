@@ -354,12 +354,22 @@ export function useProfileAnswers(memberId: string) {
     [save],
   );
 
-  const markCompleted = useCallback(() => {
-    save((current) => ({ ...current, completedAt: new Date().toISOString() }));
+  const markCompleted = useCallback((preferredNameFallback = "") => {
+    const basics = {
+      ...stateRef.current.answers.basics,
+      preferredName:
+        stateRef.current.answers.basics.preferredName.trim() || preferredNameFallback.trim(),
+    };
+    save((current) => ({
+      ...current,
+      answers: { ...current.answers, basics },
+      completedAt: new Date().toISOString(),
+    }));
     // Persist basics + advance the journey (profile_incomplete → consult_upcoming).
-    void completeOnboarding(stateRef.current.answers.basics, memberId).then(({ error }) => {
+    void completeOnboarding(basics, memberId).then(({ error }) => {
       if (error) console.warn("Failed to complete onboarding:", error);
     });
+    return basics.preferredName;
   }, [save, memberId]);
 
   const reset = useCallback(() => {

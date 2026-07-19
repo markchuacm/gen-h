@@ -33,6 +33,7 @@ function ProfileScreen({
     markCompleted,
   } = useProfileAnswers(profile!.id);
   const [startAt, setStartAt] = useState(0);
+  const signedFullName = profile?.consent_name?.trim() || profile?.full_name?.trim() || "";
 
   const completed = !!state.completedAt;
 
@@ -51,6 +52,7 @@ function ProfileScreen({
   const flow = (
     <ProfileFlow
       answers={state.answers}
+      preferredNamePlaceholder={signedFullName}
       uploadErrors={uploadErrors}
       startAt={completed ? startAt : Math.max(0, state.lastStep)}
       onPatch={setAnswers}
@@ -60,9 +62,9 @@ function ProfileScreen({
       onRemoveReport={removeUploadedReport}
       onReachStep={setLastStep}
       onComplete={() => {
-        markCompleted();
+        const preferredName = markCompleted(signedFullName);
         onFlowOpenChange(false);
-        onCompleted(state.answers.basics.preferredName);
+        onCompleted(preferredName);
       }}
       onClose={handleFlowClose}
     />

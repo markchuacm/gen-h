@@ -79,4 +79,4 @@ export type ApiErrorBody = {
   requestId?: string;
 };
 
-export { TERMS_VERSION, CONSENT_VERSION } from "./consent.js";
+export { TERMS_VERSION, PRIVACY_VERSION, CONSENT_VERSION } from "./consent.js";

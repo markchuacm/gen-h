@@ -18,6 +18,8 @@ export type Profile = {
   role: Role;
   email: string | null;
   full_name: string | null;
+  /** Full name typed by the member when signing the latest consent. */
+  consent_name: string | null;
   avatar_url: string | null;
   account_status: "pending" | "active" | "suspended";
   email_verified: boolean;

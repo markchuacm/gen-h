@@ -16,7 +16,7 @@
       (function () {
         var params = window.location.search + window.location.hash;
         if (/[?&#](code|access_token|token_hash|error_code|type)=/.test(params)) {
-          window.location.replace("/member.html" + window.location.search + window.location.hash);
+          window.location.replace("/member" + window.location.search + window.location.hash);
         }
       })();
     </script>

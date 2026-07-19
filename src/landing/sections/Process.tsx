@@ -1,6 +1,6 @@
 import { gsap, DESKTOP, MOBILE, MOTION, maskedLines, warmUp } from "../lib/scroll";
 import { useMotion } from "../lib/useGsapContext";
-import { processSteps, bpHealthcareLogo, innoquestLogo } from "../data";
+import { processSteps, innoquestLogo } from "../data";
 import WhatsAppCta from "./WhatsAppCta";
 
 export default function Process() {
@@ -121,7 +121,6 @@ export default function Process() {
                 <p>{step.summary}</p>
                 {step.id === "blood-draw" ? (
                   <div className="l-process-partners">
-                    <img src={bpHealthcareLogo} alt="BP Healthcare" loading="lazy" />
                     <img src={innoquestLogo} alt="Innoquest" loading="lazy" />
                   </div>
                 ) : null}

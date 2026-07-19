@@ -301,6 +301,7 @@ export type AdminDoctorRow = {
   fullName: string | null;
   email: string | null;
   isActive: boolean;
+  accountStatus: "pending" | "active" | "suspended";
   assignedCount: number;
 };
 
@@ -316,15 +317,15 @@ export async function fetchAdminDoctors(): Promise<{
   }
 }
 
-export type PromotableUser = { id: string; email: string | null; full_name: string | null };
-
-/** Members eligible to be promoted to doctor. */
-export async function fetchPromotableUsers() {
+export async function createDoctor(input: { fullName: string; email: string }) {
   try {
-    const { data } = await apiRequest<{ data: PromotableUser[] }>("/v1/admin/users/promotable");
+    const { data } = await apiRequest<{ data: { doctorId: string } }>("/v1/admin/doctors", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
     return { data, error: null };
   } catch (error) {
-    return { data: [], error: apiError(error) };
+    return { data: null, error: apiError(error) };
   }
 }
 
@@ -349,12 +350,30 @@ export async function deactivateAssignment(memberId: string) {
   return mutation(`/v1/admin/assignments/${encodeURIComponent(memberId)}`, "DELETE");
 }
 
-export async function setRole(userId: string, role: "member" | "doctor") {
-  return mutation(`/v1/admin/users/${encodeURIComponent(userId)}`, "PATCH", { role });
-}
-
 export async function setDoctorActive(userId: string, active: boolean) {
   return mutation(`/v1/admin/users/${encodeURIComponent(userId)}`, "PATCH", { doctorActive: active });
+}
+
+export type DeveloperModeStatus = {
+  available: boolean;
+  enabled: boolean;
+  expiresAt: string | null;
+};
+
+export async function fetchDeveloperMode(): Promise<DeveloperModeStatus> {
+  return apiRequest<DeveloperModeStatus>("/v1/admin/developer-mode");
+}
+
+export async function enableDeveloperMode(password: string): Promise<{ enabled: true; expiresAt: string }> {
+  return apiRequest("/v1/admin/developer-mode", { method: "POST", body: JSON.stringify({ password }) });
+}
+
+export async function disableDeveloperMode(): Promise<void> {
+  await apiRequest("/v1/admin/developer-mode", { method: "DELETE" });
+}
+
+export async function deleteAdminUser(userId: string): Promise<{ error: string | null }> {
+  return mutation(`/v1/admin/users/${encodeURIComponent(userId)}`, "DELETE");
 }
 
 export async function setAccountStatus(userId: string, accountStatus: "active" | "suspended") {

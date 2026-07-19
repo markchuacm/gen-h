@@ -17,6 +17,7 @@
     "bootstrap:admin": "tsx src/scripts/bootstrap-admin.ts",
     "db:provision-logins": "tsx src/scripts/provision-logins.ts",
     "partner:credential": "tsx src/scripts/create-partner-credential.ts",
+    "developer:password": "tsx src/scripts/create-developer-password.ts",
     "openapi:generate": "tsx src/scripts/generate-openapi.ts",
     "test": "vitest run"
   },

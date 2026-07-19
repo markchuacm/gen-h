@@ -1492,6 +1492,8 @@ p {
 
 .l-footer-links {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 28px;
 }
 
@@ -1504,4 +1506,16 @@ p {
 
 .l-footer-links a:hover {
   color: var(--accent);
+}
+
+@media (max-width: 720px) {
+  .l-footer-inner,
+  .l-footer-links {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .l-footer-links {
+    gap: 12px;
+  }
 }
