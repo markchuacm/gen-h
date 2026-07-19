@@ -1,31 +1,43 @@
-import { useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import { fetchCaseDetail } from "../lib/api/doctor";
 import type { DoctorCase, DoctorCaseDetail } from "../lib/api/doctor";
-import CarePlanEditor from "./CarePlanEditor";
 import CaseBrief from "./CaseBrief";
-import CaseResults from "./CaseResults";
-import PanelBuilder from "./PanelBuilder";
 import { stageLabel } from "./stageLabels";
+
+const CarePlanEditor = lazy(() => import("./CarePlanEditor"));
+const CaseResults = lazy(() => import("./CaseResults"));
+const PanelBuilder = lazy(() => import("./PanelBuilder"));
 
 // The doctor moves through the case in order: the health-profile brief, then —
 // depending on whether results exist yet — the blood-panel order or the
 // results review, then the care plan.
-type CaseView = "brief" | "panel" | "results" | "carePlan";
+export type CaseView = "brief" | "panel" | "results" | "carePlan";
 
 function CaseDetail({
   memberId,
   caseSummary,
+  initialView,
+  onViewChange,
   onBack,
 }: {
   memberId: string;
   caseSummary?: DoctorCase;
+  initialView: CaseView;
+  onViewChange: (view: CaseView) => void;
   onBack: () => void;
 }) {
   const [detail, setDetail] = useState<DoctorCaseDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<CaseView>("brief");
+  const [view, setViewState] = useState<CaseView>(initialView);
+  const setView = (next: CaseView) => {
+    setViewState(next);
+    onViewChange(next);
+  };
+
+  useEffect(() => setViewState(initialView), [initialView]);
 
   const load = useCallback(() => {
+    setError(null);
     fetchCaseDetail(memberId).then(({ data, error: err }) => {
       if (err) setError(err);
       else setDetail(data);
@@ -40,38 +52,38 @@ function CaseDetail({
 
   if (view === "carePlan") {
     return (
-      <CarePlanEditor
+      <Suspense fallback={<main className="p-page doc-page"><p role="status">Loading care plan…</p></main>}><CarePlanEditor
         memberId={memberId}
         memberName={memberName}
-        onBack={() => setView(detail?.hasResults ? "results" : "brief")}
-      />
+        onBack={() => setView("brief")}
+      /></Suspense>
     );
   }
 
   if (view === "panel" && detail) {
     return (
-      <PanelBuilder
+      <Suspense fallback={<main className="p-page doc-page"><p role="status">Loading panel…</p></main>}><PanelBuilder
         memberId={memberId}
         detail={detail}
         onBack={() => setView("brief")}
         onSaved={() => {
-          // Saving advanced the member's stage; refresh, then land on results —
-          // the care plan comes only after the numbers are in.
+          // Saving advances the member's stage; return to the brief where the
+          // ordered state is visible instead of opening an empty results view.
           load();
-          setView("results");
+          setView("brief");
         }}
-      />
+      /></Suspense>
     );
   }
 
   if (view === "results") {
     return (
-      <CaseResults
+      <Suspense fallback={<main className="p-page doc-page"><p role="status">Loading results…</p></main>}><CaseResults
         memberId={memberId}
         memberName={memberName}
         onBack={() => setView("brief")}
         onEditCarePlan={() => setView("carePlan")}
-      />
+      /></Suspense>
     );
   }
 
@@ -108,13 +120,23 @@ function CaseDetail({
                   Join consult
                 </button>
               )}
-              {detail.hasResults ? (
-                <button type="button" className="p-btn" onClick={() => setView("results")}>
-                  View results
+              <button type="button" className="p-btn-ghost" onClick={() => setView("panel")}>
+                {detail.labOrder && ["draft", "ordered", "collected"].includes(detail.labOrder.status)
+                  ? `View/edit panel (${detail.labOrder.markerCount})`
+                  : "Order blood panel"}
+              </button>
+              {detail.results.releasedReportCount > 0 && (
+                <button type="button" className="p-btn-ghost" onClick={() => setView("results")}>
+                  Review results ({detail.results.measuredMarkerCount})
                 </button>
-              ) : (
-                <button type="button" className="p-btn" onClick={() => setView("panel")}>
-                  Order blood panel
+              )}
+              {(detail.carePlan || detail.results.releasedReportCount > 0) && (
+                <button type="button" className="p-btn" onClick={() => setView("carePlan")}>
+                  {detail.carePlan?.status === "draft"
+                    ? "Continue care-plan draft"
+                    : detail.carePlan?.status === "released"
+                      ? `View care plan v${detail.carePlan.version}`
+                      : "Start care plan"}
                 </button>
               )}
             </div>

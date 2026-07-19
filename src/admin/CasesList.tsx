@@ -141,14 +141,15 @@ function CasesList({ onOpen, developerMode }: { onOpen: (memberId: string) => vo
             </thead>
             <tbody>
               {rows.map((c) => (
-                <tr key={c.memberId} onClick={() => onOpen(c.memberId)} tabIndex={0}
-                    onKeyDown={(e) => e.key === "Enter" && onOpen(c.memberId)}>
+                <tr key={c.memberId}>
                   <td>
-                    <span className="adm-member-name">
-                      {c.fullName ?? "—"}
-                      {c.accountStatus === "pending" && <span className="adm-pill adm-pill-draft">Invited</span>}
-                    </span>
-                    <span className="adm-member-email">{c.email}</span>
+                    <button type="button" className="adm-case-open" onClick={() => onOpen(c.memberId)}>
+                      <span className="adm-member-name">
+                        {c.fullName ?? "—"}
+                        {c.accountStatus === "pending" && <span className="adm-pill adm-pill-draft">Invited</span>}
+                      </span>
+                      <span className="adm-member-email">{c.email}</span>
+                    </button>
                   </td>
                   <td>{STAGE_LABELS[c.currentStage ?? ""] ?? c.currentStage ?? "—"}</td>
                   <td>{c.doctorName ?? <span className="adm-warn">Unassigned</span>}</td>
@@ -164,10 +165,8 @@ function CasesList({ onOpen, developerMode }: { onOpen: (memberId: string) => vo
                         type="button"
                         className="adm-link adm-link-danger"
                         onClick={(event) => {
-                          event.stopPropagation();
                           setDeleteTarget(c);
                         }}
-                        onKeyDown={(event) => event.stopPropagation()}
                       >
                         Delete
                       </button>

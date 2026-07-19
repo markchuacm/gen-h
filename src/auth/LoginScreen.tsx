@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@verae/contracts";
 import { authClient } from "./authClient";
 import { portalUrl } from "./portalUrl";
 import TurnstileWidget, { captchaEnabled } from "./TurnstileWidget";
@@ -50,6 +51,10 @@ function PasswordResetScreen({ activation = false }: { activation?: boolean }) {
 
     if (!token.current) {
       setStatus("failed");
+      return;
+    }
+    if (password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
+      setError(`Use between ${PASSWORD_MIN_LENGTH} and ${PASSWORD_MAX_LENGTH} characters.`);
       return;
     }
     if (password !== confirmation) {
@@ -104,7 +109,7 @@ function PasswordResetScreen({ activation = false }: { activation?: boolean }) {
         <span className="auth-brand">Verae</span>
         <div className="auth-step">
           <h1 className="auth-title">{activation ? <>Activate your <em>account</em></> : <>Choose a new <em>password</em></>}</h1>
-          <p className="auth-copy">Use at least 10 characters and avoid a password you use elsewhere.</p>
+          <p className="auth-copy">Use {PASSWORD_MIN_LENGTH}–{PASSWORD_MAX_LENGTH} characters and avoid a password you use elsewhere.</p>
           <form className="auth-form" onSubmit={submitNewPassword}>
             <label className="auth-field">
               <span>New password</span>
@@ -113,7 +118,8 @@ function PasswordResetScreen({ activation = false }: { activation?: boolean }) {
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 autoComplete="new-password"
-                minLength={10}
+                minLength={PASSWORD_MIN_LENGTH}
+                maxLength={PASSWORD_MAX_LENGTH}
                 required
                 autoFocus
               />
@@ -125,7 +131,8 @@ function PasswordResetScreen({ activation = false }: { activation?: boolean }) {
                 value={confirmation}
                 onChange={(event) => setConfirmation(event.target.value)}
                 autoComplete="new-password"
-                minLength={10}
+                minLength={PASSWORD_MIN_LENGTH}
+                maxLength={PASSWORD_MAX_LENGTH}
                 required
               />
             </label>
@@ -349,7 +356,8 @@ function LoginScreen() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete="current-password"
-                minLength={10}
+                minLength={PASSWORD_MIN_LENGTH}
+                maxLength={PASSWORD_MAX_LENGTH}
                 required
               />
             </label>

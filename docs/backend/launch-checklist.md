@@ -29,10 +29,12 @@
 ## Identity and clinical access
 
 - [ ] Email verification, generic sign-in/reset errors, reset, session revocation, Google callback, and CAPTCHA pass.
+- [ ] `REQUIRE_TURNSTILE=true`; the API secret and matching Vercel site key are both configured, and missing/invalid/reused tokens fail safely.
 - [ ] New signup remains pending until admin activation.
 - [ ] Admin and doctor TOTP setup/challenge pass; staff MFA enforcement is enabled.
 - [ ] Member cannot access another member; doctor cannot access unassigned member; draft reports/plans remain hidden.
 - [ ] Every clinical mutation has actor, request ID, action, target, and timestamp in append-only audit history.
+- [ ] Released reports and care plans reject in-place mutation; corrections create a draft version and atomically supersede the prior release.
 
 ## Partner and cutover
 

@@ -21,3 +21,9 @@ ocr-sample/
 .env.staging
 **/.env.staging
 /outputs/aws-setup/
+
+# Playwright sessions contain live authentication cookies. Generate them
+# locally from the staging password manager and never commit them.
+/.auth/
+/playwright-report/
+/test-results/

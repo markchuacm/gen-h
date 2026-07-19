@@ -29,7 +29,7 @@ function CaseResults({
           </h1>
         </div>
         <button type="button" className="p-btn" onClick={onEditCarePlan}>
-          Edit care plan
+          Open care plan
         </button>
       </header>
 

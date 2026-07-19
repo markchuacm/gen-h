@@ -34,6 +34,13 @@ Hard rules:
 - `/docs` (the Scalar API reference and OpenAPI spec) is served only where
   `EXPOSE_API_DOCS=true`. Staging enables it for partner integration work;
   production leaves it unset so the route map is not publicly enumerable.
+- Turnstile is mandatory in staging and production. Store a real, host-scoped
+  `TURNSTILE_SECRET_KEY` on the API host and `VITE_TURNSTILE_SITE_KEY` in the
+  matching Vercel project. `REQUIRE_TURNSTILE=true` makes a missing API secret
+  a startup error; verify the frontend key separately before every deploy.
+- The admin account menu intentionally keeps Developer mode behind five clicks
+  on “Settings”, followed by the separately stored developer password. This is
+  an internal testing gesture, not a security boundary.
 
 ### Accepted risk: staging shares the account/region with production
 
@@ -53,6 +60,11 @@ cost and more MSP scope). Deferred deliberately; revisit if a second app or
 tenant lands in the account.
 
 ## Deploying a change
+
+Before deploying, load the matching API and Vercel environment values into the
+operator shell and run `pnpm deploy:check-env staging` or
+`pnpm deploy:check-env production`. This checks the paired Turnstile keys, MFA
+enforcement, and exact API origin without printing any secret value.
 
 From a checked-out repo on the operator machine, take a manual database
 snapshot (see Backups), then run:
@@ -104,8 +116,8 @@ sslmode=verify-full&sslrootcert=/etc/ssl/certs/aws-rds-global-bundle.pem
    `node server/dist/scripts/provision-logins.js` via the `tools` service to
    set the four least-privilege login passwords.
 4. `docker compose ... up -d`, then run the one-time admin bootstrap per the
-   original runbook §5.7 (Turnstile off → bootstrap → secrets removed →
-   Turnstile on → TOTP enrolled → `REQUIRE_STAFF_MFA=true`).
+   original runbook §5.7 (bootstrap token set only for the command → token
+   removed → Turnstile configured → TOTP enrolled → `REQUIRE_STAFF_MFA=true`).
 5. In the Lightsail console, restrict SSH to approved operator/VPN CIDRs,
    enable versioning on both document buckets, enable account-level S3 block
    public access, enable automatic instance snapshots, and create metric

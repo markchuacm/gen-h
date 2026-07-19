@@ -85,29 +85,35 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
-  app.get<{ Params: { id: string } }>("/v1/profiles/:id/public", { preHandler: requireActor }, async (request) => {
+  app.get<{ Params: { id: string } }>("/v1/profiles/:id/public", { preHandler: requireActor }, async (request, reply) => {
     const current = actor(request);
-    return withActor(current, async (client) => {
+    const data = await withActor(current, async (client) => {
       const result = await client.query(
         "select id, full_name, avatar_url from app.profiles where id = $1",
         [request.params.id],
       );
-      return { data: result.rows[0] ?? null };
+      return result.rows[0] ?? null;
     });
+    if (!data) return reply.code(404).send({ error: "Profile not found", code: "NOT_FOUND", requestId: request.id });
+    return { data };
   });
 
-  app.get<{ Querystring: { memberId?: string } }>("/v1/member/profile", { preHandler: requireActor }, async (request) => {
+  app.get<{ Querystring: { memberId?: string } }>("/v1/member/profile", { preHandler: requireActor }, async (request, reply) => {
     const current = actor(request);
     const memberId = request.query.memberId ?? current.userId;
-    return withActor(current, async (client) => {
+    const data = await withActor(current, async (client) => {
       const result = await client.query(
         `select member_id, preferred_name, age, sex, height_cm, weight_kg,
                 onboarding_status, current_stage, profile_confirmed_at
          from app.member_profiles where member_id = $1`,
         [memberId],
       );
-      return { data: result.rows[0] ?? null };
+      return result.rows[0] ?? null;
     });
+    if (!data && request.query.memberId) {
+      return reply.code(404).send({ error: "Member not found", code: "NOT_FOUND", requestId: request.id });
+    }
+    return { data };
   });
 
   app.get<{ Querystring: { memberId?: string } }>("/v1/member/appointment", { preHandler: requireActor }, async (request) => {
@@ -177,8 +183,9 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     const memberId = request.query.memberId ?? current.userId;
     return withActor(current, async (client) => {
       const result = await client.query(
-        `select member_id, biomarker_codes, case when status = 'draft' then 'draft' else 'ordered' end as status, ordered_at
-         from app.lab_orders where member_id = $1 order by created_at desc limit 1`,
+        `select member_id, biomarker_codes, status, ordered_at
+         from app.lab_orders where member_id = $1
+         order by (status in ('draft','ordered','collected')) desc, created_at desc limit 1`,
         [memberId],
       );
       return { data: result.rows[0] ?? null };
@@ -187,10 +194,12 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
 
   app.put("/v1/member/lab-orders", { preHandler: requireRoles("doctor", "admin") }, async (request) => {
     const current = actor(request);
-    const body = z.object({ memberId: z.string().min(1), codes: z.array(z.string().min(1).max(100)).max(500) }).parse(request.body);
+    const body = z.object({ memberId: z.string().min(1), codes: z.array(z.string().min(1).max(100)).min(1).max(500) }).parse(request.body);
     return withActor(current, async (client) => {
+      await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [body.memberId]);
       const latest = await client.query<{ id: string }>(
-        "select id from app.lab_orders where member_id = $1 order by created_at desc limit 1 for update",
+        `select id from app.lab_orders where member_id = $1
+          and status in ('draft','ordered','collected') limit 1 for update`,
         [body.memberId],
       );
       if (latest.rows[0]) {
@@ -228,7 +237,12 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
              'status', b.status, 'notes', b.notes
            ) order by b.created_at) filter (where b.id is not null), '[]'::jsonb) as biomarker_results
          from app.lab_reports r left join app.biomarker_results b on b.lab_report_id = r.id
-         where r.member_id = $1 group by r.id order by r.collected_at asc nulls last`,
+         where r.member_id = $1
+           and not exists (
+             select 1 from app.lab_reports replacement
+              where replacement.supersedes_report_id = r.id and replacement.status = 'released'
+           )
+         group by r.id order by r.collected_at asc nulls last`,
         [memberId],
       );
       return { data: reports.rows };

@@ -40,6 +40,7 @@ const envSchema = z
     SMTP_URL: z.string().optional(),
     EMAIL_FROM: z.string().default("Verae Health <noreply@veraehealth.com>"),
     TURNSTILE_SECRET_KEY: z.string().optional(),
+    REQUIRE_TURNSTILE: boolFromString(),
     S3_ENDPOINT: z.url().default("http://localhost:9000"),
     S3_REGION: z.string().default("my-1"),
     S3_ACCESS_KEY_ID: z.string().default("verae-local"),
@@ -68,6 +69,9 @@ const envSchema = z
   .superRefine((value, ctx) => {
     if ((value.GOOGLE_CLIENT_ID && !value.GOOGLE_CLIENT_SECRET) || (!value.GOOGLE_CLIENT_ID && value.GOOGLE_CLIENT_SECRET)) {
       ctx.addIssue({ code: "custom", path: ["GOOGLE_CLIENT_ID"], message: "Google OAuth requires both client ID and secret" });
+    }
+    if (value.REQUIRE_TURNSTILE && !value.TURNSTILE_SECRET_KEY) {
+      ctx.addIssue({ code: "custom", path: ["TURNSTILE_SECRET_KEY"], message: "TURNSTILE_SECRET_KEY is required when REQUIRE_TURNSTILE=true" });
     }
     if (value.NODE_ENV === "production") {
       if (!value.SMTP_URL) ctx.addIssue({ code: "custom", path: ["SMTP_URL"], message: "SMTP_URL is required in production" });

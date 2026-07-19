@@ -138,13 +138,14 @@ function AdminApp() {
             className="adm-user-trigger"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
+            aria-label={`Account menu for ${profile?.email ?? "administrator"}`}
             onClick={() => {
               setMenuOpen((open) => !open);
               setDeveloperPrompt(false);
               setDeveloperError(null);
             }}
           >
-            <span>{profile?.email}</span>
+            <span className="adm-user-email">{profile?.email}</span>
             <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
           </button>
           {menuOpen && (

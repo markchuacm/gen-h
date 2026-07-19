@@ -20,6 +20,19 @@ insert into app.lab_reports (id,member_id,external_report_id,status,source_statu
   ('00000000-0000-4000-8000-000000000001','rls-member-a','released-a','released','final',1),
   ('00000000-0000-4000-8000-000000000002','rls-member-a','draft-a','draft','final',1),
   ('00000000-0000-4000-8000-000000000003','rls-member-b','released-b','released','final',1);
+insert into app.biomarker_results
+  (id,lab_report_id,member_id,source_code,biomarker_code,source_value,value_numeric,status)
+values
+  ('00000000-0000-4000-8000-000000000020','00000000-0000-4000-8000-000000000002',
+   'rls-member-a','RLS','RLS','1',1,'optimal');
+update app.lab_reports set status='released',released_at=now()
+where id='00000000-0000-4000-8000-000000000002';
+insert into app.care_plans (id,member_id,doctor_id,title,status,version)
+values ('00000000-0000-4000-8000-000000000030','rls-member-a','rls-doctor','RLS plan','draft',1);
+insert into app.care_plan_sections (id,care_plan_id,sort_order,title)
+values ('00000000-0000-4000-8000-000000000031','00000000-0000-4000-8000-000000000030',0,'RLS section');
+update app.care_plans set status='released',released_at=now()
+where id='00000000-0000-4000-8000-000000000030';
 
 set local role verae_app;
 select set_config('app.user_id','rls-member-a',true);
@@ -34,7 +47,7 @@ begin
   if (select count(*) from app.member_profiles) <> 1 then
     raise exception 'member record isolation failed';
   end if;
-  if (select count(*) from app.lab_reports) <> 1 then
+  if (select count(*) from app.lab_reports) <> 2 then
     raise exception 'member draft/report isolation failed';
   end if;
 end $$;
@@ -50,9 +63,23 @@ begin
   if (select count(*) from app.member_profiles) <> 1 then
     raise exception 'doctor assignment isolation failed';
   end if;
-  if (select count(*) from app.lab_reports) <> 1 then
+  if (select count(*) from app.lab_reports) <> 2 then
     raise exception 'doctor released-report isolation failed';
   end if;
+  begin
+    update app.care_plans set title='must fail'
+    where id='00000000-0000-4000-8000-000000000030';
+    raise exception 'released care plan mutation unexpectedly succeeded';
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'RELEASED_IMMUTABLE' then raise; end if;
+  end;
+  begin
+    update app.care_plan_sections set title='must fail'
+    where id='00000000-0000-4000-8000-000000000031';
+    raise exception 'released care plan section mutation unexpectedly succeeded';
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'RELEASED_IMMUTABLE' then raise; end if;
+  end;
 end $$;
 
 reset role;
@@ -71,6 +98,20 @@ begin
   if (select count(*) from app.health_documents where id='00000000-0000-4000-8000-000000000010') <> 1 then
     raise exception 'worker document read isolation failed';
   end if;
+  begin
+    update app.lab_reports set panel_name='must fail'
+    where id='00000000-0000-4000-8000-000000000002';
+    raise exception 'released report mutation unexpectedly succeeded';
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'RELEASED_IMMUTABLE' then raise; end if;
+  end;
+  begin
+    update app.biomarker_results set value_numeric=2
+    where id='00000000-0000-4000-8000-000000000020';
+    raise exception 'released biomarker mutation unexpectedly succeeded';
+  exception when sqlstate 'P0001' then
+    if sqlerrm <> 'RELEASED_IMMUTABLE' then raise; end if;
+  end;
 end $$;
 update app.health_documents set scan_status='clean'
 where id='00000000-0000-4000-8000-000000000010';

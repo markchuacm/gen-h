@@ -89,9 +89,9 @@ const RangeContext = createContext<PatientRangeContext>(DEFAULT_RANGE_CONTEXT);
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
-function resultKind(biomarker: Biomarker): ResultKind {
-  if (biomarker.optimalRangeLabel === "CONTEXT_REQUIRED") return "contextual";
+export function resultKind(biomarker: Biomarker): ResultKind {
   if (biomarker.latestValue === null || biomarker.latestValue === "") return "awaiting";
+  if (biomarker.optimalRangeLabel === "CONTEXT_REQUIRED") return "contextual";
   return "measured";
 }
 
@@ -185,10 +185,13 @@ function matchesSearch(biomarker: Biomarker, query: string) {
   return haystack.includes(query.toLowerCase());
 }
 
-function panelEntries(categories: BiomarkerCategory[]) {
-  return categories.flatMap((category) =>
-    category.biomarkerIds.map((biomarkerId) => ({ category: category.name, biomarkerId })),
-  );
+export function panelEntries(categories: BiomarkerCategory[]) {
+  const seen = new Set<string>();
+  return categories.flatMap((category) => category.biomarkerIds.flatMap((biomarkerId) => {
+    if (seen.has(biomarkerId)) return [];
+    seen.add(biomarkerId);
+    return [{ category: category.name, biomarkerId }];
+  }));
 }
 
 function statusCounts(
@@ -820,7 +823,7 @@ export default function ResultsDashboard({ memberId }: { memberId?: string } = {
   const [query, setQuery] = useState("");
   const [selectedBiomarker, setSelectedBiomarker] = useState<Biomarker | null>(null);
 
-  const { loading, error, biomarkers, categories, age, sex } = useMemberResults(memberId);
+  const { loading, error, biomarkers, categories, age, sex, hasOrder, hasResults } = useMemberResults(memberId);
 
   const rangeContext = useMemo<PatientRangeContext>(
     () => ({
@@ -872,6 +875,20 @@ export default function ResultsDashboard({ memberId }: { memberId?: string } = {
     return (
       <section className="results-dashboard">
         <p role="alert">We couldn't load your results ({error}). Try again in a moment.</p>
+      </section>
+    );
+  }
+  if (!hasOrder && !hasResults) {
+    return (
+      <section className="results-dashboard" aria-labelledby="results-dashboard-title">
+        <header className="p-heading-row results-heading">
+          <span className="p-eyebrow">YOUR RESULTS</span>
+          <h1 className="p-h1" id="results-dashboard-title">Your <em>results</em></h1>
+        </header>
+        <div className="results-empty-state" role="status">
+          <h2>No results yet</h2>
+          <p>Your ordered biomarkers and released lab results will appear here when they are available.</p>
+        </div>
       </section>
     );
   }

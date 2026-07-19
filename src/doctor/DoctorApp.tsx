@@ -15,7 +15,34 @@ function DoctorApp() {
   const [cases, setCases] = useState<DoctorCase[] | null>(null);
   const [appointments, setAppointments] = useState<DoctorAppointment[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [openMemberId, setOpenMemberId] = useState<string | null>(null);
+  const caseFromUrl = () => {
+    const match = window.location.pathname.match(/^\/member\/doctor\/cases\/([^/]+)$/);
+    return match ? decodeURIComponent(match[1]) : null;
+  };
+  const [openMemberId, setOpenMemberId] = useState<string | null>(() => caseFromUrl());
+  const [caseView, setCaseView] = useState<"brief" | "panel" | "results" | "carePlan">(() => {
+    const value = new URLSearchParams(window.location.search).get("view");
+    return value === "panel" || value === "results" || value === "carePlan" ? value : "brief";
+  });
+
+  const navigateToCase = (memberId: string | null, view: typeof caseView = "brief", replace = false) => {
+    const url = memberId
+      ? `/member/doctor/cases/${encodeURIComponent(memberId)}?view=${encodeURIComponent(view)}`
+      : "/member";
+    window.history[replace ? "replaceState" : "pushState"]({}, "", url);
+    setOpenMemberId(memberId);
+    setCaseView(view);
+  };
+
+  useEffect(() => {
+    const restore = () => {
+      setOpenMemberId(caseFromUrl());
+      const value = new URLSearchParams(window.location.search).get("view");
+      setCaseView(value === "panel" || value === "results" || value === "carePlan" ? value : "brief");
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
 
   useEffect(() => {
     fetchDoctorCases().then(({ data, error: err }) => {
@@ -33,7 +60,9 @@ function DoctorApp() {
         <CaseDetail
           memberId={openMemberId}
           caseSummary={activeCase}
-          onBack={() => setOpenMemberId(null)}
+          initialView={caseView}
+          onViewChange={(view) => navigateToCase(openMemberId, view)}
+          onBack={() => navigateToCase(null)}
         />
       </>
     );
@@ -63,7 +92,7 @@ function DoctorApp() {
             <ul className="doc-consult-list">
               {appointments.map((appt) => (
                 <li key={appt.id} className="doc-consult">
-                  <button type="button" className="doc-consult-main" onClick={() => setOpenMemberId(appt.memberId)}>
+                  <button type="button" className="doc-consult-main" onClick={() => navigateToCase(appt.memberId)}>
                     <strong>{appt.memberName ?? "Member"}</strong>
                     <span>{formatConsultDate(appt.scheduledAt)} · {formatConsultTime(appt.scheduledAt)}</span>
                   </button>
@@ -94,7 +123,7 @@ function DoctorApp() {
         <ul className="doc-case-list">
           {cases?.map((c) => (
             <li key={c.assignmentId}>
-              <button type="button" className="doc-case" onClick={() => setOpenMemberId(c.memberId)}>
+              <button type="button" className="doc-case" onClick={() => navigateToCase(c.memberId)}>
                 <div className="doc-case-main">
                   <strong>{c.memberName ?? c.memberEmail ?? "Member"}</strong>
                   <span>{c.memberEmail}</span>

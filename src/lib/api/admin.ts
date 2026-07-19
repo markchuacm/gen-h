@@ -168,6 +168,9 @@ export type AdminLabReport = {
   document_id: string | null;
   status: "draft" | "released";
   released_at: string | null;
+  source_version: number;
+  supersedes_report_id: string | null;
+  is_superseded: boolean;
   biomarker_results: AdminBiomarkerRow[];
 };
 
@@ -254,6 +257,18 @@ export async function deleteBiomarker(id: string) {
 
 export async function releaseLabReport(reportId: string) {
   return mutation(`/v1/admin/reports/${encodeURIComponent(reportId)}/release`, "POST");
+}
+
+export async function createReportCorrection(reportId: string) {
+  try {
+    const { data } = await apiRequest<{ data: { id: string } }>(
+      `/v1/admin/reports/${encodeURIComponent(reportId)}/corrections`,
+      { method: "POST" },
+    );
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
 }
 
 // ---- Documents (upload on behalf of a member) ----------------------------

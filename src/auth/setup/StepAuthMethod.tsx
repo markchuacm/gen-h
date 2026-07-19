@@ -4,6 +4,7 @@ import { authClient } from "../authClient";
 import { portalUrl } from "../portalUrl";
 import { setSetupPassword } from "./api";
 import { apiError } from "../../lib/apiClient";
+import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@verae/contracts";
 
 export default function StepAuthMethod({ onDone }: { onDone: () => Promise<void> }) {
   const [password, setPassword] = useState("");
@@ -25,6 +26,10 @@ export default function StepAuthMethod({ onDone }: { onDone: () => Promise<void>
   async function submitPassword(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    if (password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
+      setError(`Use between ${PASSWORD_MIN_LENGTH} and ${PASSWORD_MAX_LENGTH} characters.`);
+      return;
+    }
     if (password !== confirm) {
       setError("The passwords do not match.");
       return;
@@ -66,6 +71,8 @@ export default function StepAuthMethod({ onDone }: { onDone: () => Promise<void>
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
               minLength={10}
+              maxLength={PASSWORD_MAX_LENGTH}
+              aria-describedby="setup-password-rule"
               required
             />
           </label>
@@ -77,9 +84,12 @@ export default function StepAuthMethod({ onDone }: { onDone: () => Promise<void>
               onChange={(e) => setConfirm(e.target.value)}
               autoComplete="new-password"
               minLength={10}
+              maxLength={PASSWORD_MAX_LENGTH}
+              aria-describedby="setup-password-rule"
               required
             />
           </label>
+          <p id="setup-password-rule" className="auth-copy">Use {PASSWORD_MIN_LENGTH}–{PASSWORD_MAX_LENGTH} characters.</p>
           {error ? <p className="auth-error" role="alert">{error}</p> : null}
           <button type="submit" className="auth-submit" disabled={busy}>
             {busy ? "One moment…" : "Set password and continue"}

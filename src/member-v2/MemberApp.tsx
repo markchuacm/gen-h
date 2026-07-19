@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import TopNav from "./shell/TopNav";
 import { useAuth } from "../auth/AuthProvider";
 import { fetchMemberProfile } from "../lib/api/memberProfile";
@@ -7,15 +7,16 @@ import type { MemberAppointment } from "../lib/api/appointments";
 import { resolveJourneyConfig, STAGE_TO_JOURNEY } from "./journey/journeyState";
 import type { JourneyStateId, MemberTab } from "./journey/journeyState";
 import HomeScreen from "./screens/home/HomeScreen";
-import ProfileScreen from "./screens/profile/ProfileScreen";
-import CarePlanScreen from "./screens/care-plan/CarePlanScreen";
-import ResultsDashboard from "./screens/results/ResultsDashboard";
 import "./shell/shell.css";
+
+const ProfileScreen = lazy(() => import("./screens/profile/ProfileScreen"));
+const CarePlanScreen = lazy(() => import("./screens/care-plan/CarePlanScreen"));
+const ResultsDashboard = lazy(() => import("./screens/results/ResultsDashboard"));
 
 function ResultsScreen() {
   return (
     <main className="p-page dashboard-content--results">
-      <ResultsDashboard />
+      <Suspense fallback={<p role="status">Loading results…</p>}><ResultsDashboard /></Suspense>
     </main>
   );
 }
@@ -88,6 +89,7 @@ function MemberApp() {
         journeyState={journeyState}
         onJourneyStateChange={setJourneyState}
       />
+      <Suspense fallback={<main className="p-page"><p role="status">Loading…</p></main>}>
       {activeTab === "home" ? (
         <HomeScreen
           config={config}
@@ -117,6 +119,7 @@ function MemberApp() {
       ) : (
         <ResultsScreen />
       )}
+      </Suspense>
     </>
   );
 }

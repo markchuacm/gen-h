@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { fromNodeHeaders } from "better-auth/node";
 import { hashPassword } from "better-auth/crypto";
 import { z } from "zod";
-import { TERMS_VERSION, PRIVACY_VERSION, CONSENT_VERSION } from "@verae/contracts";
+import { CONSENT_VERSION, passwordSchema, PRIVACY_VERSION, TERMS_VERSION } from "@verae/contracts";
 import { actor, requireActor } from "../auth/guards.js";
 import { auth, authPool } from "../auth/auth.js";
 import { withActor } from "../db/pools.js";
@@ -50,7 +50,7 @@ export async function setupRoutes(app: FastifyInstance): Promise<void> {
     const profile = await loadSetupProfile(request, reply);
     if (!profile) return;
     const current = actor(request);
-    const { newPassword } = z.object({ newPassword: z.string().min(10).max(200) }).parse(request.body);
+    const { newPassword } = z.object({ newPassword: passwordSchema }).parse(request.body);
 
     const hashed = await hashPassword(newPassword);
     await authPool.query(
