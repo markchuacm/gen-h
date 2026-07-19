@@ -10,6 +10,11 @@ export async function setSetupPassword(newPassword: string): Promise<void> {
 export async function acceptConsent(signatureName: string): Promise<void> {
   await apiRequest("/v1/member/setup/consent", {
     method: "POST",
-    body: JSON.stringify({ signatureName, acceptTerms: true, acceptHealthConsent: true }),
+    body: JSON.stringify({
+      signatureName,
+      acceptTerms: true,
+      acknowledgePrivacy: true,
+      acceptHealthConsent: true,
+    }),
   });
 }

@@ -2,16 +2,18 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 import { acceptConsent } from "./api";
 import { apiError } from "../../lib/apiClient";
-import { TERMS_SECTIONS, CONSENT_SECTIONS } from "./consentContent";
+import MarkdownContent from "../../legal/MarkdownContent";
+import { LEGAL_PATHS, TERMS_OF_SERVICE, publicLegalUrl } from "../../legal/legalDocuments";
 
 export default function StepConsent({ onDone }: { onDone: () => Promise<void> }) {
   const [signature, setSignature] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acknowledgePrivacy, setAcknowledgePrivacy] = useState(false);
   const [acceptConsentBox, setAcceptConsentBox] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const canSubmit = acceptTerms && acceptConsentBox && signature.trim().length >= 2;
+  const canSubmit = acceptTerms && acknowledgePrivacy && acceptConsentBox && signature.trim().length >= 2;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -33,49 +35,48 @@ export default function StepConsent({ onDone }: { onDone: () => Promise<void> })
       <div className="auth-step">
         <p className="setup-steps">Step 3 of 3</p>
         <h1 className="auth-title">Terms &amp; <em>consent</em></h1>
-        <p className="auth-copy">Please read and accept the following before we set up your care.</p>
+        <p className="auth-copy">Please review these documents before we set up your care.</p>
 
-        <div className="setup-consent-doc" tabIndex={0}>
-        <h2 className="setup-consent-heading">Terms of Service & Privacy</h2>
-        {TERMS_SECTIONS.map((s) => (
-          <div key={s.heading} className="setup-consent-section">
-            <h3>{s.heading}</h3>
-            <p>{s.body}</p>
-          </div>
-        ))}
-        <h2 className="setup-consent-heading">Health-data & Telehealth Consent</h2>
-        {CONSENT_SECTIONS.map((s) => (
-          <div key={s.heading} className="setup-consent-section">
-            <h3>{s.heading}</h3>
-            <p>{s.body}</p>
-          </div>
-        ))}
-      </div>
+        <section className="setup-consent-doc" tabIndex={0} aria-label="Terms of Service">
+          <MarkdownContent source={TERMS_OF_SERVICE.content} omitTitle />
+        </section>
 
-      <form className="auth-form" onSubmit={submit}>
-        <label className="setup-check">
-          <input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
-          <span>I have read and agree to the Terms of Service & Privacy.</span>
-        </label>
-        <label className="setup-check">
-          <input type="checkbox" checked={acceptConsentBox} onChange={(e) => setAcceptConsentBox(e.target.checked)} />
-          <span>I give my consent to the Health-data & Telehealth Consent above.</span>
-        </label>
-        <label className="auth-field">
-          <span>Type your full name to sign</span>
-          <input
-            type="text"
-            value={signature}
-            onChange={(e) => setSignature(e.target.value)}
-            autoComplete="name"
-            placeholder="Full name as per ID"
-            required
-          />
-        </label>
-        {error ? <p className="auth-error" role="alert">{error}</p> : null}
-        <button type="submit" className="auth-submit" disabled={busy || !canSubmit}>
-          {busy ? "Saving…" : "Agree and continue"}
-        </button>
+        <form className="auth-form" onSubmit={submit}>
+          <div className="setup-check-list" role="group" aria-label="Required acknowledgements">
+            <div className="setup-check">
+              <input id="accept-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
+              <label htmlFor="accept-terms">I have read and agree to the Terms of Service above.</label>
+            </div>
+            <div className="setup-check">
+              <input id="acknowledge-privacy" type="checkbox" checked={acknowledgePrivacy} onChange={(e) => setAcknowledgePrivacy(e.target.checked)} />
+              <label htmlFor="acknowledge-privacy">
+                I acknowledge that I have read the{" "}
+                <a href={publicLegalUrl(LEGAL_PATHS.privacy)} target="_blank" rel="noreferrer">Privacy Policy</a>.
+              </label>
+            </div>
+            <div className="setup-check">
+              <input id="accept-informed-consent" type="checkbox" checked={acceptConsentBox} onChange={(e) => setAcceptConsentBox(e.target.checked)} />
+              <label htmlFor="accept-informed-consent">
+                I expressly consent to the collection and processing of my health information according to the{" "}
+                <a href={publicLegalUrl(LEGAL_PATHS.informedConsent)} target="_blank" rel="noreferrer">Informed Consent Policy</a>
+              </label>
+            </div>
+          </div>
+          <label className="auth-field setup-signature-field">
+            <span>Type your full name to sign</span>
+            <input
+              type="text"
+              value={signature}
+              onChange={(e) => setSignature(e.target.value)}
+              autoComplete="name"
+              placeholder="Full name as per ID"
+              required
+            />
+          </label>
+          {error ? <p className="auth-error" role="alert">{error}</p> : null}
+          <button type="submit" className="auth-submit" disabled={busy || !canSubmit}>
+            {busy ? "Saving…" : "Agree and continue"}
+          </button>
         </form>
       </div>
     </div>

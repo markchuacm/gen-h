@@ -12,11 +12,17 @@ import Comparison from "./sections/Comparison";
 import LaunchPrice from "./sections/LaunchPrice";
 import Faq from "./sections/Faq";
 import FinalCta from "./sections/FinalCta";
+import LegalDocumentPage from "../legal/LegalDocumentPage";
+import { legalDocumentForPath } from "../legal/legalDocuments";
 
 export default function LandingPage() {
+  const legalDocument = legalDocumentForPath(window.location.pathname);
+
   // Parent effects run after children: every section's triggers exist before
   // smooth scrolling starts.
-  useLayoutEffect(() => initScroll(), []);
+  useLayoutEffect(() => legalDocument ? undefined : initScroll(), [legalDocument]);
+
+  if (legalDocument) return <LegalDocumentPage document={legalDocument} />;
 
   return (
     <>

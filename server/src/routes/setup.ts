@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { fromNodeHeaders } from "better-auth/node";
 import { hashPassword } from "better-auth/crypto";
 import { z } from "zod";
-import { TERMS_VERSION, CONSENT_VERSION } from "@verae/contracts";
+import { TERMS_VERSION, PRIVACY_VERSION, CONSENT_VERSION } from "@verae/contracts";
 import { actor, requireActor } from "../auth/guards.js";
 import { auth, authPool } from "../auth/auth.js";
 import { withActor } from "../db/pools.js";
@@ -66,7 +66,7 @@ export async function setupRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ ok: true });
   });
 
-  // Step C: record versioned terms + health-data consent and complete setup.
+  // Step C: record all three versioned legal acknowledgements and complete setup.
   app.post("/v1/member/setup/consent", { preHandler: requireActor }, async (request, reply) => {
     const profile = await loadSetupProfile(request, reply);
     if (!profile) return;
@@ -75,6 +75,7 @@ export async function setupRoutes(app: FastifyInstance): Promise<void> {
       .object({
         signatureName: z.string().trim().min(2).max(200),
         acceptTerms: z.literal(true),
+        acknowledgePrivacy: z.literal(true),
         acceptHealthConsent: z.literal(true),
       })
       .parse(request.body);
@@ -93,9 +94,9 @@ export async function setupRoutes(app: FastifyInstance): Promise<void> {
 
     await withActor(current, async (client) => {
       await client.query(
-        `insert into app.member_consents (member_id, terms_version, consent_version, signature_name)
-         values ($1, $2, $3, $4)`,
-        [current.userId, TERMS_VERSION, CONSENT_VERSION, body.signatureName],
+        `insert into app.member_consents (member_id, terms_version, privacy_version, consent_version, signature_name)
+         values ($1, $2, $3, $4, $5)`,
+        [current.userId, TERMS_VERSION, PRIVACY_VERSION, CONSENT_VERSION, body.signatureName],
       );
     });
 
