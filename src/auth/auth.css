@@ -1,4 +1,6 @@
-/* Auth screens — same white/terracotta language as the portal (tokens.css). */
+/* Auth screens — same white/terracotta language as the portal (tokens.css).
+   The wordmark matches the nav treatment used everywhere else
+   (weight 560, 1.05rem, -0.01em) rather than a tracked-out uppercase. */
 
 .auth-screen {
   min-height: 100vh;
@@ -6,132 +8,215 @@
   display: grid;
   place-items: center;
   padding: 24px;
-  background: var(--cream);
+  background:
+    radial-gradient(1100px 700px at 88% -12%, rgba(184, 93, 53, 0.1), transparent 62%),
+    radial-gradient(900px 620px at -12% 108%, rgba(184, 93, 53, 0.07), transparent 58%),
+    var(--cream);
 }
 
 .auth-card {
-  width: min(420px, 100%);
-  padding: clamp(28px, 5vw, 40px);
-  border-radius: 20px;
+  width: min(440px, 100%);
+  padding: clamp(30px, 5.5vw, 48px);
+  border-radius: 28px;
   background: #fff;
-  box-shadow: var(--shadow-border);
+  box-shadow: var(--shadow-lift);
   display: flex;
   flex-direction: column;
   gap: 14px;
+  animation: auth-rise 0.55s var(--ease-spring) both;
+}
+
+@keyframes auth-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .auth-brand {
-  font-size: 0.95rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent);
+  font-weight: 560;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: var(--ink);
+  margin-bottom: clamp(18px, 4vh, 34px);
+}
+
+/* Each view (sign-in / create-account / reveal email form) remounts on a key
+   change so this replays — the same typeform-style motion as the profile brief
+   steps (see pf-step-in in profile.css). */
+.auth-step {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  animation: auth-step-in 360ms var(--ease-spring);
+}
+
+@keyframes auth-step-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
 }
 
 .auth-title {
-  font-size: clamp(1.6rem, 4vw, 2rem);
-  text-wrap: balance;
+  font-size: clamp(1.9rem, 5vw, 2.35rem);
 }
 
 .auth-copy {
   color: var(--muted);
   font-size: 0.98rem;
+  line-height: 1.55;
   text-wrap: pretty;
 }
 
-.auth-google {
+.auth-option {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 12px 16px;
+  margin-top: 4px;
+  padding: 13px 16px;
   border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
   box-shadow: var(--shadow-border);
   font-size: 0.98rem;
+  font-weight: 500;
   transition: box-shadow 0.2s var(--ease-ui), transform 0.15s var(--ease-ui);
 }
 
-.auth-google:hover {
+.auth-option:hover {
   box-shadow: var(--shadow-border-hover);
+  transform: translateY(-1px);
 }
 
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.auth-divider::before,
-.auth-divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--line);
+.auth-option-icon {
+  flex: none;
+  color: var(--ink);
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .auth-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  font-size: 0.9rem;
-  color: var(--muted);
+  gap: 7px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--ink);
 }
 
 .auth-field input {
-  padding: 11px 14px;
+  padding: 13px 16px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 14px;
   font: inherit;
+  font-weight: 400;
   color: var(--ink);
   background: #fff;
+  transition: border-color 0.18s var(--ease-ui), box-shadow 0.18s var(--ease-ui);
+}
+
+.auth-field input:hover {
+  border-color: rgba(15, 23, 42, 0.24);
 }
 
 .auth-field input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-  border-color: transparent;
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-tint);
+}
+
+/* Keep Chrome's autofill from painting fields pale blue, off-brand. */
+.auth-field input:-webkit-autofill,
+.auth-field input:-webkit-autofill:hover,
+.auth-field input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #fff inset;
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
 }
 
 .auth-error {
-  color: #b3261e;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--danger-tint);
+  color: var(--danger);
   font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .auth-submit {
-  padding: 12px 16px;
+  margin-top: 2px;
+  padding: 14px 16px;
   border-radius: 999px;
   background: var(--accent);
   color: #fff;
   font-size: 0.98rem;
-  transition: background 0.2s var(--ease-ui), transform 0.15s var(--ease-ui);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 24px rgba(184, 93, 53, 0.28);
+  transition:
+    background 0.2s var(--ease-ui),
+    box-shadow 0.2s var(--ease-ui),
+    transform 0.15s var(--ease-ui);
 }
 
 .auth-submit:hover {
   background: var(--accent-dark);
+  box-shadow: 0 12px 28px rgba(184, 93, 53, 0.34);
+  transform: translateY(-1px);
 }
 
 .auth-submit:disabled,
-.auth-google:disabled {
+.auth-option:disabled {
   opacity: 0.6;
   cursor: default;
+  transform: none;
 }
 
 .auth-switch {
+  margin-top: 6px;
   font-size: 0.92rem;
   color: var(--muted);
   text-align: center;
 }
 
+.auth-switch-trigger {
+  cursor: pointer;
+}
+
+/* The hint keeps its place in the layout and only fades in, so revealing it
+   never resizes the card. One tight line keeps the reserved space unobtrusive. */
+.auth-switch-hint {
+  margin-top: 7px;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  color: var(--muted);
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.32s var(--ease-ui), transform 0.32s var(--ease-ui);
+  pointer-events: none;
+}
+
+.auth-switch-hint.is-open {
+  opacity: 1;
+  transform: none;
+}
+
 .auth-link {
   color: var(--accent);
   font-size: inherit;
+  font-weight: 500;
+  transition: color 0.18s var(--ease-ui);
 }
 
 .auth-link:hover {
@@ -147,14 +232,14 @@
 .auth-forgot-link {
   min-height: 40px;
   align-self: flex-end;
-  margin-top: -8px;
+  margin-top: -10px;
   padding: 8px 0 8px 12px;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 .auth-submit:active,
-.auth-google:active {
-  transform: scale(0.96);
+.auth-option:active {
+  transform: scale(0.97);
 }
 
 .auth-qr {

@@ -17,6 +17,7 @@ import { documentRoutes } from "./routes/documents.js";
 import { doctorRoutes } from "./routes/doctor.js";
 import { labRoutes } from "./routes/labs.js";
 import { memberRoutes } from "./routes/member.js";
+import { setupRoutes } from "./routes/setup.js";
 import { clamAvReady } from "./workers/document-scanner.js";
 
 export async function buildApp() {
@@ -72,6 +73,7 @@ export async function buildApp() {
   });
 
   await app.register(memberRoutes);
+  await app.register(setupRoutes);
   await app.register(documentRoutes);
   await app.register(doctorRoutes);
   await app.register(adminRoutes);

@@ -1,7 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { actor, requireActor, requireRoles } from "../auth/guards.js";
+import { authPool } from "../auth/auth.js";
 import { withActor } from "../db/pools.js";
+import { isInviteExpired } from "../services/invites.js";
 
 const onboardingEntriesSchema = z.object({
   memberId: z.string().min(1),
@@ -22,19 +24,57 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     const current = actor(request);
     return withActor(current, async (client) => {
       const result = await client.query(
-        `select p.id, p.role, p.email, p.full_name, p.avatar_url, p.account_status
+        `select p.id, p.role, p.email, p.full_name, p.avatar_url, p.account_status,
+                p.setup_completed_at, p.password_set_at, p.email_verified_at, p.temp_password_expires_at
          from app.profiles p where p.id = $1`,
         [current.userId],
       );
       const profile = result.rows[0];
+      if (!profile) return { profile: null };
+
+      // The setup wizard (first-login flow for invited members) is driven entirely
+      // by these server flags, so a mid-setup re-login resumes at the right step.
+      let setup: {
+        required: boolean;
+        inviteExpired: boolean;
+        authMethod: "password" | "google" | null;
+        otpVerified: boolean;
+      } | undefined;
+      if (profile.role === "member") {
+        const setupComplete = profile.setup_completed_at != null;
+        let hasGoogle = false;
+        if (!setupComplete) {
+          const google = await authPool.query(
+            `select 1 from identity.account where "userId" = $1 and "providerId" = 'google' limit 1`,
+            [current.userId],
+          );
+          hasGoogle = (google.rowCount ?? 0) > 0;
+        }
+        setup = {
+          required: !setupComplete,
+          inviteExpired: isInviteExpired({
+            role: profile.role,
+            setupCompletedAt: profile.setup_completed_at,
+            passwordSetAt: profile.password_set_at,
+            tempPasswordExpiresAt: profile.temp_password_expires_at,
+          }),
+          authMethod: profile.password_set_at ? "password" : hasGoogle ? "google" : null,
+          otpVerified: profile.email_verified_at != null,
+        };
+      }
+
       return {
-        profile: profile
-          ? {
-              ...profile,
-              email_verified: current.emailVerified,
-              two_factor_enabled: current.twoFactorEnabled,
-            }
-          : null,
+        profile: {
+          id: profile.id,
+          role: profile.role,
+          email: profile.email,
+          full_name: profile.full_name,
+          avatar_url: profile.avatar_url,
+          account_status: profile.account_status,
+          email_verified: current.emailVerified,
+          two_factor_enabled: current.twoFactorEnabled,
+          setup,
+        },
       };
     });
   });

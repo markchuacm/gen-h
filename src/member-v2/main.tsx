@@ -6,6 +6,8 @@ import AdminApp from "../admin/AdminApp";
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
 import LoginScreen from "../auth/LoginScreen";
 import MfaSetup from "../auth/MfaSetup";
+import SetupWizard from "../auth/setup/SetupWizard";
+import InviteExpiredScreen from "../auth/setup/InviteExpiredScreen";
 import "./tokens.css";
 
 function Gate() {
@@ -36,16 +38,13 @@ function Gate() {
   // Session live, profile still loading.
   if (!profile) return null;
 
-  if (profile.account_status === "pending") {
-    return (
-      <main className="auth-screen">
-        <div className="auth-card">
-          <span className="auth-brand">Verae</span>
-          <h1 className="auth-title">Account pending activation</h1>
-          <p className="auth-copy">Your email is verified. Verae staff will activate your member profile after matching your invitation or order.</p>
-          <button type="button" className="auth-link" onClick={() => void signOut()}>Sign out</button>
-        </div>
-      </main>
+  // Invited members complete first-login setup (choose auth method -> verify email
+  // -> consent) before reaching the portal. The wizard is driven by server flags.
+  if (profile.role === "member" && profile.setup?.required) {
+    return profile.setup.inviteExpired ? (
+      <InviteExpiredScreen onSignOut={() => void signOut()} />
+    ) : (
+      <SetupWizard />
     );
   }
 

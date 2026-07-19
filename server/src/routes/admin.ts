@@ -1,8 +1,12 @@
 import type { FastifyInstance } from "fastify";
+import { randomUUID } from "node:crypto";
+import { hashPassword } from "better-auth/crypto";
 import { z } from "zod";
 import { actor, requireRoles } from "../auth/guards.js";
+import { auth, authPool } from "../auth/auth.js";
 import { withActor } from "../db/pools.js";
 import { scheduleConsultEmails } from "../services/appointments.js";
+import { generateTempPassword, inviteExpiresAt } from "../services/invites.js";
 
 const appointmentSchema = z.object({
   scheduledAt: z.iso.datetime(),
@@ -78,7 +82,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         `select p.full_name as "memberName", p.email as "memberEmail", p.account_status as "accountStatus", m.age, m.sex,
                 m.height_cm as "heightCm", m.weight_kg as "weightKg", m.goals, m.medications,
                 m.conditions, m.preferred_name as "preferredName", m.current_stage as "currentStage",
-                m.onboarding_status as "onboardingStatus"
+                m.onboarding_status as "onboardingStatus", m.phone,
+                p.invited_at as "invitedAt", p.temp_password_expires_at as "tempPasswordExpiresAt",
+                p.setup_completed_at as "setupCompletedAt"
          from app.profiles p left join app.member_profiles m on m.member_id = p.id where p.id = $1`,
         [request.params.memberId],
       );
@@ -115,6 +121,103 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       };
     });
   });
+
+  app.post("/v1/admin/patients", { preHandler: adminOnly }, async (request, reply) => {
+    const current = actor(request);
+    const body = z
+      .object({
+        fullName: z.string().trim().min(1).max(200),
+        email: z
+          .string()
+          .trim()
+          .max(320)
+          .refine((v) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), "must be a valid email"),
+        phone: z.string().trim().min(5).max(40),
+        doctorId: z.string().min(1).optional(),
+      })
+      .parse(request.body);
+
+    // Reject a duplicate before creating an auth user.
+    const existing = await authPool.query(
+      `select 1 from identity."user" where lower(email) = lower($1) limit 1`,
+      [body.email],
+    );
+    if (existing.rowCount) return reply.code(409).send({ error: "email_exists" });
+
+    const tempPassword = generateTempPassword();
+    let memberId: string;
+    try {
+      const created = await auth.api.signUpEmail({
+        body: { name: body.fullName, email: body.email, password: tempPassword },
+      });
+      memberId = created.user.id;
+    } catch {
+      // Unique-violation race or better-auth validation.
+      return reply.code(409).send({ error: "email_exists" });
+    }
+
+    const expiresAt = inviteExpiresAt();
+    await withActor(current, async (client) => {
+      await client.query(
+        `update app.profiles set full_name = $2, invited_by = $3, invited_at = now(), temp_password_expires_at = $4 where id = $1`,
+        [memberId, body.fullName, current.userId, expiresAt.toISOString()],
+      );
+      await client.query("update app.member_profiles set phone = $2 where member_id = $1", [memberId, body.phone]);
+      if (body.doctorId) {
+        await client.query(
+          "update app.doctor_assignments set status='inactive', ended_at=now() where member_id=$1 and status='active'",
+          [memberId],
+        );
+        await client.query(
+          "insert into app.doctor_assignments (member_id, doctor_id, assigned_by) values ($1,$2,$3)",
+          [memberId, body.doctorId, current.userId],
+        );
+      }
+    });
+
+    // The temp password crosses the wire exactly once, here.
+    return reply.code(201).send({ data: { memberId, tempPassword, expiresAt: expiresAt.toISOString() } });
+  });
+
+  app.post<{ Params: { memberId: string } }>(
+    "/v1/admin/patients/:memberId/reset-invite",
+    { preHandler: adminOnly },
+    async (request, reply) => {
+      const memberId = request.params.memberId;
+      const state = await authPool.query<{ role: string; setup_completed_at: Date | null }>(
+        "select role, setup_completed_at from app.profiles where id = $1",
+        [memberId],
+      );
+      const row = state.rows[0];
+      if (!row || row.role !== "member") return reply.code(404).send({ error: "not_found" });
+      if (row.setup_completed_at != null) return reply.code(409).send({ error: "already_active" });
+
+      const tempPassword = generateTempPassword();
+      const hashed = await hashPassword(tempPassword);
+      const expiresAt = inviteExpiresAt();
+
+      const updated = await authPool.query(
+        `update identity.account set password = $1, "updatedAt" = now() where "userId" = $2 and "providerId" = 'credential'`,
+        [hashed, memberId],
+      );
+      if (updated.rowCount === 0) {
+        // Credential row was deleted after a Google-only setup attempt; recreate it.
+        await authPool.query(
+          `insert into identity.account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
+           values ($1, $2, 'credential', $2, $3, now(), now())`,
+          [randomUUID(), memberId, hashed],
+        );
+      }
+      await authPool.query(
+        `update app.profiles set temp_password_expires_at = $2, password_set_at = null, updated_at = now() where id = $1`,
+        [memberId, expiresAt.toISOString()],
+      );
+      // Old sessions must not linger on a re-issued invite.
+      await authPool.query(`delete from identity.session where "userId" = $1`, [memberId]);
+
+      return reply.send({ data: { tempPassword, expiresAt: expiresAt.toISOString() } });
+    },
+  );
 
   app.get<{ Params: { memberId: string } }>("/v1/admin/members/:memberId/reports", { preHandler: adminOnly }, async (request) => {
     const current = actor(request);
