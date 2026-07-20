@@ -100,6 +100,11 @@
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
   background: #fff;
+  /* One measure for the question column and the footer under it, so every step
+     and its Continue row share the same left and right edge. Narrow enough that
+     chip rows and sliders end near the same right edge — a wider column leaves
+     chip-only steps looking left-skewed against the slider steps. */
+  --pf-measure: min(560px, calc(100% - 48px));
 }
 
 .pf-flow-top {
@@ -149,7 +154,7 @@
   justify-items: start;
   gap: 20px;
   min-height: 0;
-  width: min(680px, calc(100% - 48px));
+  width: var(--pf-measure);
   margin-inline: auto;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -162,11 +167,6 @@
      render outside the child's own box. */
   padding: 24px 6px;
   animation: pf-step-in 360ms var(--ease-spring);
-}
-
-.pf-stage.has-expandable-other {
-  align-content: start;
-  padding-top: clamp(44px, 10vh, 96px);
 }
 
 .pf-stage::-webkit-scrollbar {
@@ -241,9 +241,9 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  width: min(680px, calc(100% - 48px));
+  width: var(--pf-measure);
   margin-inline: auto;
-  padding-block: 20px 32px;
+  padding: 20px 6px 32px;
 }
 
 .pf-enter-hint {
@@ -845,6 +845,9 @@
 }
 
 .pf-other-reveal-inner .pf-other-input {
+  /* Narrower than the question column: this is a short free-text follow-up, and
+     a full-width field made the whole step read wider than its neighbours. */
+  max-width: 26rem;
   margin-top: 16px;
 }
 
@@ -1253,10 +1256,6 @@
 
   .pf-stage {
     align-content: start;
-    padding-block: 12px 28px;
-  }
-
-  .pf-stage.has-expandable-other {
     padding-block: 12px 28px;
   }
 

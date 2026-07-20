@@ -837,10 +837,7 @@ function ProfileFlow({
           <p>Organising your answers the way your doctor reads them.</p>
         </div>
       ) : (
-        <div
-          className={`pf-stage ${step.allowsOther ? "has-expandable-other" : ""}`}
-          key={step.id}
-        >
+        <div className="pf-stage" key={step.id}>
           <span className="pf-stage-count">
             {stepIndex + 1} of {STEP_COUNT}
           </span>
