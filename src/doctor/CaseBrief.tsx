@@ -1,6 +1,18 @@
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import CaseAttachments from "./CaseAttachments";
+import { OTHER_OPTION } from "../member-v2/screens/profile/profileQuestions";
 import { CLEAR_ANSWERS, lifestyleConcerns, toAnswers } from "./caseSignals";
+
+function withOther(items: string[], other: string) {
+  const namedItems = items.filter((item) => item !== OTHER_OPTION);
+  return other.trim() ? [...namedItems, other.trim()] : namedItems;
+}
+
+function boundaryValue(value: number, low: number, high: number, unit = "") {
+  if (value < low) return `<${low}${unit}`;
+  if (value > high) return `>${high}${unit}`;
+  return `${value}${unit}`;
+}
 
 // The doctor's read of the case, laid out as a single snapshot: who this is
 // and why they're here up top, then history/goals beside lifestyle detail in
@@ -23,13 +35,20 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
   const concerns = lifestyleConcerns(answers);
 
   const vitals: Array<[string, string]> = [];
-  if (detail.age) vitals.push(["Age", `${detail.age}`]);
+  if (detail.age) vitals.push(["Age", boundaryValue(detail.age, 18, 80)]);
   if (detail.sex) vitals.push(["Sex", detail.sex]);
-  if (answers.basics.heightCm) vitals.push(["Height", `${answers.basics.heightCm} cm`]);
-  if (answers.basics.weightKg) vitals.push(["Weight", `${answers.basics.weightKg} kg`]);
+  if (answers.basics.heightCm) vitals.push(["Height", boundaryValue(answers.basics.heightCm, 140, 220, " cm")]);
+  if (answers.basics.weightKg) vitals.push(["Weight", boundaryValue(answers.basics.weightKg, 30, 200, " kg")]);
 
   const lifestyleFacts: Array<[string, string]> = [
-    ["Sleep", `~${answers.lifestyle.sleepHours}h per night`],
+    [
+      "Sleep",
+      answers.lifestyle.sleepHours < 4
+        ? "<4h per night"
+        : answers.lifestyle.sleepHours > 10
+          ? ">10h per night"
+          : `~${answers.lifestyle.sleepHours}h per night`,
+    ],
     ["Exercise", `${answers.lifestyle.exerciseDays} days per week`],
     ["Diet", answers.lifestyle.diet],
     ["Stress", `${answers.lifestyle.stress} out of 5`],
@@ -37,8 +56,15 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
     ["Smoking", answers.habits.smoking],
   ];
 
-  const supplements = answers.supplements.filter((item) => !CLEAR_ANSWERS.has(item));
-  const hasHistory = answers.goals.length + answers.symptoms.length + answers.family.length > 0;
+  const reasons = withOther(answers.reason, answers.reasonOther);
+  const goals = withOther(answers.goals, answers.goalsOther);
+  const symptoms = withOther(answers.symptoms, answers.symptomsOther);
+  const family = withOther(answers.family, answers.familyOther);
+  const supplements = withOther(answers.supplements, answers.supplementsOther).filter(
+    (item) => !CLEAR_ANSWERS.has(item),
+  );
+  const allergies = withOther(answers.allergies, answers.allergiesOther);
+  const hasHistory = goals.length + symptoms.length + family.length > 0;
 
   return (
     <>
@@ -53,9 +79,9 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
             ))}
           </div>
         )}
-        {answers.reason.length > 0 && (
+        {reasons.length > 0 && (
           <blockquote className="doc-reason" aria-label="Why they're here">
-            {answers.reason.map((item) => (
+            {reasons.map((item) => (
               <p key={item}>{item}</p>
             ))}
           </blockquote>
@@ -67,16 +93,16 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
           {hasHistory && (
             <section className="doc-card" aria-label="Goals and symptoms">
               <h2 className="doc-card-title">Goals &amp; symptoms</h2>
-              <TagGroup label="Main goals" items={answers.goals} />
-              <TagGroup label="What feels off" items={answers.symptoms} />
+              <TagGroup label="Main goals" items={goals} />
+              <TagGroup label="What feels off" items={symptoms} />
             </section>
           )}
 
-          {answers.family.length > 0 && (
+          {family.length > 0 && (
             <section className="doc-card" aria-label="Family history">
               <h2 className="doc-card-title">Family history</h2>
               <ul className="doc-chips">
-                {answers.family.map((item) => (
+                {family.map((item) => (
                   <li key={item} className={CLEAR_ANSWERS.has(item) ? "" : "is-flag"}>
                     {item}
                   </li>
@@ -87,7 +113,7 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
 
           <section className="doc-card" aria-label="Supplements and medications">
             <h2 className="doc-card-title">Supplements &amp; medications</h2>
-            {supplements.length === 0 && !answers.supplementsOther ? (
+            {supplements.length === 0 ? (
               <p className="doc-muted">Nothing at the moment.</p>
             ) : (
               <>
@@ -98,10 +124,20 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
                     ))}
                   </ul>
                 )}
-                {answers.supplementsOther && (
-                  <p className="doc-supplement-note">{answers.supplementsOther}</p>
-                )}
               </>
+            )}
+          </section>
+
+          <section className="doc-card" aria-label="Allergies">
+            <h2 className="doc-card-title">Allergies</h2>
+            {allergies.length === 0 ? (
+              <p className="doc-muted">None shared.</p>
+            ) : (
+              <ul className="doc-chips">
+                {allergies.map((item) => (
+                  <li key={item} className={CLEAR_ANSWERS.has(item) ? "" : "is-flag"}>{item}</li>
+                ))}
+              </ul>
             )}
           </section>
         </div>

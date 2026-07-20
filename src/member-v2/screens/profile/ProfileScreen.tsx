@@ -24,7 +24,6 @@ function ProfileScreen({
   const {
     state,
     hydrated,
-    saving,
     saveError,
     flush,
     uploadErrors,
@@ -83,7 +82,6 @@ function ProfileScreen({
         });
       }}
       onClose={handleFlowClose}
-      saving={saving}
       saveError={completionError ?? saveError}
     />
   );
