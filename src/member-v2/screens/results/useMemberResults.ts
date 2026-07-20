@@ -124,17 +124,16 @@ export function mergeResults(reports: LabReportRow[]): {
   return { biomarkers: [...merged.values()], categories };
 }
 
-/** The member's panel = the markers the doctor ordered, plus any that already
-    have a value (so admin-added extras never hide). When neither an order nor
-    any result exists we leave the full catalog untouched, so previews and
-    not-yet-ordered members still see the standard set. */
+/** Until a released measurement exists, keep the full educational catalog
+    visible with empty values so every pre-results member can explore it. Once
+    measurements arrive, use the ordered panel plus measured admin-added extras. */
 export function constrainToPanel(
   categories: BiomarkerCategory[],
   biomarkers: Biomarker[],
   orderedCodes: string[] | null,
 ): BiomarkerCategory[] {
   const measured = biomarkers.filter((entry) => entry.latestValue !== null && entry.latestValue !== "");
-  if (orderedCodes === null && measured.length === 0) return [];
+  if (measured.length === 0) return categories;
 
   const panel = new Set(orderedCodes ?? []);
   for (const entry of measured) panel.add(entry.id);

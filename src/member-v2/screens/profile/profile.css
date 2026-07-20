@@ -1127,12 +1127,6 @@
 .pf-summary-confirm {
   min-width: 180px;
   justify-content: center;
-  border-radius: 9px;
-  background: #111;
-}
-
-.pf-summary-confirm:hover {
-  background: #242424;
 }
 
 .pf-summary-edit {

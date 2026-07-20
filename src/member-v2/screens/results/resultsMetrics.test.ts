@@ -43,12 +43,17 @@ describe("results overview metrics", () => {
     expect(resultKind(marker("context", 4.2, "CONTEXT_REQUIRED"))).toBe("contextual");
   });
 
-  it("shows no catalog before an order and only ordered markers afterwards", () => {
+  it("shows the full educational catalog until a released measurement exists", () => {
     const categories: BiomarkerCategory[] = [
       { name: "A", description: "", biomarkerIds: ["one", "two"] },
     ];
     const biomarkers = [marker("one", null), marker("two", null)];
-    expect(constrainToPanel(categories, biomarkers, null)).toEqual([]);
-    expect(constrainToPanel(categories, biomarkers, ["two"])[0]?.biomarkerIds).toEqual(["two"]);
+    expect(constrainToPanel(categories, biomarkers, null)).toEqual(categories);
+    expect(constrainToPanel(categories, biomarkers, [])).toEqual(categories);
+    expect(constrainToPanel(categories, biomarkers, ["unknown-code"])).toEqual(categories);
+    expect(constrainToPanel(categories, biomarkers, ["two"])).toEqual(categories);
+
+    const released = [marker("one", 4.2), marker("two", null)];
+    expect(constrainToPanel(categories, released, ["two"])[0]?.biomarkerIds).toEqual(["one", "two"]);
   });
 });

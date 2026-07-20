@@ -29,6 +29,7 @@ function MemberApp() {
   const [profileFlowOpen, setProfileFlowOpen] = useState(false);
   const [preferredName, setPreferredName] = useState<string | null>(null);
   const hasAutoOpenedProfile = useRef(false);
+  const hasPresentedInitialTab = useRef(false);
 
   const fallbackName =
     profile?.full_name?.trim().split(/\s+/)[0] || profile?.email?.split("@")[0] || "there";
@@ -77,6 +78,12 @@ function MemberApp() {
     };
   }, [activeTab]);
 
+  // Match the typeform-style doctor-brief flow when a member moves between
+  // portal tabs, while leaving the first page paint still and immediate.
+  useEffect(() => {
+    if (journeyState) hasPresentedInitialTab.current = true;
+  }, [journeyState]);
+
   // Journey stage still loading from the DB.
   if (!journeyState) return null;
   const config = resolveJourneyConfig(journeyState, appointment);
@@ -89,37 +96,42 @@ function MemberApp() {
         journeyState={journeyState}
         onJourneyStateChange={setJourneyState}
       />
-      <Suspense fallback={<main className="p-page"><p role="status">Loading…</p></main>}>
-      {activeTab === "home" ? (
-        <HomeScreen
-          config={config}
-          firstName={firstName}
-          onNav={setActiveTab}
-          onStartProfile={() => {
-            setActiveTab("profile");
-            setProfileFlowOpen(true);
-          }}
-        />
-      ) : activeTab === "profile" ? (
-        <ProfileScreen
-          flowOpen={profileFlowOpen}
-          onFlowOpenChange={setProfileFlowOpen}
-          onExitIncomplete={() => {
-            setActiveTab("home");
-          }}
-          onCompleted={(name) => {
-            // Finishing the profile moves the journey along; update the
-            // greeting immediately rather than waiting on a DB round-trip.
-            if (journeyState === "PROFILE_INCOMPLETE") setJourneyState("CONSULT_UPCOMING");
-            if (name.trim()) setPreferredName(name.trim());
-          }}
-        />
-      ) : activeTab === "carePlan" ? (
-        <CarePlanScreen onNav={setActiveTab} />
-      ) : (
-        <ResultsScreen />
-      )}
-      </Suspense>
+      <div
+        className={`p-tab-panel${hasPresentedInitialTab.current ? " is-entering" : ""}`}
+        key={activeTab}
+      >
+        <Suspense fallback={<main className="p-page"><p role="status">Loading…</p></main>}>
+          {activeTab === "home" ? (
+            <HomeScreen
+              config={config}
+              firstName={firstName}
+              onNav={setActiveTab}
+              onStartProfile={() => {
+                setActiveTab("profile");
+                setProfileFlowOpen(true);
+              }}
+            />
+          ) : activeTab === "profile" ? (
+            <ProfileScreen
+              flowOpen={profileFlowOpen}
+              onFlowOpenChange={setProfileFlowOpen}
+              onExitIncomplete={() => {
+                setActiveTab("home");
+              }}
+              onCompleted={(name) => {
+                // Finishing the profile moves the journey along; update the
+                // greeting immediately rather than waiting on a DB round-trip.
+                if (journeyState === "PROFILE_INCOMPLETE") setJourneyState("CONSULT_UPCOMING");
+                if (name.trim()) setPreferredName(name.trim());
+              }}
+            />
+          ) : activeTab === "carePlan" ? (
+            <CarePlanScreen onNav={setActiveTab} />
+          ) : (
+            <ResultsScreen />
+          )}
+        </Suspense>
+      </div>
     </>
   );
 }
