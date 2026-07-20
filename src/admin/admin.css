@@ -17,6 +17,8 @@
 
 .adm-shell {
   min-height: 100vh;
+  max-width: 100%;
+  overflow-x: clip;
   color: var(--ink);
 }
 
@@ -34,6 +36,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .adm-brand-mark {
@@ -79,6 +82,7 @@
   gap: 14px;
   font-size: var(--adm-text-sm);
   color: var(--muted);
+  min-width: 0;
 }
 
 .adm-user-trigger {
@@ -94,6 +98,15 @@
     color 180ms var(--ease-ui),
     background-color 180ms var(--ease-ui),
     scale 180ms var(--ease-ui);
+  max-width: 100%;
+}
+
+.adm-user-email {
+  min-width: 0;
+  max-width: min(30vw, 260px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .adm-user-trigger:hover,
@@ -134,6 +147,61 @@
     0 18px 48px rgba(15, 23, 42, 0.14),
     0 0 0 1px rgba(15, 23, 42, 0.06);
   animation: adm-menu-in 180ms var(--ease-ui);
+}
+
+@media (max-width: 640px) {
+  .adm-topbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding-inline: 16px;
+    gap: 12px;
+  }
+
+  .adm-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    justify-self: center;
+  }
+
+  .adm-developer-chip {
+    max-width: 108px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .adm-user-trigger {
+    width: 42px;
+    justify-content: center;
+    padding: 7px;
+  }
+
+  .adm-user-email {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .adm-user-menu {
+    position: fixed;
+    top: 68px;
+    right: 16px;
+    left: 16px;
+    width: auto;
+    max-width: none;
+  }
+
+  .adm-page {
+    width: calc(100% - 32px);
+  }
+
+  .adm-search {
+    min-width: 0;
+    width: 100%;
+  }
 }
 
 @keyframes adm-menu-in {
@@ -459,12 +527,17 @@
   border-bottom: 0;
 }
 
-.adm-table tbody tr[tabindex] {
-  cursor: pointer;
+.adm-case-open {
+  display: block;
+  width: 100%;
+  text-align: left;
+}
+
+.adm-table tbody tr {
   transition: background-color 160ms var(--ease-ui);
 }
 
-.adm-table tbody tr[tabindex]:hover {
+.adm-table tbody tr:hover {
   background: rgba(15, 23, 42, 0.03);
 }
 

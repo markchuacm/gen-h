@@ -1,5 +1,6 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import { ChevronRight, Search, Stethoscope, X } from "lucide-react";
+import PendingPortalDialog from "../../shell/PendingPortalDialog";
 import { useMemberResults } from "./useMemberResults";
 import type { Biomarker, BiomarkerCategory, BiomarkerStatus, HistoricalValue } from "./types";
 import "./results.css";
@@ -89,9 +90,9 @@ const RangeContext = createContext<PatientRangeContext>(DEFAULT_RANGE_CONTEXT);
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
-function resultKind(biomarker: Biomarker): ResultKind {
-  if (biomarker.optimalRangeLabel === "CONTEXT_REQUIRED") return "contextual";
+export function resultKind(biomarker: Biomarker): ResultKind {
   if (biomarker.latestValue === null || biomarker.latestValue === "") return "awaiting";
+  if (biomarker.optimalRangeLabel === "CONTEXT_REQUIRED") return "contextual";
   return "measured";
 }
 
@@ -185,10 +186,13 @@ function matchesSearch(biomarker: Biomarker, query: string) {
   return haystack.includes(query.toLowerCase());
 }
 
-function panelEntries(categories: BiomarkerCategory[]) {
-  return categories.flatMap((category) =>
-    category.biomarkerIds.map((biomarkerId) => ({ category: category.name, biomarkerId })),
-  );
+export function panelEntries(categories: BiomarkerCategory[]) {
+  const seen = new Set<string>();
+  return categories.flatMap((category) => category.biomarkerIds.flatMap((biomarkerId) => {
+    if (seen.has(biomarkerId)) return [];
+    seen.add(biomarkerId);
+    return [{ category: category.name, biomarkerId }];
+  }));
 }
 
 function statusCounts(
@@ -819,8 +823,9 @@ export default function ResultsDashboard({ memberId }: { memberId?: string } = {
   const [activeFilter, setActiveFilter] = useState<FilterId>("all");
   const [query, setQuery] = useState("");
   const [selectedBiomarker, setSelectedBiomarker] = useState<Biomarker | null>(null);
+  const [pendingDialogOpen, setPendingDialogOpen] = useState(true);
 
-  const { loading, error, biomarkers, categories, age, sex } = useMemberResults(memberId);
+  const { loading, error, biomarkers, categories, age, sex, hasResults } = useMemberResults(memberId);
 
   const rangeContext = useMemo<PatientRangeContext>(
     () => ({
@@ -875,7 +880,6 @@ export default function ResultsDashboard({ memberId }: { memberId?: string } = {
       </section>
     );
   }
-
   return (
     <RangeContext.Provider value={rangeContext}>
     <section className="results-dashboard" aria-labelledby="results-dashboard-title">
@@ -907,7 +911,7 @@ export default function ResultsDashboard({ memberId }: { memberId?: string } = {
               <strong>{counts.needs_attention}</strong> Out of range
             </span>
             <span className="overview-footnote">
-              {counts.awaiting} not tested yet · {counts.contextual} interpreted in context
+              {counts.awaiting} not tested yet
             </span>
           </div>
         </div>
@@ -995,6 +999,17 @@ export default function ResultsDashboard({ memberId }: { memberId?: string } = {
 
       {selectedBiomarker && (
         <BiomarkerDrawer biomarker={selectedBiomarker} onClose={() => setSelectedBiomarker(null)} />
+      )}
+      {!memberId && !hasResults && pendingDialogOpen && (
+        <PendingPortalDialog
+          eyebrow="Your results"
+          title="Your results are pending"
+          closeLabel="Close pending results message"
+          onClose={() => setPendingDialogOpen(false)}
+        >
+          If you have not yet gone for your blood draw, please make your way to Innoquest. If you have, please wait one
+          week for us to receive and process your results for you.
+        </PendingPortalDialog>
       )}
     </section>
     </RangeContext.Provider>

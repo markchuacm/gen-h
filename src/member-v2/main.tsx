@@ -1,14 +1,19 @@
-import React from "react";
+import React, { lazy, Suspense } from "react";
 import ReactDOM from "react-dom/client";
-import MemberApp from "./MemberApp";
-import DoctorApp from "../doctor/DoctorApp";
-import AdminApp from "../admin/AdminApp";
 import { AuthProvider, useAuth } from "../auth/AuthProvider";
 import LoginScreen from "../auth/LoginScreen";
 import MfaSetup from "../auth/MfaSetup";
 import SetupWizard from "../auth/setup/SetupWizard";
 import InviteExpiredScreen from "../auth/setup/InviteExpiredScreen";
 import "./tokens.css";
+
+const MemberApp = lazy(() => import("./MemberApp"));
+const DoctorApp = lazy(() => import("../doctor/DoctorApp"));
+const AdminApp = lazy(() => import("../admin/AdminApp"));
+
+function LoadingApp() {
+  return <main className="auth-screen"><p role="status">Loading your workspace…</p></main>;
+}
 
 function Gate() {
   const { session, profile, profileError, signOut } = useAuth();
@@ -53,10 +58,10 @@ function Gate() {
   }
 
   // Admins get the ops console; doctors get the doctor console; members the portal.
-  if (profile.role === "admin") return <AdminApp />;
-  if (profile.role === "doctor") return <DoctorApp />;
+  if (profile.role === "admin") return <Suspense fallback={<LoadingApp />}><AdminApp /></Suspense>;
+  if (profile.role === "doctor") return <Suspense fallback={<LoadingApp />}><DoctorApp /></Suspense>;
 
-  return <MemberApp />;
+  return <Suspense fallback={<LoadingApp />}><MemberApp /></Suspense>;
 }
 
 ReactDOM.createRoot(document.getElementById("member-root")!).render(

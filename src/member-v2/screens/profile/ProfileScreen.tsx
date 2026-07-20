@@ -23,6 +23,10 @@ function ProfileScreen({
   const { profile, signOut } = useAuth();
   const {
     state,
+    hydrated,
+    saving,
+    saveError,
+    flush,
     uploadErrors,
     setAnswers,
     toggleListItem,
@@ -33,6 +37,7 @@ function ProfileScreen({
     markCompleted,
   } = useProfileAnswers(profile!.id);
   const [startAt, setStartAt] = useState(0);
+  const [completionError, setCompletionError] = useState<string | null>(null);
   const signedFullName = profile?.consent_name?.trim() || profile?.full_name?.trim() || "";
 
   const completed = !!state.completedAt;
@@ -43,11 +48,17 @@ function ProfileScreen({
   };
 
   const handleEditStep = (stepId: StepId) => openFlow(Math.max(0, stepIndexOf(stepId)));
-  const handleFlowClose = () => {
+  const handleFlowClose = async () => {
+    setCompletionError(null);
+    if (!(await flush())) return;
     onFlowOpenChange(false);
     if (!completed) onExitIncomplete();
     else onCompleted(state.answers.basics.preferredName);
   };
+
+  if (!hydrated) {
+    return <main className="p-page pf-profile-page"><p role="status">Loading your saved profile…</p></main>;
+  }
 
   const flow = (
     <ProfileFlow
@@ -62,11 +73,18 @@ function ProfileScreen({
       onRemoveReport={removeUploadedReport}
       onReachStep={setLastStep}
       onComplete={() => {
-        const preferredName = markCompleted(signedFullName);
-        onFlowOpenChange(false);
-        onCompleted(preferredName);
+        void markCompleted(signedFullName).then((result) => {
+          if (result.error) {
+            setCompletionError(result.error);
+            return;
+          }
+          onFlowOpenChange(false);
+          onCompleted(result.preferredName);
+        });
       }}
       onClose={handleFlowClose}
+      saving={saving}
+      saveError={completionError ?? saveError}
     />
   );
 

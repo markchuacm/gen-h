@@ -3,7 +3,7 @@ import { apiError, apiRequest } from "../apiClient";
 export type LabOrderRow = {
   member_id: string;
   biomarker_codes: string[];
-  status: "draft" | "ordered";
+  status: "draft" | "ordered" | "collected" | "completed" | "cancelled";
   ordered_at: string | null;
 };
 

@@ -156,6 +156,17 @@
   padding-bottom: 0;
 }
 
+.p-tab-panel.is-entering {
+  animation: p-tab-panel-in 360ms var(--ease-spring);
+}
+
+@keyframes p-tab-panel-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+  }
+}
+
 .p-results-heading {
   display: flex;
   align-items: flex-end;
@@ -185,12 +196,18 @@
   transition:
     background 180ms var(--ease-ui),
     translate 180ms var(--ease-ui),
+    scale 180ms var(--ease-ui),
     box-shadow 180ms var(--ease-ui);
 }
 
 .p-btn:hover {
   background: var(--accent-dark);
   translate: 0 -1px;
+}
+
+.p-btn:active {
+  translate: 0 0;
+  scale: 0.96;
 }
 
 .p-btn svg {
@@ -234,6 +251,136 @@
 .p-chip--neutral {
   background: rgba(15, 23, 42, 0.05);
   color: var(--muted);
+}
+
+/* ── Shared pending-state dialog ────────────────────────────────────────── */
+
+.p-pending-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.p-pending-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(17, 23, 27, 0.28);
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+}
+
+.p-pending-dialog {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: start;
+  width: min(560px, 100%);
+  padding: 34px;
+  border-radius: 28px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(17, 23, 27, 0.07),
+    0 32px 90px rgba(17, 23, 27, 0.22);
+  animation: p-pending-dialog-in 360ms var(--ease-spring) both;
+}
+
+.p-pending-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(17, 23, 27, 0.045);
+  transition-property: background-color, scale;
+  transition-duration: 150ms;
+  transition-timing-function: var(--member-ease);
+}
+
+.p-pending-close:hover {
+  background: rgba(17, 23, 27, 0.08);
+}
+
+.p-pending-close:active {
+  scale: 0.96;
+}
+
+.p-pending-close svg {
+  width: 19px;
+  height: 19px;
+}
+
+.p-pending-eyebrow {
+  margin-bottom: 12px;
+}
+
+.p-pending-dialog h2 {
+  max-width: 12ch;
+  padding-right: 44px;
+  font-size: clamp(1.8rem, 4vw, 2.45rem);
+  line-height: 1.04;
+  text-wrap: balance;
+}
+
+.p-pending-dialog p {
+  max-width: 48ch;
+  margin-top: 18px;
+  color: var(--member-muted);
+  font-size: 0.98rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+.p-pending-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: 26px;
+}
+
+.p-pending-layer.is-closing .p-pending-backdrop {
+  animation: p-pending-backdrop-out 160ms var(--member-ease) both;
+}
+
+.p-pending-layer.is-closing .p-pending-dialog {
+  animation: p-pending-dialog-out 160ms var(--member-ease) both;
+}
+
+@keyframes p-pending-dialog-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+    filter: blur(4px);
+  }
+}
+
+@keyframes p-pending-dialog-out {
+  to {
+    opacity: 0;
+    translate: 0 -8px;
+    filter: blur(4px);
+  }
+}
+
+@keyframes p-pending-backdrop-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .p-pending-dialog,
+  .p-pending-layer.is-closing .p-pending-dialog,
+  .p-pending-layer.is-closing .p-pending-backdrop {
+    animation: none;
+  }
 }
 
 /* ── Breakpoints ─────────────────────────────────────────────────────────── */
@@ -285,6 +432,16 @@
 }
 
 @media (max-width: 460px) {
+  .p-pending-layer {
+    align-items: end;
+    padding: 12px;
+  }
+
+  .p-pending-dialog {
+    padding: 28px 24px 24px;
+    border-radius: 24px;
+  }
+
   .p-nav {
     max-width: calc(100dvw - 16px);
   }

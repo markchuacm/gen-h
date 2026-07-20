@@ -99,6 +99,15 @@
         }
       }
     },
+    "/v1/member/appointment": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/v1/member/onboarding": {
       "get": {
         "responses": {
@@ -151,6 +160,24 @@
     },
     "/v1/member/care-plans": {
       "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/member/setup/password": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/member/setup/consent": {
+      "post": {
         "responses": {
           "200": {
             "description": "Default Response"
@@ -251,6 +278,15 @@
         }
       }
     },
+    "/v1/doctor/appointments": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/v1/doctor/cases/{memberId}": {
       "get": {
         "parameters": [
@@ -291,6 +327,25 @@
     },
     "/v1/doctor/care-plans": {
       "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/doctor/care-plans/{planId}/versions": {
+      "post": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "planId",
+            "required": true
+          }
+        ],
         "responses": {
           "200": {
             "description": "Default Response"
@@ -355,6 +410,29 @@
         }
       }
     },
+    "/v1/admin/developer-mode": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "delete": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/v1/admin/cases": {
       "get": {
         "responses": {
@@ -366,6 +444,34 @@
     },
     "/v1/admin/cases/{memberId}": {
       "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "memberId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/admin/patients": {
+      "post": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/admin/patients/{memberId}/reset-invite": {
+      "post": {
         "parameters": [
           {
             "schema": {
@@ -438,6 +544,25 @@
         }
       },
       "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "reportId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/admin/reports/{reportId}/corrections": {
+      "post": {
         "parameters": [
           {
             "schema": {
@@ -549,15 +674,13 @@
       }
     },
     "/v1/admin/doctors": {
-      "get": {
+      "post": {
         "responses": {
           "200": {
             "description": "Default Response"
           }
         }
-      }
-    },
-    "/v1/admin/users/promotable": {
+      },
       "get": {
         "responses": {
           "200": {
@@ -630,10 +753,80 @@
             "description": "Default Response"
           }
         }
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "userId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
       }
     },
     "/v1/admin/members/{memberId}/stage": {
       "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "memberId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/admin/members/{memberId}/appointment": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "memberId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "put": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "memberId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      },
+      "delete": {
         "parameters": [
           {
             "schema": {
@@ -756,11 +949,20 @@
           }
         }
       }
+    },
+    "/openapi.json": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
     }
   },
   "servers": [
     {
-      "url": "http://localhost:4000"
+      "url": "http://127.0.0.1:4000"
     }
   ]
 }

@@ -7,6 +7,7 @@ import { fetchCarePlan } from "../../../lib/api/carePlan";
 import type { CarePlanRow } from "../../../lib/api/carePlan";
 import { fetchDoctorProfile } from "../../../lib/api/memberProfile";
 import type { MemberTab } from "../../journey/journeyState";
+import PendingPortalDialog from "../../shell/PendingPortalDialog";
 import "./care-plan.css";
 
 const DONE_STORAGE_KEY = "genh-v2-protocol-done";
@@ -189,6 +190,8 @@ function CarePlanScreen({
   const [openArea, setOpenArea] = useState<FocusArea | null>(null);
   const [openAction, setOpenAction] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [carePlanReleased, setCarePlanReleased] = useState(false);
+  const [pendingDialogOpen, setPendingDialogOpen] = useState(true);
   const [focusAreas, setFocusAreas] = useState<FocusArea[]>([]);
   const [doctor, setDoctor] = useState<DoctorIdentity>({
     doctorName: "Your Verae doctor",
@@ -202,12 +205,18 @@ function CarePlanScreen({
         if (!cancelled) setLoading(false);
         return;
       }
+      if (plan.status !== "released") {
+        setCarePlanReleased(false);
+        setLoading(false);
+        return;
+      }
       const doctorProfile = await fetchDoctorProfile(plan.doctor_id);
       const identity: DoctorIdentity = {
         doctorName: doctorProfile.data?.full_name ?? "Your Verae doctor",
         avatarUrl: doctorProfile.data?.avatar_url ?? defaultDoctorAvatar,
       };
       if (cancelled) return;
+      setCarePlanReleased(true);
       setDoctor(identity);
       setFocusAreas(toFocusAreas(plan, identity));
       setLoading(false);
@@ -254,6 +263,17 @@ function CarePlanScreen({
             <p>Once it's released, your focus areas and weekly actions will appear here.</p>
           </div>
         </section>
+        {!memberId && !carePlanReleased && pendingDialogOpen && (
+          <PendingPortalDialog
+            eyebrow="Your care plan"
+            title="Your plan is on the way"
+            closeLabel="Close pending care plan message"
+            onClose={() => setPendingDialogOpen(false)}
+          >
+            If you've already gone for your blood draw, the lab &amp; your doctor are currently processing the result to
+            develop your personalized Verae care plan.
+          </PendingPortalDialog>
+        )}
       </main>
     );
   }

@@ -32,12 +32,15 @@ export type ProfileState = {
   /** Index of the next unanswered step; equals STEP_COUNT once finished. */
   lastStep: number;
   completedAt: string | null;
+  /** True only while the per-member local draft has not been acknowledged by the API. */
+  pendingSync: boolean;
 };
 
 const INITIAL_STATE: ProfileState = {
   answers: DEFAULT_ANSWERS,
   lastStep: 0,
   completedAt: null,
+  pendingSync: false,
 };
 
 type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements";
@@ -102,6 +105,7 @@ function load(memberId: string): ProfileState {
       ...parsed,
       lastStep: parsed.lastStep ?? 0,
       answers,
+      pendingSync: parsed.pendingSync ?? false,
     };
   } catch {
     return INITIAL_STATE;
@@ -110,25 +114,43 @@ function load(memberId: string): ProfileState {
 
 export function useProfileAnswers(memberId: string) {
   const [state, setState] = useState<ProfileState>(() => load(memberId));
+  const [hydratedMemberId, setHydratedMemberId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  // Hydrate from the DB once per mount. The DB is the source of truth; a
-  // member with zero saved rows has genuinely never submitted anything, so
-  // that response resets local state even if a stale/foreign draft was
-  // cached under this key. localStorage is only an offline draft cache.
+  // Hydrate from the DB once per mount. A previously acknowledged local copy
+  // yields to the DB; a pending per-member draft is kept and retried so an API
+  // outage or an immediate close never erases the member's latest edits.
   useEffect(() => {
     let cancelled = false;
+    const localDraft = load(memberId);
+    stateRef.current = localDraft;
+    setState(localDraft);
+    setHydratedMemberId(null);
     fetchOnboardingResponses().then(({ data, error }) => {
       if (cancelled) return;
       if (error) {
         console.warn("Failed to load onboarding answers:", error);
+        setHydratedMemberId(memberId);
         return;
       }
       if (!data) {
+        if (stateRef.current.pendingSync) {
+          setHydratedMemberId(memberId);
+          void syncNowRef.current(stateRef.current);
+          return;
+        }
         localStorage.removeItem(storageKey(memberId));
         setState(INITIAL_STATE);
+        setHydratedMemberId(memberId);
+        return;
+      }
+      if (stateRef.current.pendingSync) {
+        setHydratedMemberId(memberId);
+        void syncNowRef.current(stateRef.current);
         return;
       }
       setState((current) => {
@@ -146,10 +168,12 @@ export function useProfileAnswers(memberId: string) {
           answers,
           lastStep: meta?.lastStep ?? current.lastStep,
           completedAt: meta?.completedAt ?? current.completedAt,
+          pendingSync: false,
         };
         localStorage.setItem(storageKey(memberId), JSON.stringify(next));
         return next;
       });
+      setHydratedMemberId(memberId);
     });
     return () => {
       cancelled = true;
@@ -160,26 +184,63 @@ export function useProfileAnswers(memberId: string) {
   // meta row for flow progress. Failures only warn — the local cache keeps the
   // draft, and the next edit retries.
   const syncTimer = useRef<ReturnType<typeof setTimeout>>();
-  useEffect(() => () => clearTimeout(syncTimer.current), []);
+  const syncNow = useCallback(async (next = stateRef.current): Promise<boolean> => {
+    clearTimeout(syncTimer.current);
+    if (!next.pendingSync) return true;
+    setSaving(true);
+    setSaveError(null);
+    const { error } = await upsertOnboardingResponses(
+      { ...next.answers, meta: { lastStep: next.lastStep, completedAt: next.completedAt } },
+      memberId,
+    );
+    setSaving(false);
+    if (error) {
+      setSaveError(error);
+      return false;
+    }
+    if (stateRef.current !== next) {
+      return syncNowRef.current(stateRef.current);
+    }
+    setState((current) => {
+      const acknowledged = { ...current, pendingSync: false };
+      stateRef.current = acknowledged;
+      localStorage.setItem(storageKey(memberId), JSON.stringify(acknowledged));
+      return acknowledged;
+    });
+    return true;
+  }, [memberId]);
+  const syncNowRef = useRef(syncNow);
+  syncNowRef.current = syncNow;
+
+  useEffect(() => () => {
+    clearTimeout(syncTimer.current);
+    if (stateRef.current.pendingSync) void syncNow(stateRef.current);
+  }, [syncNow]);
+
+  useEffect(() => {
+    const flushWhenHidden = () => {
+      if (document.visibilityState === "hidden" && stateRef.current.pendingSync) {
+        void syncNow(stateRef.current);
+      }
+    };
+    document.addEventListener("visibilitychange", flushWhenHidden);
+    return () => document.removeEventListener("visibilitychange", flushWhenHidden);
+  }, [syncNow]);
   const scheduleSync = useCallback(
     (next: ProfileState) => {
       clearTimeout(syncTimer.current);
       syncTimer.current = setTimeout(() => {
-        void upsertOnboardingResponses(
-          { ...next.answers, meta: { lastStep: next.lastStep, completedAt: next.completedAt } },
-          memberId,
-        ).then(({ error }) => {
-          if (error) console.warn("Failed to save onboarding answers:", error);
-        });
+        void syncNow(next);
       }, 600);
     },
-    [memberId],
+    [syncNow],
   );
 
   const save = useCallback(
     (updater: (current: ProfileState) => ProfileState) => {
       setState((current) => {
-        const next = updater(current);
+        const next = { ...updater(current), pendingSync: true };
+        stateRef.current = next;
         localStorage.setItem(storageKey(memberId), JSON.stringify(next));
         scheduleSync(next);
         return next;
@@ -354,23 +415,27 @@ export function useProfileAnswers(memberId: string) {
     [save],
   );
 
-  const markCompleted = useCallback((preferredNameFallback = "") => {
+  const markCompleted = useCallback(async (preferredNameFallback = "") => {
     const basics = {
       ...stateRef.current.answers.basics,
       preferredName:
         stateRef.current.answers.basics.preferredName.trim() || preferredNameFallback.trim(),
     };
-    save((current) => ({
-      ...current,
-      answers: { ...current.answers, basics },
+    const completedState = {
+      ...stateRef.current,
+      answers: { ...stateRef.current.answers, basics },
       completedAt: new Date().toISOString(),
-    }));
-    // Persist basics + advance the journey (profile_incomplete → consult_upcoming).
-    void completeOnboarding(basics, memberId).then(({ error }) => {
-      if (error) console.warn("Failed to complete onboarding:", error);
-    });
-    return basics.preferredName;
-  }, [save, memberId]);
+      pendingSync: true,
+    };
+    setState(completedState);
+    stateRef.current = completedState;
+    localStorage.setItem(storageKey(memberId), JSON.stringify(completedState));
+    const saved = await syncNow(completedState);
+    if (!saved) return { preferredName: basics.preferredName, error: "Couldn't save your profile." };
+    const completed = await completeOnboarding(basics, memberId);
+    if (completed.error) return { preferredName: basics.preferredName, error: completed.error };
+    return { preferredName: basics.preferredName, error: null };
+  }, [memberId, syncNow]);
 
   const reset = useCallback(() => {
     localStorage.removeItem(storageKey(memberId));
@@ -379,6 +444,10 @@ export function useProfileAnswers(memberId: string) {
 
   return {
     state,
+    hydrated: hydratedMemberId === memberId,
+    saving,
+    saveError,
+    flush: syncNow,
     uploadErrors,
     setAnswers,
     toggleListItem,

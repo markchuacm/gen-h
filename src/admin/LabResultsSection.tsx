@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import {
   createBiomarker,
   createLabReport,
+  createReportCorrection,
   deleteBiomarker,
   deleteLabReport,
   releaseLabReport,
@@ -10,7 +11,8 @@ import {
 } from "../lib/api/admin";
 import type { AdminBiomarkerRow, AdminLabReport, BiomarkerInput } from "../lib/api/admin";
 import { BIOMARKER_CATALOG, catalogLookup } from "./biomarkerCatalog";
-import IngestModal from "./ingest/IngestModal";
+
+const IngestModal = import.meta.env.DEV ? lazy(() => import("./ingest/IngestModal")) : null;
 
 const STATUS_OPTIONS: AdminBiomarkerRow["status"][] = ["optimal", "at_risk", "needs_attention"];
 const STATUS_LABELS: Record<string, string> = {
@@ -164,6 +166,7 @@ function ReportCard({
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const released = report.status === "released";
 
   const wrap = async (fn: () => Promise<{ error: string | null }>) => {
@@ -175,17 +178,31 @@ function ReportCard({
 
   const docName = documents.find((d) => d.id === report.document_id)?.file_name;
 
+  const startCorrection = async () => {
+    setBusy(true);
+    setError(null);
+    const result = await createReportCorrection(report.id);
+    if (result.error) setError(result.error);
+    else await onChange();
+    setBusy(false);
+  };
+
   return (
     <div className="adm-report">
       <div className="adm-report-head">
         <div>
           <strong>{report.panel_name || "Untitled panel"}</strong>
           <span className="adm-report-meta">
-            {[report.lab_name, report.collected_at, docName].filter(Boolean).join(" · ")}
+            {[`Version ${report.source_version}`, report.lab_name, report.collected_at, docName].filter(Boolean).join(" · ")}
           </span>
         </div>
         <div className="adm-report-head-right">
-          <span className={`adm-pill adm-pill-${report.status}`}>{released ? "Released" : "Draft"}</span>
+          <span className={`adm-pill adm-pill-${report.status}`}>{report.is_superseded ? "Superseded" : released ? "Released" : "Draft"}</span>
+          {released && !report.is_superseded && (
+            <button type="button" className="adm-btn-ghost" disabled={busy} onClick={() => void startCorrection()}>
+              Create correction
+            </button>
+          )}
           {!released && (
             <button
               type="button"
@@ -223,9 +240,10 @@ function ReportCard({
                   ? `${b.optimal_low ?? "–"}–${b.optimal_high ?? "–"}` : "—"}</td>
                 <td><span className={`adm-bio-status adm-bio-${b.status}`}>{STATUS_LABELS[b.status]}</span></td>
                 <td className="adm-row-actions">
-                  <button type="button" className="adm-link" onClick={() => setEditingId(b.id)}>Edit</button>
-                  <button type="button" className="adm-link adm-link-danger" disabled={busy}
-                    onClick={() => void wrap(() => deleteBiomarker(b.id))}>Remove</button>
+                  {!released && <button type="button" className="adm-link" onClick={() => setEditingId(b.id)}>Edit</button>}
+                  {!released && <button type="button" className="adm-link adm-link-danger" disabled={busy}
+                    onClick={() => void wrap(() => deleteBiomarker(b.id))}>Remove</button>}
+                  {released && <span className="adm-muted">Read only</span>}
                 </td>
               </tr>
             ))}
@@ -250,7 +268,9 @@ function ReportCard({
         );
       })()}
 
-      {adding ? (
+      {error && <p role="alert" className="adm-error">{error}</p>}
+
+      {!released && (adding ? (
         <BiomarkerForm
           initial={emptyBiomarker()}
           onCancel={() => setAdding(false)}
@@ -263,7 +283,7 @@ function ReportCard({
         <button type="button" className="adm-btn-ghost adm-add" onClick={() => setAdding(true)}>
           ＋ Add biomarker
         </button>
-      )}
+      ))}
     </div>
   );
 }
@@ -334,14 +354,14 @@ function LabResultsSection({
         )}
       </div>
 
-      {import.meta.env.DEV && ingesting && (
-        <IngestModal
+      {IngestModal && ingesting && (
+        <Suspense fallback={<p role="status">Loading document tools…</p>}><IngestModal
           memberId={memberId}
           sex={sex}
           age={age}
           onClose={() => setIngesting(false)}
           onCommitted={onChange}
-        />
+        /></Suspense>
       )}
 
       {error && <p role="alert" className="adm-error">{error}</p>}

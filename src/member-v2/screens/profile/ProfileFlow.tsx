@@ -46,7 +46,9 @@ type ProfileFlowProps = {
   onRemoveReport: (id: string) => void;
   onReachStep: (step: number) => void;
   onComplete: () => void;
-  onClose: () => void;
+  onClose: () => void | Promise<void>;
+  saving?: boolean;
+  saveError?: string | null;
 };
 
 const REPORT_STEP_INDEX = STEPS.findIndex((step) => step.id === "reports");
@@ -561,6 +563,8 @@ function ProfileFlow({
   onReachStep,
   onComplete,
   onClose,
+  saving = false,
+  saveError = null,
 }: ProfileFlowProps) {
   const [stepIndex, setStepIndex] = useState(Math.min(startAt ?? 0, STEP_COUNT - 1));
   const [whyOpen, setWhyOpen] = useState(false);
@@ -626,7 +630,7 @@ function ProfileFlow({
         event.preventDefault();
         advance();
       }
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") void onClose();
       if (event.key === "ArrowLeft" && !inText) back();
       // 1–9 toggles chips/report tiles on choice steps.
       if (!inText && /^[1-9]$/.test(event.key)) {
@@ -664,10 +668,12 @@ function ProfileFlow({
         <div className="pf-flow-bar" aria-hidden="true">
           <span style={{ width: `${progress}%` }} />
         </div>
-        <button className="pf-flow-close" type="button" onClick={onClose}>
-          Save & close
+        <button className="pf-flow-close" type="button" disabled={saving} onClick={() => void onClose()}>
+          {saving ? "Saving…" : "Save & close"}
         </button>
       </div>
+
+      {saveError && <p className="auth-error" role="alert">Couldn't save your changes ({saveError}). Retry Save &amp; close.</p>}
 
       {composing ? (
         <div className="pf-composing">

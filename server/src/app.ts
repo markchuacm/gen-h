@@ -89,6 +89,13 @@ export async function buildApp() {
         issues: error.issues.map((issue) => ({ path: issue.path.join("."), message: issue.message })),
       });
     }
+    if ((error as FastifyError & { code?: string }).code === "P0001" && error.message === "RELEASED_IMMUTABLE") {
+      return reply.code(409).send({
+        error: "Released clinical content is immutable; create a new version instead",
+        code: "RELEASED_IMMUTABLE",
+        requestId: request.id,
+      });
+    }
     const status = typeof error.statusCode === "number" && error.statusCode >= 400 ? error.statusCode : 500;
     reply.code(status).send({
       error: status >= 500 ? "Internal server error" : error.message,
@@ -98,6 +105,7 @@ export async function buildApp() {
   });
 
   if (env.EXPOSE_API_DOCS) {
+    app.get("/openapi.json", { config: { rateLimit: false } }, async () => app.swagger());
     await app.register(apiReference, { routePrefix: "/docs", configuration: { spec: { content: () => app.swagger() } } });
   }
   return app;

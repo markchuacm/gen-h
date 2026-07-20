@@ -3,6 +3,13 @@ import { z } from "zod";
 export const roleSchema = z.enum(["member", "doctor", "admin"]);
 export type Role = z.infer<typeof roleSchema>;
 
+export const PASSWORD_MIN_LENGTH = 10;
+export const PASSWORD_MAX_LENGTH = 200;
+export const passwordSchema = z
+  .string()
+  .min(PASSWORD_MIN_LENGTH, `Password must be at least ${PASSWORD_MIN_LENGTH} characters`)
+  .max(PASSWORD_MAX_LENGTH, `Password must be at most ${PASSWORD_MAX_LENGTH} characters`);
+
 export const memberStageSchema = z.enum([
   "profile_incomplete",
   "consult_upcoming",
@@ -77,6 +84,7 @@ export type ApiErrorBody = {
   error: string;
   code: string;
   requestId?: string;
+  issues?: Array<{ path: string; message: string }>;
 };
 
 export { TERMS_VERSION, PRIVACY_VERSION, CONSENT_VERSION } from "./consent.js";

@@ -31,6 +31,9 @@ export type DoctorCaseDetail = {
   /** Whether any released biomarker results exist — decides whether the case
       opens the panel builder (order) or the results view (review). */
   hasResults: boolean;
+  results: { releasedReportCount: number; measuredMarkerCount: number };
+  labOrder: { id: string; status: string; orderedAt: string | null; markerCount: number } | null;
+  carePlan: { id: string; status: string; updatedAt: string; releasedAt: string | null; version: number } | null;
   /** The member's scheduled teleconsult, if the admin has booked one. */
   appointment: { scheduled_at: string; meeting_url: string | null } | null;
 };
@@ -88,6 +91,7 @@ export type EditablePlan = {
   title: string | null;
   summary: string | null;
   status: string;
+  version: number;
   care_plan_sections: DraftSection[];
 };
 
@@ -106,6 +110,16 @@ export async function createDraftPlan(memberId: string, title: string) {
     return await apiRequest<{ data: { id: string } }>("/v1/doctor/care-plans", {
       method: "POST",
       body: JSON.stringify({ memberId, title }),
+    }).then(({ data }) => ({ data, error: null }));
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
+}
+
+export async function createPlanVersion(planId: string) {
+  try {
+    return await apiRequest<{ data: { id: string } }>(`/v1/doctor/care-plans/${encodeURIComponent(planId)}/versions`, {
+      method: "POST",
     }).then(({ data }) => ({ data, error: null }));
   } catch (error) {
     return { data: null, error: apiError(error) };

@@ -33,6 +33,7 @@ function memberCleanUrl(): Plugin {
 export default defineConfig({
   plugins: [memberCleanUrl(), react()],
   build: {
+    manifest: true,
     rollupOptions: {
       input: {
         main: "index.html",

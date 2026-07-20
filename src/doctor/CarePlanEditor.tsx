@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import {
   createDraftPlan,
+  createPlanVersion,
   fetchEditablePlan,
   releaseCarePlan,
   savePlanSections,
@@ -220,9 +221,25 @@ function CarePlanEditor({
     }
   };
 
+  const startNewVersion = async () => {
+    if (!planId) return;
+    setBusy(true);
+    setBanner(null);
+    const result = await createPlanVersion(planId);
+    setBusy(false);
+    if (result.error || !result.data) {
+      setBanner(`Couldn't create a new version: ${result.error}`);
+      return;
+    }
+    setPlanId(result.data.id);
+    setStatus("draft");
+    setBanner("New draft version created. The released plan remains visible to the member until you release this version.");
+  };
+
   if (loading) return <main className="p-page doc-page"><p className="doc-muted">Loading plan…</p></main>;
 
   const firstName = memberName?.split(" ")[0];
+  const readOnly = status === "released";
 
   return (
     <main className="p-page doc-page">
@@ -238,7 +255,7 @@ function CarePlanEditor({
           <span className="p-chip p-chip--neutral">{status}</span>
         </div>
         <div className="doc-editor-actions">
-          <button
+          {!readOnly && <button
             type="button"
             className="p-btn-ghost"
             aria-pressed={showPreview}
@@ -253,10 +270,10 @@ function CarePlanEditor({
                 <Eye strokeWidth={1.8} aria-hidden="true" /> Preview member view
               </>
             )}
-          </button>
-          <button type="button" className="p-btn-ghost" disabled={busy} onClick={() => void save()}>
+          </button>}
+          {!readOnly && <button type="button" className="p-btn-ghost" disabled={busy} onClick={() => void save()}>
             Save draft
-          </button>
+          </button>}
           <button
             type="button"
             className="p-btn-ghost"
@@ -265,15 +282,15 @@ function CarePlanEditor({
           >
             <Download strokeWidth={1.8} aria-hidden="true" /> Download
           </button>
-          <button type="button" className="p-btn" disabled={busy} onClick={() => void release()}>
-            {status === "released" ? "Re-release" : "Release to member"}
+          <button type="button" className="p-btn" disabled={busy} onClick={() => void (readOnly ? startNewVersion() : release())}>
+            {readOnly ? "Create new version" : "Release to member"}
           </button>
         </div>
       </header>
 
       {banner && <p className="doc-banner">{banner}</p>}
 
-      {showPreview ? (
+      {readOnly || showPreview ? (
         <CarePlanPreview title={title.trim() || "Your care plan"} sections={sections} />
       ) : (
         <>

@@ -283,6 +283,9 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     return withActor(current, async (client) => {
       const result = await client.query(
         `select r.id, r.lab_name, r.panel_name, r.collected_at, r.document_id,
+                r.source_version, r.supersedes_report_id,
+                exists(select 1 from app.lab_reports replacement
+                        where replacement.supersedes_report_id = r.id and replacement.status = 'released') as is_superseded,
                 case when r.status = 'released' then 'released' else 'draft' end as status, r.released_at,
           coalesce(jsonb_agg(jsonb_build_object(
             'id', b.id, 'lab_report_id', b.lab_report_id, 'member_id', b.member_id,
@@ -315,25 +318,87 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     return reply.code(201).send({ data: row });
   });
 
-  app.patch<{ Params: { reportId: string } }>("/v1/admin/reports/:reportId", { preHandler: adminOnly }, async (request) => {
+  app.patch<{ Params: { reportId: string } }>("/v1/admin/reports/:reportId", { preHandler: adminOnly }, async (request, reply) => {
     const current = actor(request);
     const body = reportFieldsSchema.partial().parse(request.body);
-    return withActor(current, async (client) => {
-      await client.query(
+    const updated = await withActor(current, async (client) => {
+      const result = await client.query(
         `update app.lab_reports set
           lab_name = coalesce($2, lab_name), panel_name = coalesce($3, panel_name),
           collected_at = coalesce($4, collected_at), document_id = coalesce($5, document_id)
-         where id = $1`,
+         where id = $1 and status <> 'released' returning id`,
         [request.params.reportId, body.lab_name ?? null, body.panel_name ?? null, body.collected_at ?? null, body.document_id ?? null],
       );
-      return { ok: true };
+      return result.rowCount === 1;
     });
+    if (!updated) return reply.code(409).send({ error: "Released reports are immutable", code: "RELEASED_IMMUTABLE", requestId: request.id });
+    return { ok: true };
   });
 
   app.delete<{ Params: { reportId: string } }>("/v1/admin/reports/:reportId", { preHandler: adminOnly }, async (request, reply) => {
     const current = actor(request);
-    await withActor(current, (client) => client.query("delete from app.lab_reports where id = $1", [request.params.reportId]));
+    const deleted = await withActor(current, (client) => client.query(
+      "delete from app.lab_reports where id = $1 and status <> 'released' returning id",
+      [request.params.reportId],
+    ));
+    if (!deleted.rows[0]) return reply.code(409).send({ error: "Released reports are immutable", code: "RELEASED_IMMUTABLE", requestId: request.id });
     return reply.code(204).send();
+  });
+
+  app.post<{ Params: { reportId: string } }>("/v1/admin/reports/:reportId/corrections", { preHandler: adminOnly }, async (request, reply) => {
+    const current = actor(request);
+    const result = await withActor(current, async (client) => {
+      const source = await client.query<{ status: string }>(
+        "select status from app.lab_reports where id = $1 for share",
+        [request.params.reportId],
+      );
+      if (!source.rows[0]) return { kind: "not_found" as const };
+      if (source.rows[0].status !== "released") return { kind: "invalid" as const };
+      await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [`report-correction:${request.params.reportId}`]);
+      const superseded = await client.query(
+        "select 1 from app.lab_reports where supersedes_report_id = $1 and status = 'released' limit 1",
+        [request.params.reportId],
+      );
+      if (superseded.rows[0]) return { kind: "superseded" as const };
+      const existing = await client.query<{ id: string }>(
+        `select id from app.lab_reports where supersedes_report_id = $1
+          and status in ('draft','quarantined','review_pending') limit 1 for update`,
+        [request.params.reportId],
+      );
+      if (existing.rows[0]) return { kind: "ok" as const, id: existing.rows[0].id, created: false };
+      const created = await client.query<{ id: string }>(
+        `insert into app.lab_reports
+          (member_id, lab_order_id, partner_id, source_version, source_status,
+           supersedes_report_id, lab_name, panel_name, collected_at, issued_at,
+           received_at, document_id, status, created_by)
+         select member_id, lab_order_id, partner_id, source_version + 1, 'corrected',
+                id, lab_name, panel_name, collected_at, issued_at,
+                now(), document_id, 'draft', $2
+           from app.lab_reports where id = $1 returning id`,
+        [request.params.reportId, current.userId],
+      );
+      const correctionId = created.rows[0]!.id;
+      await client.query(
+        `insert into app.biomarker_results
+          (lab_report_id, member_id, source_code, source_system, biomarker_code,
+           biomarker_name, category, source_value, value_numeric, value_text,
+           source_unit, unit, source_reference_range, ref_low, ref_high,
+           optimal_low, optimal_high, source_flag, source_status, status,
+           mapping_version, notes, observed_at)
+         select $2, member_id, source_code, source_system, biomarker_code,
+                biomarker_name, category, source_value, value_numeric, value_text,
+                source_unit, unit, source_reference_range, ref_low, ref_high,
+                optimal_low, optimal_high, source_flag, source_status, status,
+                mapping_version, notes, observed_at
+           from app.biomarker_results where lab_report_id = $1`,
+        [request.params.reportId, correctionId],
+      );
+      return { kind: "ok" as const, id: correctionId, created: true };
+    });
+    if (result.kind === "not_found") return reply.code(404).send({ error: "Report not found", code: "NOT_FOUND", requestId: request.id });
+    if (result.kind === "invalid") return reply.code(409).send({ error: "Only released reports can be corrected", code: "INVALID_STATE", requestId: request.id });
+    if (result.kind === "superseded") return reply.code(409).send({ error: "This report has already been superseded", code: "ALREADY_SUPERSEDED", requestId: request.id });
+    return reply.code(result.created ? 201 : 200).send({ data: { id: result.id } });
   });
 
   app.post<{ Params: { reportId: string } }>("/v1/admin/reports/:reportId/biomarkers", { preHandler: adminOnly }, async (request, reply) => {
@@ -346,13 +411,15 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
           (lab_report_id, member_id, source_code, biomarker_code, biomarker_name, category,
            source_value, value_numeric, value_text, source_unit, unit, ref_low, ref_high,
            optimal_low, optimal_high, status, notes)
-         values ($1,$2,$3,$3,$4,$5,$6,$7,$8,$9,$9,$10,$11,$12,$13,$14,$15) returning id`,
-        [request.params.reportId, body.memberId, row.biomarker_code, row.biomarker_name, row.category,
+         select r.id,r.member_id,$2,$2,$3,$4,$5,$6,$7,$8,$8,$9,$10,$11,$12,$13,$14
+           from app.lab_reports r where r.id = $1 and r.status <> 'released' returning id`,
+        [request.params.reportId, row.biomarker_code, row.biomarker_name, row.category,
           row.value_numeric?.toString() ?? row.value_text ?? "", row.value_numeric, row.value_text, row.unit,
           row.ref_low, row.ref_high, row.optimal_low, row.optimal_high, row.status, row.notes],
       );
       return result.rows[0];
     });
+    if (!created) return reply.code(409).send({ error: "Released reports are immutable", code: "RELEASED_IMMUTABLE", requestId: request.id });
     return reply.code(201).send({ data: created });
   });
 
@@ -360,6 +427,11 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const current = actor(request);
     const body = z.object({ memberId: z.string(), rows: z.array(biomarkerSchema).max(1000) }).parse(request.body);
     const inserted = await withActor(current, async (client) => {
+      const editable = await client.query<{ member_id: string }>(
+        "select member_id from app.lab_reports where id = $1 and status <> 'released' for update",
+        [request.params.reportId],
+      );
+      if (!editable.rows[0]) return null;
       let count = 0;
       for (const row of body.rows) {
         await client.query(
@@ -368,7 +440,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
              source_value, value_numeric, value_text, source_unit, unit, ref_low, ref_high,
              optimal_low, optimal_high, status, notes)
            values ($1,$2,$3,$3,$4,$5,$6,$7,$8,$9,$9,$10,$11,$12,$13,$14,$15)`,
-          [request.params.reportId, body.memberId, row.biomarker_code, row.biomarker_name, row.category,
+          [request.params.reportId, editable.rows[0].member_id, row.biomarker_code, row.biomarker_name, row.category,
             row.value_numeric?.toString() ?? row.value_text ?? "", row.value_numeric, row.value_text, row.unit,
             row.ref_low, row.ref_high, row.optimal_low, row.optimal_high, row.status, row.notes],
         );
@@ -376,28 +448,40 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       }
       return count;
     });
+    if (inserted === null) return reply.code(409).send({ error: "Released reports are immutable", code: "RELEASED_IMMUTABLE", requestId: request.id });
     return reply.code(201).send({ inserted });
   });
 
-  app.put<{ Params: { biomarkerId: string } }>("/v1/admin/biomarkers/:biomarkerId", { preHandler: adminOnly }, async (request) => {
+  app.put<{ Params: { biomarkerId: string } }>("/v1/admin/biomarkers/:biomarkerId", { preHandler: adminOnly }, async (request, reply) => {
     const current = actor(request);
     const row = biomarkerSchema.parse(request.body);
-    return withActor(current, async (client) => {
-      await client.query(
+    const updated = await withActor(current, async (client) => {
+      const result = await client.query(
         `update app.biomarker_results set biomarker_code=$2, biomarker_name=$3, category=$4,
           source_value=$5, value_numeric=$6, value_text=$7, source_unit=$8, unit=$8,
-          ref_low=$9, ref_high=$10, optimal_low=$11, optimal_high=$12, status=$13, notes=$14 where id=$1`,
+          ref_low=$9, ref_high=$10, optimal_low=$11, optimal_high=$12, status=$13, notes=$14
+         where id=$1 and exists (
+           select 1 from app.lab_reports r where r.id = lab_report_id and r.status <> 'released'
+         ) returning id`,
         [request.params.biomarkerId, row.biomarker_code, row.biomarker_name, row.category,
           row.value_numeric?.toString() ?? row.value_text ?? "", row.value_numeric, row.value_text, row.unit,
           row.ref_low, row.ref_high, row.optimal_low, row.optimal_high, row.status, row.notes],
       );
-      return { ok: true };
+      return result.rowCount === 1;
     });
+    if (!updated) return reply.code(409).send({ error: "Released reports are immutable", code: "RELEASED_IMMUTABLE", requestId: request.id });
+    return { ok: true };
   });
 
   app.delete<{ Params: { biomarkerId: string } }>("/v1/admin/biomarkers/:biomarkerId", { preHandler: adminOnly }, async (request, reply) => {
     const current = actor(request);
-    await withActor(current, (client) => client.query("delete from app.biomarker_results where id = $1", [request.params.biomarkerId]));
+    const deleted = await withActor(current, (client) => client.query(
+      `delete from app.biomarker_results b where b.id = $1 and exists (
+         select 1 from app.lab_reports r where r.id = b.lab_report_id and r.status <> 'released'
+       ) returning b.id`,
+      [request.params.biomarkerId],
+    ));
+    if (!deleted.rows[0]) return reply.code(409).send({ error: "Released reports are immutable", code: "RELEASED_IMMUTABLE", requestId: request.id });
     return reply.code(204).send();
   });
 
