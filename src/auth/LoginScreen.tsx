@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@verae/contracts";
 import { authClient } from "./authClient";
 import { portalUrl } from "./portalUrl";
+import { readOAuthCallbackError } from "./oauthCallbackError";
 import TurnstileWidget, { captchaEnabled } from "./TurnstileWidget";
 import "./auth.css";
 
@@ -10,6 +11,20 @@ const PORTAL_URL = portalUrl();
 
 type Mode = "signIn" | "forgotPassword" | "twoFactor";
 const TWO_FACTOR_PARAM = "twofactor";
+
+function describeGoogleError(code: string): string {
+  switch (code) {
+    case "account_not_linked":
+      return "That Google account isn't linked to your Verae account yet. Sign in with your email and password, or contact Verae for help.";
+    case "signup_disabled":
+      return "That Google account doesn't match an invited Verae account. Pick the Google account that uses your invited email.";
+    case "state_mismatch":
+    case "state_not_found":
+      return "Google sign-in took too long or was interrupted. Please try again.";
+    default:
+      return "Google sign-in failed. Please try again.";
+  }
+}
 
 // The two-factor prompt lives in component state, but signIn.email triggers a
 // session refetch whose pending flip makes the Gate unmount this screen. Persist
@@ -151,7 +166,11 @@ function LoginScreen() {
   const [mode, setMode] = useState<Mode>(() => (twoFactorPromptIsActive() ? "twoFactor" : "signIn"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  // A Google round-trip that failed server-side lands back here with ?error=<code>.
+  const [error, setError] = useState<string | null>(() => {
+    const code = readOAuthCallbackError();
+    return code ? describeGoogleError(code) : null;
+  });
   const [busy, setBusy] = useState(false);
   const [resetRequested, setResetRequested] = useState(false);
   const [totpCode, setTotpCode] = useState("");
@@ -166,7 +185,7 @@ function LoginScreen() {
     setError(null);
     setBusy(true);
     const { error: err } = await authClient.signIn.social(
-      { provider: "google", callbackURL: PORTAL_URL },
+      { provider: "google", callbackURL: PORTAL_URL, errorCallbackURL: PORTAL_URL },
       { headers: captchaHeaders },
     );
     if (err) {

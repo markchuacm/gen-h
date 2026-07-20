@@ -15,7 +15,11 @@ export default function StepAuthMethod({ onDone }: { onDone: () => Promise<void>
   async function continueWithGoogle() {
     setError(null);
     setBusy(true);
-    const { error: err } = await authClient.linkSocial({ provider: "google", callbackURL: portalUrl() });
+    const { error: err } = await authClient.linkSocial({
+      provider: "google",
+      callbackURL: portalUrl(),
+      errorCallbackURL: portalUrl(),
+    });
     if (err) {
       setError(err.message ?? "Google sign-in failed.");
       setBusy(false);

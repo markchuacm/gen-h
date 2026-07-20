@@ -1,28 +1,18 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../AuthProvider";
+import { readOAuthCallbackError } from "../oauthCallbackError";
 import StepAuthMethod from "./StepAuthMethod";
 import StepVerifyEmail from "./StepVerifyEmail";
 import StepConsent from "./StepConsent";
 import "../auth.css";
 import "./setup.css";
 
-// Read (and clear) a Google-link callback error from the URL. Better Auth appends
-// ?error=... to callbackURL when account linking fails (e.g. email mismatch).
-function readCallbackError(): string | null {
-  const url = new URL(window.location.href);
-  const err = url.searchParams.get("error");
-  if (!err) return null;
-  url.searchParams.delete("error");
-  window.history.replaceState(null, "", url);
-  return err;
-}
-
 export default function SetupWizard() {
   const { profile, refreshProfile } = useAuth();
   const [callbackError, setCallbackError] = useState<string | null>(null);
 
   useEffect(() => {
-    setCallbackError(readCallbackError());
+    setCallbackError(readOAuthCallbackError());
   }, []);
 
   const setup = profile?.setup;
@@ -40,8 +30,9 @@ export default function SetupWizard() {
     <main className="auth-screen">
       {callbackError && step === "auth" ? (
         <p className="auth-error setup-callback-error" role="alert">
-          That Google account uses a different email than your invite. Use {email || "your invited email"} instead,
-          or set a password below.
+          {callbackError === "email_doesn't_match" || callbackError === "account_already_linked_to_different_user"
+            ? <>That Google account uses a different email than your invite. Use {email || "your invited email"} instead, or set a password below.</>
+            : <>Google sign-in failed. Try again, or set a password below.</>}
         </p>
       ) : null}
       {step === "auth" ? (
