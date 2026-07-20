@@ -4,6 +4,7 @@
 import {
   DEFAULT_ANSWERS,
   EXCLUSIVE_PROFILE_OPTIONS,
+  NOTHING_MAJOR_OPTION,
 } from "../member-v2/screens/profile/profileQuestions";
 import type { ProfileAnswers } from "../member-v2/screens/profile/profileQuestions";
 import type { Biomarker } from "../member-v2/screens/results/types";
@@ -13,8 +14,9 @@ import type { RecommendationInput } from "./recommendedPanel";
 // "No concern" answers that shouldn't read as risk flags.
 export const CLEAR_ANSWERS = new Set<string>([
   EXCLUSIVE_PROFILE_OPTIONS.family,
-  EXCLUSIVE_PROFILE_OPTIONS.symptoms,
   EXCLUSIVE_PROFILE_OPTIONS.supplements,
+  EXCLUSIVE_PROFILE_OPTIONS.allergies,
+  NOTHING_MAJOR_OPTION,
 ]);
 
 export function asObject(value: unknown): Record<string, unknown> {
@@ -39,11 +41,17 @@ export function toAnswers(onboarding: Record<string, unknown>): ProfileAnswers {
     },
     habits: { ...DEFAULT_ANSWERS.habits, ...(asObject(onboarding.habits) as ProfileAnswers["habits"]) },
     reason: asStringList(onboarding.reason),
+    reasonOther: typeof onboarding.reasonOther === "string" ? onboarding.reasonOther : "",
     goals: asStringList(onboarding.goals),
+    goalsOther: typeof onboarding.goalsOther === "string" ? onboarding.goalsOther : "",
     symptoms: asStringList(onboarding.symptoms),
+    symptomsOther: typeof onboarding.symptomsOther === "string" ? onboarding.symptomsOther : "",
     family: asStringList(onboarding.family),
+    familyOther: typeof onboarding.familyOther === "string" ? onboarding.familyOther : "",
     supplements: asStringList(onboarding.supplements),
     supplementsOther: typeof onboarding.supplementsOther === "string" ? onboarding.supplementsOther : "",
+    allergies: asStringList(onboarding.allergies),
+    allergiesOther: typeof onboarding.allergiesOther === "string" ? onboarding.allergiesOther : "",
   };
 }
 

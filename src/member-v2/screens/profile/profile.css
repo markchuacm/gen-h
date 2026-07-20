@@ -132,13 +132,15 @@
 }
 
 .pf-flow-close {
+  min-height: 40px;
   font-size: 0.88rem;
-  color: var(--muted);
+  font-weight: 700;
+  color: var(--ink);
   transition: color 180ms var(--ease-ui);
 }
 
 .pf-flow-close:hover {
-  color: var(--ink);
+  color: var(--accent-dark);
 }
 
 .pf-stage {
@@ -160,6 +162,11 @@
      render outside the child's own box. */
   padding: 24px 6px;
   animation: pf-step-in 360ms var(--ease-spring);
+}
+
+.pf-stage.has-expandable-other {
+  align-content: start;
+  padding-top: clamp(44px, 10vh, 96px);
 }
 
 .pf-stage::-webkit-scrollbar {
@@ -336,7 +343,9 @@
     transform 180ms var(--ease-ui);
 }
 
-.pf-report-tile:hover {
+.pf-report-tile:hover,
+.pf-report-tile.is-drag {
+  background: var(--accent-tint);
   box-shadow: var(--shadow-border-hover);
   transform: translateY(-1px);
 }
@@ -356,6 +365,11 @@
   font-weight: 650;
   line-height: 1.22;
   text-wrap: balance;
+}
+
+.pf-report-upload-tile .pf-report-tile-label {
+  max-width: none;
+  white-space: nowrap;
 }
 
 .pf-report-tile-helper {
@@ -517,13 +531,12 @@
   font-weight: inherit;
   color: inherit;
   text-align: left;
-  text-decoration: underline;
-  text-decoration-color: var(--faint);
-  text-underline-offset: 3px;
+  text-decoration: none;
+  transition: color 160ms var(--ease-ui);
 }
 
 .pf-report-file-open:hover {
-  text-decoration-color: var(--accent);
+  color: var(--accent-dark);
 }
 
 .pf-upload-files {
@@ -540,6 +553,19 @@
 
 .pf-upload-files > p,
 .pf-brief-muted {
+  color: var(--muted);
+}
+
+.pf-upload-files-shell {
+  overflow: hidden;
+  transition: height 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.pf-upload-files-content {
+  min-height: 1em;
+}
+
+.pf-upload-files-empty {
   color: var(--muted);
 }
 
@@ -563,12 +589,21 @@
   box-shadow: var(--shadow-border);
   transition:
     box-shadow 180ms var(--ease-ui),
-    transform 180ms var(--ease-ui);
+    transform 180ms var(--ease-ui),
+    opacity 180ms ease-in,
+    scale 180ms ease-in;
 }
 
 .pf-report-file:hover {
   box-shadow: var(--shadow-border-hover);
   transform: translateY(-1px);
+}
+
+.pf-report-file.is-removing {
+  pointer-events: none;
+  opacity: 0;
+  scale: 0.96;
+  transform: translateY(4px);
 }
 
 .pf-report-file-thumb {
@@ -765,9 +800,52 @@
   color: var(--muted);
 }
 
+.pf-preferred-name-input::placeholder,
+.pf-other-detail-input::placeholder {
+  color: rgba(71, 85, 105, 0.42);
+  font-size: 0.9rem;
+  opacity: 1;
+}
+
 .pf-other-input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 0;
+}
+
+.pf-choice-controls {
+  gap: 0;
+}
+
+.pf-other-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  translate: 0 -4px;
+  transition:
+    grid-template-rows 240ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 150ms ease-in,
+    translate 150ms ease-in;
+}
+
+.pf-other-reveal.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    grid-template-rows 300ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1) 60ms,
+    translate 220ms cubic-bezier(0.2, 0, 0, 1) 40ms;
+}
+
+.pf-other-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+  padding-inline: 2px;
+  padding-bottom: 2px;
+}
+
+.pf-other-reveal-inner .pf-other-input {
+  margin-top: 16px;
 }
 
 /* Composing interstitial */
@@ -1175,6 +1253,10 @@
 
   .pf-stage {
     align-content: start;
+    padding-block: 12px 28px;
+  }
+
+  .pf-stage.has-expandable-other {
     padding-block: 12px 28px;
   }
 

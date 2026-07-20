@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 import profileBriefHeroImage from "../../../../assets/dashboard/profile-brief-hero.png";
-import { REPORT_CATEGORY_LABELS, STEPS } from "./profileQuestions";
+import { OTHER_OPTION, REPORT_CATEGORY_LABELS, STEPS } from "./profileQuestions";
 import type { ProfileAnswers, StepId } from "./profileQuestions";
 
 type ProfileSummaryProps = {
@@ -24,7 +24,25 @@ function stepIndexOf(stepId: StepId) {
 }
 
 function sleepLabel(hours: number) {
+  if (hours < 4) return "<4h";
+  if (hours > 10) return ">10h";
   return `${Number.isInteger(hours) ? hours : hours.toFixed(1)}h`;
+}
+
+function ageLabel(age: number) {
+  return age > 80 ? ">80" : `${age}`;
+}
+
+function heightLabel(heightCm: number) {
+  if (heightCm < 140) return "<140 cm";
+  if (heightCm > 220) return ">220 cm";
+  return `${heightCm} cm`;
+}
+
+function weightLabel(weightKg: number) {
+  if (weightKg < 30) return "<30 kg";
+  if (weightKg > 200) return ">200 kg";
+  return `${weightKg} kg`;
 }
 
 function exerciseLabel(days: string) {
@@ -38,6 +56,11 @@ function conciseHabit(value: string) {
 
 function listSummary(items: string[], empty = "Nothing selected") {
   return items.length > 0 ? items.join(" / ") : empty;
+}
+
+function withOther(items: string[], other: string) {
+  const namedItems = items.filter((item) => item !== OTHER_OPTION);
+  return other.trim() ? [...namedItems, other.trim()] : namedItems;
 }
 
 function reportSummary(answers: ProfileAnswers) {
@@ -148,11 +171,14 @@ function ProfileSummary({
 }: ProfileSummaryProps) {
   const { basics, lifestyle, habits } = answers;
 
-  const supplements = answers.supplementsOther.trim()
-    ? [...answers.supplements, answers.supplementsOther.trim()]
-    : answers.supplements;
+  const reason = withOther(answers.reason, answers.reasonOther);
+  const goals = withOther(answers.goals, answers.goalsOther);
+  const symptoms = withOther(answers.symptoms, answers.symptomsOther);
+  const family = withOther(answers.family, answers.familyOther);
+  const supplements = withOther(answers.supplements, answers.supplementsOther);
+  const allergies = withOther(answers.allergies, answers.allergiesOther);
   const mainConcern =
-    answers.reason[0] || "A doctor review of my goals, lifestyle, history and previous results.";
+    reason[0] || "A doctor review of my goals, lifestyle, history and previous results.";
   const concernLabel = basics.preferredName.trim()
     ? `${basics.preferredName.trim()}'s main concern`
     : "Main concern";
@@ -175,10 +201,10 @@ function ProfileSummary({
           <h2>{mainConcern}</h2>
         </div>
         <div className="pf-brief-hero-stats" aria-label="Profile basics">
-          <HeroPill value={`${basics.age}`} />
+          <HeroPill value={ageLabel(basics.age)} />
           <HeroPill value={basics.sex.toLowerCase()} />
-          <HeroPill value={`${basics.heightCm} cm`} />
-          <HeroPill value={`${basics.weightKg} kg`} />
+          <HeroPill value={heightLabel(basics.heightCm)} />
+          <HeroPill value={weightLabel(basics.weightKg)} />
         </div>
       </section>
 
@@ -209,32 +235,38 @@ function ProfileSummary({
           <DetailRow
             stepId="reason"
             label="All Concerns"
-            value={<ConcernList items={answers.reason} />}
-            topAlign={shouldTopAlignList(answers.reason)}
+            value={<ConcernList items={reason} />}
+            topAlign={shouldTopAlignList(reason)}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="goals"
             label="Goals"
-            value={<TagList items={answers.goals} />}
+            value={<TagList items={goals} />}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="symptoms"
             label="What feels off"
-            value={<TagList items={answers.symptoms} />}
+            value={<TagList items={symptoms} />}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="family"
             label="Family history"
-            value={<TagList items={answers.family} />}
+            value={<TagList items={family} />}
             onEditStep={onEditStep}
           />
           <DetailRow
             stepId="supplements"
             label="Supplements & medications"
             value={<TagList items={supplements} />}
+            onEditStep={onEditStep}
+          />
+          <DetailRow
+            stepId="allergies"
+            label="Allergies"
+            value={<TagList items={allergies} />}
             onEditStep={onEditStep}
           />
           {showReports && (

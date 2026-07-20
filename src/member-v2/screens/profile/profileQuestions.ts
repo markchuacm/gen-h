@@ -3,7 +3,7 @@
 
 export type StepId =
   | "reports"
-  | "reportUpload"
+  | "allergies"
   | "basics"
   | "reason"
   | "goals"
@@ -15,7 +15,7 @@ export type StepId =
 
 export type StepDef = {
   id: StepId;
-  kind: "reports" | "reportUpload" | "basics" | "chips" | "lifestyle" | "habits" | "supplements";
+  kind: "reports" | "basics" | "chips" | "lifestyle" | "habits" | "supplements";
   prompt: string;
   promptEm?: string;
   helper?: string;
@@ -23,6 +23,9 @@ export type StepDef = {
   /** Section title in the doctor brief summary. */
   summaryLabel: string;
   options?: string[];
+  /** Adds a keyboard-accessible “Other” choice (0) and a conditional text field. */
+  allowsOther?: boolean;
+  otherPlaceholder?: string;
   /** For chips steps: at least one selection required to continue. */
   required?: boolean;
 };
@@ -52,17 +55,17 @@ export const REPORT_OPTIONS: Array<{
 }> = [
   {
     id: "health_screening",
-    label: "Health screening",
+    label: "Upload health screenings",
     helper: "Blood work, urine tests, health screening reports",
   },
   {
     id: "genetic_tests",
-    label: "Genetic tests",
+    label: "Upload genetic tests",
     helper: "DNA, ancestry, nutrigenomics or carrier reports",
   },
   {
     id: "other_tests",
-    label: "Other tests",
+    label: "Upload other tests",
     helper: "Imaging, gut microbiome, wearable data or other files",
   },
   {
@@ -92,10 +95,12 @@ export const STEPS: StepDef[] = [
     kind: "chips",
     prompt: "What brings you ",
     promptEm: "here?",
-    helper: "Choose everything that fits.",
+    helper: "Choose everything that fits, by pressing the number on keyboard",
     whyWeAsk: "This helps your doctor understand what you most want from the consult.",
     summaryLabel: "Why I'm here",
     required: true,
+    allowsOther: true,
+    otherPlaceholder: "Tell us what else brings you here",
     options: [
       "I've done tests, but I don't know what to do with the results",
       "I'm worried about long-term health or family history",
@@ -111,6 +116,8 @@ export const STEPS: StepDef[] = [
     promptEm: "12 months?",
     whyWeAsk: "Your goals help your doctor focus the consult on what matters to you.",
     summaryLabel: "Main goals",
+    allowsOther: true,
+    otherPlaceholder: "Tell us what else you would like to improve",
     options: [
       "Energy",
       "Focus / brain fog",
@@ -119,9 +126,8 @@ export const STEPS: StepDef[] = [
       "Fitness / performance",
       "Body composition",
       "Libido / hormones",
-      "Cardiovascular prevention",
       "Blood sugar / metabolic health",
-      "Longevity / prevention",
+      "Longevity / preventive",
     ],
   },
   {
@@ -131,12 +137,13 @@ export const STEPS: StepDef[] = [
     promptEm: "most off?",
     whyWeAsk: "Naming what feels off gives your doctor useful context alongside any results.",
     summaryLabel: "What feels off",
+    allowsOther: true,
+    otherPlaceholder: "Tell us what else has felt off",
     options: [
       "Low energy / afternoon crash",
       "Brain fog / poor focus",
       "Low mood / anxiety / irritability",
       "Poor sleep quality",
-      "Waking unrefreshed",
       "Low libido / drive",
       "Frequent illness / slow recovery",
       "Digestive issues",
@@ -170,6 +177,8 @@ export const STEPS: StepDef[] = [
     helper: "Parents and siblings count most.",
     whyWeAsk: "Family history changes which prevention targets your doctor sets first.",
     summaryLabel: "Family history",
+    allowsOther: true,
+    otherPlaceholder: "Tell us about any other family history",
     options: [
       "Heart disease",
       "Diabetes",
@@ -189,6 +198,8 @@ export const STEPS: StepDef[] = [
     whyWeAsk:
       "Supplements, medications and allergies help your doctor interpret everything else safely.",
     summaryLabel: "Supplements & medications",
+    allowsOther: true,
+    otherPlaceholder: "Tell us about any other supplements or medications",
     options: [
       "Multivitamin",
       "Vitamin D",
@@ -202,25 +213,35 @@ export const STEPS: StepDef[] = [
     ],
   },
   {
+    id: "allergies",
+    kind: "chips",
+    prompt: "Do you have any ",
+    promptEm: "medication allergies?",
+    whyWeAsk: "Medication allergies help your doctor prescribe and recommend treatments safely.",
+    summaryLabel: "Medication allergies",
+    allowsOther: true,
+    otherPlaceholder: "Tell us about any other medication allergies",
+    options: [
+      "Penicillin / amoxicillin",
+      "Cephalosporin antibiotics",
+      "Sulfonamide antibiotics (sulfa)",
+      "NSAIDs (aspirin, ibuprofen, naproxen)",
+      "Anticonvulsants",
+      "Opioid pain medicines",
+      "Anaesthetic medicines",
+      "Contrast dye",
+      "Not that I'm aware of",
+    ],
+  },
+  {
     id: "reports",
     kind: "reports",
-    prompt: "Do you have any previous ",
-    promptEm: "tests?",
-    helper: "Choose every type you can share. Uploads come next.",
+    prompt: "Share what you already ",
+    promptEm: "have",
     whyWeAsk:
       "Existing reports help your doctor connect your current profile with what has already been measured.",
     summaryLabel: "Previous reports",
     required: true,
-  },
-  {
-    id: "reportUpload",
-    kind: "reportUpload",
-    prompt: "Upload what you already ",
-    promptEm: "have",
-    helper: "PDF, JPG, PNG, CSV, DOC or DOCX. You can also continue without uploading.",
-    whyWeAsk:
-      "Your doctor can review these files alongside your answers, even before any new testing is done.",
-    summaryLabel: "Uploaded reports",
   },
 ];
 
@@ -231,10 +252,13 @@ export const DIET_OPTIONS = ["Mostly home-cooked", "Mixed", "Mostly eating out"]
 export const ALCOHOL_OPTIONS = ["Rarely / never", "Socially", "Most days"] as const;
 export const SMOKING_OPTIONS = ["Never", "Former smoker", "Current smoker"] as const;
 
+export const OTHER_OPTION = "Other";
+export const NOTHING_MAJOR_OPTION = "Nothing major — mostly prevention";
+
 export const EXCLUSIVE_PROFILE_OPTIONS = {
-  symptoms: "Nothing major — mostly prevention",
   family: "None that I know of",
   supplements: "Nothing at the moment",
+  allergies: "Not that I'm aware of",
 } as const;
 
 export type ProfileAnswers = {
@@ -242,8 +266,11 @@ export type ProfileAnswers = {
   uploadedReports: UploadedReport[];
   basics: { preferredName: string; age: number; sex: "Male" | "Female"; heightCm: number; weightKg: number };
   reason: string[];
+  reasonOther: string;
   goals: string[];
+  goalsOther: string;
   symptoms: string[];
+  symptomsOther: string;
   lifestyle: {
     sleepHours: number;
     exerciseDays: (typeof EXERCISE_OPTIONS)[number];
@@ -255,8 +282,11 @@ export type ProfileAnswers = {
     smoking: (typeof SMOKING_OPTIONS)[number];
   };
   family: string[];
+  familyOther: string;
   supplements: string[];
   supplementsOther: string;
+  allergies: string[];
+  allergiesOther: string;
 };
 
 export const DEFAULT_ANSWERS: ProfileAnswers = {
@@ -264,11 +294,17 @@ export const DEFAULT_ANSWERS: ProfileAnswers = {
   uploadedReports: [],
   basics: { preferredName: "", age: 36, sex: "Male", heightCm: 173, weightKg: 76 },
   reason: [],
+  reasonOther: "",
   goals: [],
+  goalsOther: "",
   symptoms: [],
+  symptomsOther: "",
   lifestyle: { sleepHours: 6.5, exerciseDays: "1–2", diet: "Mixed", stress: 3 },
   habits: { alcohol: "Socially", smoking: "Never" },
   family: [],
+  familyOther: "",
   supplements: [],
   supplementsOther: "",
+  allergies: [],
+  allergiesOther: "",
 };

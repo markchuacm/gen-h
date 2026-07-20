@@ -31,6 +31,12 @@ const DOC_TYPES = [
 
 const MEET_URL_PATTERN = /^https:\/\/meet\.google\.com\/.+/;
 
+function boundaryValue(value: number, low: number, high: number, unit = "") {
+  if (value < low) return `<${low}${unit}`;
+  if (value > high) return `>${high}${unit}`;
+  return `${value}${unit}`;
+}
+
 // Malaysia observes a fixed UTC+08:00 offset year-round, so a datetime-local
 // value (wall-clock, no zone) can be pinned to KL time regardless of the admin's
 // own browser timezone.
@@ -222,14 +228,21 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const concerns = answers ? lifestyleConcerns(answers) : new Set<string>();
 
   const vitals: [string, string][] = [];
-  if (detail.age != null) vitals.push(["Age", `${detail.age}`]);
+  if (detail.age != null) vitals.push(["Age", boundaryValue(detail.age, 18, 80)]);
   if (detail.sex) vitals.push(["Sex", detail.sex]);
-  if (detail.heightCm != null) vitals.push(["Height", `${detail.heightCm} cm`]);
-  if (detail.weightKg != null) vitals.push(["Weight", `${detail.weightKg} kg`]);
+  if (detail.heightCm != null) vitals.push(["Height", boundaryValue(detail.heightCm, 140, 220, " cm")]);
+  if (detail.weightKg != null) vitals.push(["Weight", boundaryValue(detail.weightKg, 30, 200, " kg")]);
 
   const lifestyleFacts: [string, string][] = answers
     ? [
-        ["Sleep", `~${answers.lifestyle.sleepHours}h per night`],
+        [
+          "Sleep",
+          answers.lifestyle.sleepHours < 4
+            ? "<4h per night"
+            : answers.lifestyle.sleepHours > 10
+              ? ">10h per night"
+              : `~${answers.lifestyle.sleepHours}h per night`,
+        ],
         ["Exercise", `${answers.lifestyle.exerciseDays} days per week`],
         ["Diet", answers.lifestyle.diet],
         ["Stress", `${answers.lifestyle.stress} out of 5`],
