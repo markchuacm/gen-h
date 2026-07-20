@@ -54,8 +54,8 @@
     0 0 0 1px rgba(0, 0, 0, 0.09),
     0 1px 2px -1px rgba(0, 0, 0, 0.08),
     0 22px 54px rgba(17, 23, 27, 0.08);
-  /* Results dashboard viewport sizing for the v2 floating capsule nav. */
-  --desktop-top: 34px;
+  /* Member shell header and results dashboard viewport sizing. */
+  --portal-nav-height: 80px;
   --header-row-height: 64px;
 }
 
