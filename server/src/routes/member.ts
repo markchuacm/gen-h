@@ -4,6 +4,46 @@ import { actor, requireActor, requireRoles } from "../auth/guards.js";
 import { authPool } from "../auth/auth.js";
 import { withActor } from "../db/pools.js";
 import { isInviteExpired } from "../services/invites.js";
+import { calculateLabOrderQuote, validateLabOrderCodes } from "../services/lab-order-pricing.js";
+
+type LabOrderDbRow = {
+  member_id: string;
+  biomarker_codes: string[];
+  status: "draft" | "ordered" | "collected" | "completed" | "cancelled";
+  ordered_at: string | null;
+  quote_pricing_version: number | null;
+  quote_currency: string | null;
+  quote_catalog_count: number | null;
+  quote_selected_count: number | null;
+  quote_base_amount_minor: number | null;
+  quote_personalization_discount_minor: number | null;
+  quote_founding_discount_minor: number | null;
+  quote_is_founding_member: boolean | null;
+  quote_total_amount_minor: number | null;
+  quoted_at: string | null;
+};
+
+function labOrderResponse(row: LabOrderDbRow) {
+  const quote = row.quoted_at == null ? null : {
+    pricingVersion: row.quote_pricing_version,
+    currency: row.quote_currency,
+    catalogCount: row.quote_catalog_count,
+    selectedCount: row.quote_selected_count,
+    baseAmountMinor: row.quote_base_amount_minor,
+    personalizationDiscountMinor: row.quote_personalization_discount_minor,
+    foundingDiscountMinor: row.quote_founding_discount_minor,
+    isFoundingMember: row.quote_is_founding_member,
+    totalAmountMinor: row.quote_total_amount_minor,
+    quotedAt: row.quoted_at,
+  };
+  return {
+    member_id: row.member_id,
+    biomarker_codes: row.biomarker_codes,
+    status: row.status,
+    ordered_at: row.ordered_at,
+    quote,
+  };
+}
 
 const onboardingEntriesSchema = z.object({
   memberId: z.string().min(1),
@@ -182,36 +222,93 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     const current = actor(request);
     const memberId = request.query.memberId ?? current.userId;
     return withActor(current, async (client) => {
-      const result = await client.query(
-        `select member_id, biomarker_codes, status, ordered_at
+      const result = await client.query<LabOrderDbRow>(
+        `select member_id, biomarker_codes, status, ordered_at,
+                quote_pricing_version, quote_currency, quote_catalog_count, quote_selected_count,
+                quote_base_amount_minor, quote_personalization_discount_minor,
+                quote_founding_discount_minor, quote_is_founding_member,
+                quote_total_amount_minor, quoted_at
          from app.lab_orders where member_id = $1
          order by (status in ('draft','ordered','collected')) desc, created_at desc limit 1`,
         [memberId],
       );
-      return { data: result.rows[0] ?? null };
+      return { data: result.rows[0] ? labOrderResponse(result.rows[0]) : null };
     });
   });
 
-  app.put("/v1/member/lab-orders", { preHandler: requireRoles("doctor", "admin") }, async (request) => {
+  app.put("/v1/member/lab-orders", { preHandler: requireRoles("doctor", "admin") }, async (request, reply) => {
     const current = actor(request);
     const body = z.object({ memberId: z.string().min(1), codes: z.array(z.string().min(1).max(100)).min(1).max(500) }).parse(request.body);
     return withActor(current, async (client) => {
       await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [body.memberId]);
+      const [catalog, member] = await Promise.all([
+        client.query<{ id: string }>("select id from app.biomarkers where is_active order by id"),
+        client.query<{ is_founding_member: boolean }>(
+          "select is_founding_member from app.member_profiles where member_id = $1",
+          [body.memberId],
+        ),
+      ]);
+      if (!member.rows[0]) {
+        return reply.code(404).send({ error: "Member not found", code: "NOT_FOUND", requestId: request.id });
+      }
+      const activeCodes = new Set(catalog.rows.map((row) => row.id));
+      const { codes: canonicalCodes, invalidCodes } = validateLabOrderCodes(body.codes, activeCodes);
+      if (invalidCodes.length > 0) {
+        return reply.code(400).send({
+          error: "Panel contains unknown or retired biomarkers",
+          code: "INVALID_BIOMARKER_CODES",
+          invalidCodes,
+          requestId: request.id,
+        });
+      }
+      const quote = calculateLabOrderQuote({
+        catalogCount: activeCodes.size,
+        selectedCount: canonicalCodes.length,
+        isFoundingMember: member.rows[0].is_founding_member,
+      });
       const latest = await client.query<{ id: string }>(
         `select id from app.lab_orders where member_id = $1
           and status in ('draft','ordered','collected') limit 1 for update`,
         [body.memberId],
       );
+      let saved;
+      const quoteValues = [
+        quote.pricingVersion,
+        quote.currency,
+        quote.catalogCount,
+        quote.selectedCount,
+        quote.baseAmountMinor,
+        quote.personalizationDiscountMinor,
+        quote.foundingDiscountMinor,
+        quote.isFoundingMember,
+        quote.totalAmountMinor,
+      ];
+      const returning = `member_id, biomarker_codes, status, ordered_at,
+        quote_pricing_version, quote_currency, quote_catalog_count, quote_selected_count,
+        quote_base_amount_minor, quote_personalization_discount_minor,
+        quote_founding_discount_minor, quote_is_founding_member,
+        quote_total_amount_minor, quoted_at`;
       if (latest.rows[0]) {
-        await client.query(
-          "update app.lab_orders set biomarker_codes = $2, status = 'ordered', ordered_at = now(), created_by = $3 where id = $1",
-          [latest.rows[0].id, body.codes, current.userId],
+        saved = await client.query<LabOrderDbRow>(
+          `update app.lab_orders set biomarker_codes = $2, status = 'ordered', ordered_at = now(), created_by = $3,
+             quote_pricing_version = $4, quote_currency = $5, quote_catalog_count = $6,
+             quote_selected_count = $7, quote_base_amount_minor = $8,
+             quote_personalization_discount_minor = $9, quote_founding_discount_minor = $10,
+             quote_is_founding_member = $11, quote_total_amount_minor = $12, quoted_at = now()
+           where id = $1 returning ${returning}`,
+          [latest.rows[0].id, canonicalCodes, current.userId, ...quoteValues],
         );
       } else {
-        await client.query(
-          `insert into app.lab_orders (member_id, biomarker_codes, status, ordered_at, created_by)
-           values ($1, $2, 'ordered', now(), $3)`,
-          [body.memberId, body.codes, current.userId],
+        saved = await client.query<LabOrderDbRow>(
+          `insert into app.lab_orders (
+             member_id, biomarker_codes, status, ordered_at, created_by,
+             quote_pricing_version, quote_currency, quote_catalog_count, quote_selected_count,
+             quote_base_amount_minor, quote_personalization_discount_minor,
+             quote_founding_discount_minor, quote_is_founding_member,
+             quote_total_amount_minor, quoted_at
+           ) values ($1, $2, 'ordered', now(), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())
+           returning ${returning}`,
+          [body.memberId, canonicalCodes, current.userId, ...quoteValues],
         );
       }
       await client.query(
@@ -219,7 +316,7 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
          where member_id = $1 and current_stage = 'consult_upcoming'`,
         [body.memberId],
       );
-      return { ok: true };
+      return { data: labOrderResponse(saved.rows[0]!) };
     });
   });
 

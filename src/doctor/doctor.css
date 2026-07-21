@@ -473,35 +473,92 @@
   box-shadow: var(--shadow-border);
 }
 
-/* Panel cards — every panel always visible, whole-panel toggle. */
+/* Health-risk coverage cards. Clinical areas intentionally overlap, so each
+   card distinguishes an active coverage choice from markers merely covered by
+   another selected area. */
 .pb-panels {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
 }
 
 .pb-panel {
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  min-width: 0;
+  min-height: 132px;
   gap: 8px;
-  padding: 18px 20px;
-  border-radius: 20px;
+  padding: 18px;
+  border-radius: 22px;
   background: #fff;
   box-shadow: var(--shadow-border);
+  cursor: pointer;
   text-align: left;
   transition:
+    translate 180ms var(--ease-ui),
+    scale 120ms var(--ease-ui),
     box-shadow 180ms var(--ease-ui),
-    background-color 180ms var(--ease-ui);
+    background-color 180ms var(--ease-ui),
+    color 180ms var(--ease-ui);
 }
 
 .pb-panel:hover {
+  translate: 0 -2px;
   box-shadow: var(--shadow-border-hover);
+}
+
+.pb-panel:active {
+  scale: 0.96;
+}
+
+.pb-panel:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 .pb-panel.is-active {
   background: var(--accent-tint);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  box-shadow: 0 8px 22px rgba(184, 93, 53, 0.08);
+}
+
+.pb-panel.is-covered:not(.is-active) {
+  background: rgba(184, 93, 53, 0.045);
+  box-shadow: 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+}
+
+.pb-panel.is-partial:not(.is-active) {
+  box-shadow: 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+}
+
+.pb-panel-baseline {
+  min-height: 142px;
+  padding: 21px;
+  border-radius: 24px;
+  background: #fff7f2;
+  box-shadow:
+    0 0 0 1px rgba(184, 93, 53, 0.32),
+    0 16px 36px rgba(15, 23, 42, 0.11);
+}
+
+.pb-panel-baseline.is-active {
+  background: var(--accent-dark);
+  color: #fff;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 18px 38px rgba(150, 72, 41, 0.28);
+}
+
+.pb-panel-baseline:hover {
+  box-shadow:
+    0 0 0 1px rgba(184, 93, 53, 0.32),
+    0 18px 38px rgba(15, 23, 42, 0.12);
+}
+
+.pb-panel-baseline.is-active:hover {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.24),
+    0 22px 42px rgba(150, 72, 41, 0.34);
 }
 
 .pb-panel-head {
@@ -511,10 +568,21 @@
   gap: 8px;
 }
 
+.pb-panel-head > span:first-child {
+  min-width: 0;
+}
+
 .pb-panel-head strong {
-  font-size: var(--doc-text-md);
-  font-weight: 560;
-  letter-spacing: -0.01em;
+  font-size: 1rem;
+  font-weight: 460;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+.pb-panel-baseline .pb-panel-head strong {
+  font-size: 1.14rem;
+  font-weight: 520;
 }
 
 .pb-panel-head svg {
@@ -522,6 +590,24 @@
   height: 16px;
   flex: none;
   color: var(--accent-dark);
+}
+
+.pb-panel-status {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 680;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.pb-panel.is-active .pb-panel-status,
+.pb-panel.is-covered .pb-panel-status {
+  color: var(--accent-dark);
+}
+
+.pb-panel-baseline.is-active .pb-panel-status {
+  color: rgba(255, 255, 255, 0.76);
 }
 
 .pb-panel-meta {
@@ -534,6 +620,7 @@
   color: var(--muted);
   font-size: var(--doc-text-xs);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .pb-panel-icon {
@@ -542,8 +629,61 @@
   color: rgba(184, 93, 53, 0.55);
 }
 
+.pb-panel-baseline .pb-panel-icon {
+  width: 22px;
+  height: 22px;
+}
+
 .pb-panel.is-active .pb-panel-icon {
   color: var(--accent-dark);
+}
+
+.pb-panel-baseline.is-active .pb-panel-icon {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.pb-baseline-action {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 12px;
+  background: rgba(184, 93, 53, 0.12);
+  color: var(--accent-dark);
+}
+
+.pb-baseline-action svg {
+  width: 18px;
+  height: 18px;
+  color: currentColor;
+}
+
+.pb-panel-baseline.is-active .pb-baseline-action {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+@media (max-width: 1180px) {
+  .pb-panels {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .pb-panels {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .pb-panels {
+    grid-template-columns: 1fr;
+  }
+
+  .pb-panel {
+    min-height: 0;
+  }
 }
 
 /* Borderless fill search, like the onboarding inputs. */
@@ -684,9 +824,8 @@
 
 .pb-marker.is-on {
   background: var(--accent-tint);
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  box-shadow: none;
   color: var(--accent-dark);
-  font-weight: 520;
 }
 
 .pb-marker.is-on svg {
@@ -749,10 +888,6 @@
   font-size: var(--doc-text-md);
 }
 
-.pb-row.is-checked .pb-row-name {
-  font-weight: 520;
-}
-
 .pb-row-alias {
   color: var(--muted);
   font-size: var(--doc-text-xs);
@@ -792,6 +927,10 @@
   overflow: hidden;
   box-shadow: var(--shadow-lift);
   animation: doc-step-in 300ms var(--ease-spring);
+}
+
+.pb-review:focus {
+  outline: none;
 }
 
 .pb-review-head {
@@ -844,6 +983,252 @@
   justify-content: flex-end;
   gap: 10px;
   padding: 20px 30px 26px;
+}
+
+/* Member-facing quote — an editorial price card rather than an invoice. */
+.pb-quote {
+  width: min(720px, 100%);
+  max-height: min(90vh, 100%);
+  border-radius: 28px;
+}
+
+.pb-quote-head {
+  display: grid;
+  gap: 10px;
+  padding: clamp(26px, 5vw, 38px) clamp(24px, 5vw, 42px) 24px;
+  text-align: center;
+}
+
+.pb-quote-share {
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 13px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.pb-quote-share svg {
+  width: 15px;
+  height: 15px;
+}
+
+.pb-quote-head h2 {
+  max-width: 560px;
+  margin-inline: auto;
+  font-size: clamp(1.8rem, 4vw, 2.55rem);
+  font-weight: 420;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  text-wrap: balance;
+}
+
+.pb-quote-head > p {
+  color: var(--muted);
+  font-size: var(--doc-text-md);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.pb-quote-body {
+  min-height: 0;
+  overflow-y: auto;
+  display: grid;
+  gap: 20px;
+  padding: 0 clamp(24px, 5vw, 42px);
+}
+
+.pb-quote-package {
+  display: grid;
+  gap: 20px;
+  padding: clamp(20px, 4vw, 28px);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.06),
+    0 12px 35px rgba(15, 23, 42, 0.07);
+}
+
+.pb-quote-package-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.pb-quote-package-head > div {
+  display: grid;
+  gap: 5px;
+}
+
+.pb-quote-package-head span {
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.pb-quote-package-head small {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+  text-wrap: pretty;
+}
+
+.pb-quote-package-head strong,
+.pb-quote-breakdown dd {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pb-quote-package-head strong {
+  font-size: 1.2rem;
+  font-weight: 560;
+  letter-spacing: -0.02em;
+}
+
+.pb-quote-package ul {
+  list-style: none;
+  margin: 0;
+  padding: 18px 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  border-top: 1px solid var(--doc-hairline);
+}
+
+.pb-quote-package li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--ink);
+  font-size: var(--doc-text-sm);
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.pb-quote-package li svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+
+.pb-quote-breakdown {
+  display: grid;
+  margin: 0;
+}
+
+.pb-quote-breakdown > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 11px 2px;
+}
+
+.pb-quote-breakdown dt {
+  color: var(--muted);
+  font-size: var(--doc-text-sm);
+}
+
+.pb-quote-breakdown dd {
+  margin: 0;
+  color: var(--accent-dark);
+  font-size: var(--doc-text-md);
+  font-weight: 560;
+}
+
+.pb-quote-breakdown .pb-quote-total {
+  align-items: center;
+  margin-top: 8px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: var(--accent-tint);
+}
+
+.pb-quote-total dt {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.pb-quote-total dd {
+  color: var(--accent-dark);
+  font-size: clamp(1.65rem, 4vw, 2.15rem);
+  font-weight: 560;
+  letter-spacing: -0.04em;
+}
+
+.pb-quote-next {
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--doc-fill);
+  color: var(--muted);
+  font-size: var(--doc-text-sm);
+  line-height: 1.55;
+  text-align: center;
+  text-wrap: pretty;
+}
+
+.pb-quote-foot {
+  padding-inline: clamp(24px, 5vw, 42px);
+}
+
+.pb-quote-head,
+.pb-quote-package,
+.pb-quote-breakdown,
+.pb-quote-next,
+.pb-quote-foot {
+  animation: pb-quote-item-in 420ms var(--ease-spring) both;
+}
+
+.pb-quote-package { animation-delay: 70ms; }
+.pb-quote-breakdown { animation-delay: 130ms; }
+.pb-quote-next { animation-delay: 190ms; }
+.pb-quote-foot { animation-delay: 240ms; }
+
+@keyframes pb-quote-item-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+    filter: blur(3px);
+  }
+}
+
+@media (max-width: 560px) {
+  .pb-quote-package-head {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .pb-quote-package ul {
+    grid-template-columns: 1fr;
+  }
+
+  .pb-quote-foot {
+    justify-content: stretch;
+  }
+
+  .pb-quote-foot button {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-quote-head,
+  .pb-quote-package,
+  .pb-quote-breakdown,
+  .pb-quote-next,
+  .pb-quote-foot {
+    animation: none;
+  }
 }
 
 /* Floating summary bar — same capsule treatment as the portal nav. Fixed, not

@@ -41,6 +41,21 @@ export async function catalogRoutes(app: FastifyInstance): Promise<void> {
          order by b.display_name`,
       );
 
+      const riskAreas = await client.query(
+        `select r.id, r.name, r.description, r.display_order,
+                coalesce(
+                  array_agg(m.biomarker_id order by b.display_name)
+                    filter (where b.id is not null),
+                  '{}'
+                ) as biomarker_ids
+         from app.biomarker_risk_areas r
+         left join app.biomarker_risk_area_members m on m.risk_area_id = r.id
+         left join app.biomarkers b on b.id = m.biomarker_id and b.is_active
+         where r.is_active
+         group by r.id
+         order by r.display_order`,
+      );
+
       // The dashboard needs to know which codes are deliberately retired so a
       // stale result row is dropped rather than falling through to the
       // "Other results" bucket for unrecognised lab codes. Retired rows are
@@ -56,6 +71,7 @@ export async function catalogRoutes(app: FastifyInstance): Promise<void> {
         data: {
           categories: categories.rows,
           biomarkers: biomarkers.rows,
+          riskAreas: riskAreas.rows,
           retiredCodes: retired.rows[0]?.codes ?? [],
         },
       };

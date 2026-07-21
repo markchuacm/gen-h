@@ -19,6 +19,7 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Pool } from "pg";
 import { adminDatabaseUrl } from "../config.js";
+import { BIOMARKER_RISK_AREAS, validateRiskAreaMembership } from "../catalog/biomarker-risk-areas.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const seedPath = path.resolve(here, "../../seeds/biomarker-catalog.json");
@@ -106,6 +107,7 @@ function validate(seed: SeedFile): void {
 export async function seedBiomarkerCatalog(): Promise<void> {
   const seed = JSON.parse(await readFile(seedPath, "utf8")) as SeedFile;
   validate(seed);
+  validateRiskAreaMembership(seed.biomarkers.filter((marker) => marker.isActive).map((marker) => marker.id));
 
   const slugByName = new Map(seed.categories.map((c) => [c.name, c.id]));
   const pool = new Pool({ connectionString: adminDatabaseUrl(), application_name: "verae-catalog-seed" });
@@ -179,12 +181,40 @@ export async function seedBiomarkerCatalog(): Promise<void> {
       [seed.biomarkers.map((m) => m.id)],
     );
 
+    // Clinical coverage is maintained separately from laboratory categories.
+    // Replace memberships wholesale so moving a marker between areas never
+    // leaves a stale inclusion behind. Advanced Baseline is intentionally
+    // absent: it is a complete-catalog shortcut, not another mapping.
+    for (const area of BIOMARKER_RISK_AREAS) {
+      await client.query(
+        `insert into app.biomarker_risk_areas (id, name, description, display_order, is_active)
+         values ($1, $2, $3, $4, true)
+         on conflict (id) do update set
+           name = excluded.name, description = excluded.description,
+           display_order = excluded.display_order, is_active = true`,
+        [area.id, area.name, area.description, area.displayOrder],
+      );
+      await client.query("delete from app.biomarker_risk_area_members where risk_area_id = $1", [area.id]);
+      for (const biomarkerId of area.biomarkerIds) {
+        await client.query(
+          `insert into app.biomarker_risk_area_members (biomarker_id, risk_area_id)
+           values ($1, $2)`,
+          [biomarkerId, area.id],
+        );
+      }
+    }
+    await client.query(
+      "update app.biomarker_risk_areas set is_active = false where id <> all($1::text[]) and is_active",
+      [BIOMARKER_RISK_AREAS.map((area) => area.id)],
+    );
+
     await client.query("commit");
 
     const active = seed.biomarkers.filter((m) => m.isActive).length;
     console.info(
       `Catalog seeded: ${active} active / ${seed.biomarkers.length} total markers, ` +
-        `${seed.categories.filter((c) => c.isActive).length} active categories.`,
+        `${seed.categories.filter((c) => c.isActive).length} active categories, ` +
+        `${BIOMARKER_RISK_AREAS.length} active risk areas.`,
     );
     if (orphaned.rowCount) {
       console.info(`Retired ${orphaned.rowCount} marker(s) absent from the seed: ${orphaned.rows.map((r) => r.id).join(", ")}`);
