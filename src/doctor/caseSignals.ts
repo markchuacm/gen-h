@@ -9,8 +9,6 @@ import {
 } from "../member-v2/screens/profile/profileQuestions";
 import type { ProfileAnswers } from "../member-v2/screens/profile/profileQuestions";
 import type { Biomarker } from "../member-v2/screens/results/types";
-import type { DoctorCaseDetail } from "../lib/api/doctor";
-import type { RecommendationInput } from "./recommendedPanel";
 
 // "No concern" answers that shouldn't read as risk flags.
 export const CLEAR_ANSWERS = new Set<string>([
@@ -73,16 +71,6 @@ export function matchesQuery(marker: Biomarker | undefined, query: string) {
   if (!marker) return false;
   const haystack = [marker.displayName, marker.name, ...marker.aliases].join(" ").toLowerCase();
   return haystack.includes(query.toLowerCase());
-}
-
-export function toRecommendationInput(detail: DoctorCaseDetail): RecommendationInput {
-  return {
-    sex: detail.sex ?? "",
-    age: detail.age,
-    goals: asStringList(detail.onboarding.goals),
-    symptoms: asStringList(detail.onboarding.symptoms),
-    family: asStringList(detail.onboarding.family),
-  };
 }
 
 /** Lifestyle/habit answers that warrant the doctor's attention, keyed by the

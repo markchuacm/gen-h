@@ -1,4 +1,5 @@
 import { apiError, apiRequest } from "../apiClient";
+import type { LabOrderQuote } from "./labOrder";
 
 async function mutation(path: string, method: string, body?: unknown): Promise<{ error: string | null }> {
   try {
@@ -78,6 +79,7 @@ export type AdminCaseDetail = {
   invitedAt: string | null;
   tempPasswordExpiresAt: string | null;
   setupCompletedAt: string | null;
+  isFoundingMember: boolean;
   onboarding: Record<string, unknown>;
   documents: AdminDocument[];
   doctorId: string | null;
@@ -87,6 +89,12 @@ export type AdminCaseDetail = {
     doctorName: string | null;
     updatedAt: string | null;
     releasedAt: string | null;
+  } | null;
+  labOrder: {
+    biomarkerCodes: string[];
+    status: string;
+    orderedAt: string | null;
+    quote: LabOrderQuote | null;
   } | null;
 };
 
@@ -101,6 +109,12 @@ export async function fetchAdminCaseDetail(memberId: string): Promise<{
   } catch (error) {
     return { data: null, error: apiError(error) };
   }
+}
+
+export async function setFoundingMember(memberId: string, isFoundingMember: boolean) {
+  return mutation(`/v1/admin/members/${encodeURIComponent(memberId)}/membership`, "PATCH", {
+    isFoundingMember,
+  });
 }
 
 // ---- Patient invites -----------------------------------------------------

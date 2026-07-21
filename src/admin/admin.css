@@ -672,6 +672,226 @@
   color: var(--ink);
 }
 
+.adm-membership-card .adm-card-head > div,
+.adm-quote-card .adm-card-head > div {
+  display: grid;
+  gap: 5px;
+}
+
+.adm-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 14px 6px 7px;
+  border-radius: 999px;
+  background: var(--adm-fill);
+  color: var(--muted);
+  font-size: var(--adm-text-sm);
+  font-weight: 560;
+  transition:
+    background-color 180ms var(--ease-ui),
+    color 180ms var(--ease-ui),
+    box-shadow 180ms var(--ease-ui);
+}
+
+.adm-switch > span {
+  position: relative;
+  width: 38px;
+  height: 24px;
+  flex: none;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.16);
+  transition: background-color 180ms var(--ease-ui);
+}
+
+.adm-switch > span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+  transition: translate 180ms var(--ease-ui);
+}
+
+.adm-switch.is-on {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  box-shadow: inset 0 0 0 1px rgba(184, 93, 53, 0.12);
+}
+
+.adm-switch.is-on > span {
+  background: var(--accent);
+}
+
+.adm-switch.is-on > span::after {
+  translate: 14px 0;
+}
+
+.adm-switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.adm-switch:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.adm-quote-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  font-size: var(--adm-text-xs);
+  font-weight: 650;
+}
+
+.adm-quote-status svg {
+  width: 14px;
+  height: 14px;
+}
+
+.adm-quote-empty {
+  display: grid;
+  gap: 5px;
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--adm-fill);
+}
+
+.adm-quote-empty p {
+  color: var(--ink);
+  font-size: var(--adm-text-md);
+  font-weight: 560;
+}
+
+.adm-quote-empty span {
+  color: var(--muted);
+  font-size: var(--adm-text-sm);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.adm-quote-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 18px 0;
+  border-block: 1px solid var(--adm-hairline);
+}
+
+.adm-quote-meta > div {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding-inline: 20px;
+  border-left: 1px solid var(--adm-hairline);
+}
+
+.adm-quote-meta > div:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.adm-quote-meta span {
+  color: var(--muted);
+  font-size: var(--adm-text-xs);
+}
+
+.adm-quote-meta strong {
+  font-size: var(--adm-text-md);
+  font-weight: 560;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.adm-quote-breakdown {
+  display: grid;
+  margin: 0;
+}
+
+.adm-quote-breakdown > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 2px;
+}
+
+.adm-quote-breakdown dt {
+  color: var(--muted);
+  font-size: var(--adm-text-sm);
+}
+
+.adm-quote-breakdown dd {
+  margin: 0;
+  color: var(--accent-dark);
+  font-size: var(--adm-text-md);
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.adm-quote-breakdown .adm-quote-total {
+  align-items: center;
+  margin-top: 6px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--accent-tint);
+}
+
+.adm-quote-total dt {
+  color: var(--ink);
+  font-size: var(--adm-text-md);
+  font-weight: 600;
+}
+
+.adm-quote-total dd {
+  font-size: 1.65rem;
+  letter-spacing: -0.035em;
+}
+
+.adm-quote-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adm-quote-actions button {
+  min-height: 40px;
+}
+
+.adm-quote-actions svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (max-width: 680px) {
+  .adm-quote-meta {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .adm-quote-meta > div,
+  .adm-quote-meta > div:first-child {
+    padding: 0;
+    border-left: 0;
+  }
+
+  .adm-quote-actions button {
+    flex: 1;
+  }
+}
+
 /* Quiet in-card group label (matches the doctor's form field labels). */
 .adm-group-label {
   display: block;

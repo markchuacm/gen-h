@@ -142,13 +142,14 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
                 m.height_cm as "heightCm", m.weight_kg as "weightKg", m.goals, m.medications,
                 m.conditions, m.preferred_name as "preferredName", m.current_stage as "currentStage",
                 m.onboarding_status as "onboardingStatus", m.phone,
+                m.is_founding_member as "isFoundingMember",
                 p.invited_at as "invitedAt", p.temp_password_expires_at as "tempPasswordExpiresAt",
                 p.setup_completed_at as "setupCompletedAt"
          from app.profiles p left join app.member_profiles m on m.member_id = p.id where p.id = $1`,
         [request.params.memberId],
       );
       if (!base.rows[0]) return { data: null };
-      const [responses, docs, assignment, plan] = await Promise.all([
+      const [responses, docs, assignment, plan, labOrder] = await Promise.all([
         client.query<{ question_key: string; response: unknown }>("select question_key, response from app.onboarding_responses where member_id = $1", [request.params.memberId]),
         client.query(
           `select id, file_name, object_key as storage_path, mime_type, size_bytes, doc_type, uploaded_by, created_at
@@ -167,7 +168,33 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
            where cp.member_id = $1 order by cp.created_at desc limit 1`,
           [request.params.memberId],
         ),
+        client.query(
+          `select biomarker_codes as "biomarkerCodes", status, ordered_at as "orderedAt",
+                  quote_pricing_version as "pricingVersion", quote_currency as currency,
+                  quote_catalog_count as "catalogCount", quote_selected_count as "selectedCount",
+                  quote_base_amount_minor as "baseAmountMinor",
+                  quote_personalization_discount_minor as "personalizationDiscountMinor",
+                  quote_founding_discount_minor as "foundingDiscountMinor",
+                  quote_is_founding_member as "isFoundingMember",
+                  quote_total_amount_minor as "totalAmountMinor", quoted_at as "quotedAt"
+           from app.lab_orders where member_id = $1
+           order by (status in ('draft','ordered','collected')) desc, created_at desc limit 1`,
+          [request.params.memberId],
+        ),
       ]);
+      const order = labOrder.rows[0] ?? null;
+      const quote = order?.quotedAt == null ? null : {
+        pricingVersion: order.pricingVersion,
+        currency: order.currency,
+        catalogCount: order.catalogCount,
+        selectedCount: order.selectedCount,
+        baseAmountMinor: order.baseAmountMinor,
+        personalizationDiscountMinor: order.personalizationDiscountMinor,
+        foundingDiscountMinor: order.foundingDiscountMinor,
+        isFoundingMember: order.isFoundingMember,
+        totalAmountMinor: order.totalAmountMinor,
+        quotedAt: order.quotedAt,
+      };
       return {
         data: {
           ...base.rows[0],
@@ -176,10 +203,34 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
           doctorId: assignment.rows[0]?.doctorId ?? null,
           doctorName: assignment.rows[0]?.doctorName ?? null,
           carePlan: plan.rows[0] ?? null,
+          labOrder: order ? {
+            biomarkerCodes: order.biomarkerCodes,
+            status: order.status,
+            orderedAt: order.orderedAt,
+            quote,
+          } : null,
         },
       };
     });
   });
+
+  app.patch<{ Params: { memberId: string } }>(
+    "/v1/admin/members/:memberId/membership",
+    { preHandler: adminOnly },
+    async (request, reply) => {
+      const current = actor(request);
+      const body = z.object({ isFoundingMember: z.boolean() }).parse(request.body);
+      const updated = await withActor(current, async (client) => client.query(
+        `update app.member_profiles set is_founding_member = $2
+         where member_id = $1 returning member_id`,
+        [request.params.memberId, body.isFoundingMember],
+      ));
+      if (!updated.rows[0]) {
+        return reply.code(404).send({ error: "Member not found", code: "NOT_FOUND", requestId: request.id });
+      }
+      return { data: { isFoundingMember: body.isFoundingMember } };
+    },
+  );
 
   app.post("/v1/admin/patients", { preHandler: adminOnly }, async (request, reply) => {
     const current = actor(request);

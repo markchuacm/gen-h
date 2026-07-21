@@ -37,9 +37,26 @@ type CatalogRow = {
 };
 
 type CategoryRow = { id: string; name: string; description: string; display_order: number };
+type RiskAreaRow = {
+  id: string;
+  name: string;
+  description: string;
+  display_order: number;
+  biomarker_ids: string[];
+};
+
+export type BiomarkerRiskArea = {
+  id: string;
+  name: string;
+  description: string;
+  biomarkerIds: string[];
+};
 
 export type BiomarkerCatalog = {
   categories: BiomarkerCategory[];
+  /** Clinical coverage areas for the doctor panel builder. Advanced Baseline
+      is deliberately a UI shortcut for the full active catalog, not a row. */
+  riskAreas: BiomarkerRiskArea[];
   biomarkers: Biomarker[];
   byCode: Map<string, Biomarker>;
   /** Codes deliberately taken out of the panel. A result row for one of these
@@ -89,10 +106,16 @@ let inflight: Promise<BiomarkerCatalog> | null = null;
 
 async function fetchCatalog(): Promise<BiomarkerCatalog> {
   const { data } = await apiRequest<{
-    data: { categories: CategoryRow[]; biomarkers: CatalogRow[]; retiredCodes: string[] };
+    data: {
+      categories: CategoryRow[];
+      riskAreas: RiskAreaRow[];
+      biomarkers: CatalogRow[];
+      retiredCodes: string[];
+    };
   }>("/v1/catalog/biomarkers");
 
   const biomarkers = data.biomarkers.map(toBiomarker);
+  const byCode = new Map(biomarkers.map((marker) => [marker.id, marker]));
   const byCategory = new Map<string, string[]>();
   for (const marker of biomarkers) {
     for (const name of marker.categories) {
@@ -108,8 +131,14 @@ async function fetchCatalog(): Promise<BiomarkerCatalog> {
       description: category.description,
       biomarkerIds: byCategory.get(category.name) ?? [],
     })),
+    riskAreas: data.riskAreas.map((area) => ({
+      id: area.id,
+      name: area.name,
+      description: area.description,
+      biomarkerIds: area.biomarker_ids.filter((id) => byCode.has(id)),
+    })),
     biomarkers,
-    byCode: new Map(biomarkers.map((marker) => [marker.id, marker])),
+    byCode,
     retiredCodes: new Set(data.retiredCodes),
   };
 }
@@ -134,6 +163,7 @@ export function invalidateCatalog(): void {
 
 const EMPTY: BiomarkerCatalog = {
   categories: [],
+  riskAreas: [],
   biomarkers: [],
   byCode: new Map(),
   retiredCodes: new Set(),

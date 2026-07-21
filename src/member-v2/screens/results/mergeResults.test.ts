@@ -42,6 +42,7 @@ function makeCatalog(retiredCodes: string[]): BiomarkerCatalog {
   const biomarkers = [catalogMarker("glucose", "Metabolic")];
   return {
     categories: [{ name: "Metabolic", description: "", biomarkerIds: ["glucose"] }],
+    riskAreas: [],
     biomarkers,
     byCode: new Map(biomarkers.map((m) => [m.id, m])),
     retiredCodes: new Set(retiredCodes),
