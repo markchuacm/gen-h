@@ -24,6 +24,7 @@ COPY --from=build /app/packages/contracts ./packages/contracts
 COPY --from=build /app/server/package.json ./server/package.json
 COPY --from=build /app/server/dist ./server/dist
 COPY --from=build /app/server/migrations ./server/migrations
+COPY --from=build /app/server/seeds ./server/seeds
 
 USER node
 ENTRYPOINT ["/sbin/tini", "--"]
