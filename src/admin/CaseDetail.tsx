@@ -383,7 +383,7 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
 
             <div className="adm-brief-section">
               <span className="adm-group-label">Supplements &amp; medications</span>
-              {supplements.length === 0 && !answers.supplementsOther && !detail.medications ? (
+              {supplements.length === 0 && !answers.supplementsOther && !answers.prescriptionMedicationDetails && !detail.medications ? (
                 <p className="adm-muted">Nothing at the moment.</p>
               ) : (
                 <>
@@ -395,6 +395,11 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
                     </ul>
                   )}
                   {answers.supplementsOther && <p className="adm-muted">{answers.supplementsOther}</p>}
+                  {answers.prescriptionMedicationDetails && (
+                    <p className="adm-muted">
+                      Prescription medications and doses: {answers.prescriptionMedicationDetails}
+                    </p>
+                  )}
                   {detail.medications && (
                     <p className="adm-muted">Medications: {detail.medications}</p>
                   )}

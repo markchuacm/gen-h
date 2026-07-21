@@ -66,6 +66,7 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
   const supplements = withOther(answers.supplements, answers.supplementsOther).filter(
     (item) => !CLEAR_ANSWERS.has(item),
   );
+  const prescriptionMedicationDetails = answers.prescriptionMedicationDetails.trim();
   const allergies = withOther(answers.allergies, answers.allergiesOther);
   const hasHistory = goals.length + symptoms.length + family.length > 0;
 
@@ -126,6 +127,11 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
+                )}
+                {prescriptionMedicationDetails && (
+                  <p className="doc-muted">
+                    Prescription medications and doses: {prescriptionMedicationDetails}
+                  </p>
                 )}
               </>
             )}

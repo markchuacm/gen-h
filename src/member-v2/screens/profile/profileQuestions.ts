@@ -80,6 +80,8 @@ export const REPORT_CATEGORY_LABELS: Record<ReportUploadCategory, string> = {
   other_tests: "Other tests",
 };
 
+export const PRESCRIPTION_MEDICATION_OPTION = "Prescription medication";
+
 export const STEPS: StepDef[] = [
   {
     id: "basics",
@@ -208,7 +210,7 @@ export const STEPS: StepDef[] = [
       "Protein powder",
       "Creatine",
       "Traditional / herbal remedies",
-      "Prescription medication",
+      PRESCRIPTION_MEDICATION_OPTION,
       "Nothing at the moment",
     ],
   },
@@ -321,6 +323,7 @@ export type ProfileAnswers = {
   familyOther: string;
   supplements: string[];
   supplementsOther: string;
+  prescriptionMedicationDetails: string;
   allergies: string[];
   allergiesOther: string;
 };
@@ -376,6 +379,7 @@ export const DEFAULT_ANSWERS: ProfileAnswers = {
   familyOther: "",
   supplements: [],
   supplementsOther: "",
+  prescriptionMedicationDetails: "",
   allergies: [],
   allergiesOther: "",
 };

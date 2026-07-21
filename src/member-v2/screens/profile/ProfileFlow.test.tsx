@@ -207,6 +207,23 @@ describe("ProfileFlow refinements", () => {
     );
   });
 
+  it("keeps the Prescription medication and Other details independently available on Question 8", () => {
+    renderFlow(
+      {
+        ...DEFAULT_ANSWERS,
+        supplements: ["Prescription medication", "Other"],
+      },
+      7,
+    );
+
+    const prescriptionInput = screen.getByLabelText("Prescription medications and doses");
+    expect(prescriptionInput.getAttribute("placeholder")).toBe(
+      "Tell us your prescription medications and doses",
+    );
+    expect((prescriptionInput as HTMLInputElement).disabled).toBe(false);
+    expect((screen.getByLabelText("Other supplements & medications") as HTMLInputElement).disabled).toBe(false);
+  });
+
   it("starts the daily-average sleep scale below four hours", () => {
     renderFlow(
       {
