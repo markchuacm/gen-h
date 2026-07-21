@@ -449,7 +449,7 @@ function keepFocusInDialog(event: KeyboardEvent, dialog: HTMLElement | null) {
 
 /** The final step is deliberately member-facing: no clinical counts or
  * pricing formula, only the package, applied adjustments and next step. */
-function PanelQuote({
+export function PanelQuote({
   quote,
   onEdit,
   onDone,
@@ -484,49 +484,61 @@ function PanelQuote({
             <ReceiptText strokeWidth={1.7} aria-hidden="true" />
             To share with the Verae member
           </span>
-          <h2 id="pb-quote-title">Your personalized blood baseline</h2>
-          <p>Here is a clear summary of what is included and the amount payable.</p>
+          <h2 id="pb-quote-title">
+            Your <em>personalized</em> blood baseline
+          </h2>
+          <p>One clear price — everything below is included.</p>
         </header>
 
         <div className="pb-quote-body">
-          <section className="pb-quote-package" aria-label="Package inclusions">
-            <div className="pb-quote-package-head">
-              <div>
-                <span>Advanced Blood Baseline</span>
-                <small>Comprehensive, doctor-personalized preventive care</small>
+          <section className="pb-quote-sheet" aria-label="Price summary">
+            <div className="pb-quote-package">
+              <div className="pb-quote-package-head">
+                <div>
+                  <span>Advanced Blood Baseline</span>
+                  <small>Comprehensive preventive screening, tailored by your doctor</small>
+                </div>
+                <strong>{formatMyr(quote.baseAmountMinor)}</strong>
               </div>
-              <strong>{formatMyr(quote.baseAmountMinor)}</strong>
+              <ul>
+                {[
+                  "Personalized advanced blood test",
+                  "Results interpretation",
+                  "Personalized care plan construction",
+                  "2nd teleconsult with doctor",
+                ].map((item) => (
+                  <li key={item}><Check strokeWidth={2} aria-hidden="true" />{item}</li>
+                ))}
+              </ul>
             </div>
-            <ul>
-              {[
-                "Personalized advanced blood test",
-                "Results interpretation",
-                "Personalized care plan construction",
-                "2nd teleconsult with doctor",
-              ].map((item) => (
-                <li key={item}><Check strokeWidth={2} aria-hidden="true" />{item}</li>
-              ))}
-            </ul>
+
+            <dl className="pb-quote-breakdown">
+              <div>
+                <dt>
+                  <span>Doctor personalization</span>
+                  <small>You only pay for the markers your doctor selected</small>
+                </dt>
+                <dd>{discountAmount(quote.personalizationDiscountMinor)}</dd>
+              </div>
+              {quote.isFoundingMember && (
+                <div>
+                  <dt>
+                    <span>Founding member discount</span>
+                    <small>Our thank-you for joining Verae early</small>
+                  </dt>
+                  <dd>{discountAmount(quote.foundingDiscountMinor)}</dd>
+                </div>
+              )}
+            </dl>
+
+            <div className="pb-quote-total">
+              <span>Your price</span>
+              <strong>{formatMyr(quote.totalAmountMinor)}</strong>
+            </div>
           </section>
 
-          <dl className="pb-quote-breakdown">
-            <div>
-              <dt>Doctor personalization adjustment</dt>
-              <dd>{discountAmount(quote.personalizationDiscountMinor)}</dd>
-            </div>
-            {quote.isFoundingMember && (
-              <div>
-                <dt>Founding member discount</dt>
-                <dd>{discountAmount(quote.foundingDiscountMinor)}</dd>
-              </div>
-            )}
-            <div className="pb-quote-total">
-              <dt>Total</dt>
-              <dd>{formatMyr(quote.totalAmountMinor)}</dd>
-            </div>
-          </dl>
-
           <p className="pb-quote-next" id="pb-quote-next">
+            <strong>What happens next</strong>
             A Verae support member will be in touch after this teleconsult to guide you on next steps.
           </p>
         </div>
