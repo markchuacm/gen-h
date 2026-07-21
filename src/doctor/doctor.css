@@ -524,11 +524,13 @@
 
 .pb-panel.is-covered:not(.is-active) {
   background: rgba(184, 93, 53, 0.045);
-  box-shadow: 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+  box-shadow:
+    0 0 0 1px rgba(184, 93, 53, 0.1),
+    0 1px 2px -1px rgba(15, 23, 42, 0.05);
 }
 
 .pb-panel.is-partial:not(.is-active) {
-  box-shadow: 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+  box-shadow: var(--shadow-border);
 }
 
 .pb-panel-baseline {
@@ -593,12 +595,26 @@
 }
 
 .pb-panel-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--muted);
   font-size: 0.72rem;
   font-weight: 680;
   letter-spacing: 0.06em;
   line-height: 1.2;
   text-transform: uppercase;
+}
+
+/* Tiny state dot so coverage reads at a glance during screen share. */
+.pb-panel-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.55;
 }
 
 .pb-panel.is-active .pb-panel-status,
@@ -985,17 +1001,22 @@
   padding: 20px 30px 26px;
 }
 
-/* Member-facing quote — an editorial price card rather than an invoice. */
+/* Member-facing quote — an editorial price card rather than an invoice.
+   Shown over screen share, so it leans on the landing language: big
+   balanced type, warm terracotta accents, one quiet cream "quote sheet". */
 .pb-quote {
   width: min(720px, 100%);
   max-height: min(90vh, 100%);
   border-radius: 28px;
+  background:
+    radial-gradient(120% 90% at 50% -20%, rgba(184, 93, 53, 0.09), transparent 60%),
+    #fff;
 }
 
 .pb-quote-head {
   display: grid;
-  gap: 10px;
-  padding: clamp(26px, 5vw, 38px) clamp(24px, 5vw, 42px) 24px;
+  gap: 12px;
+  padding: clamp(28px, 5vw, 40px) clamp(24px, 5vw, 46px) 26px;
   text-align: center;
 }
 
@@ -1040,19 +1061,28 @@
   min-height: 0;
   overflow-y: auto;
   display: grid;
-  gap: 20px;
-  padding: 0 clamp(24px, 5vw, 42px);
+  gap: 18px;
+  padding: 0 clamp(24px, 5vw, 46px);
+}
+
+/* The sheet holds package, adjustments and total as one continuous
+   document, separated by warm hairlines — a quote, not an invoice grid. */
+.pb-quote-sheet {
+  display: grid;
+  border-radius: 24px;
+  background: #fffaf6;
+  box-shadow:
+    0 0 0 1px rgba(184, 93, 53, 0.14),
+    0 18px 50px rgba(150, 72, 41, 0.09);
+  /* No overflow:hidden — as a grid item it would zero the sheet's automatic
+     minimum size and let a height-constrained dialog clip the total band.
+     The total rounds its own bottom corners instead. */
 }
 
 .pb-quote-package {
   display: grid;
-  gap: 20px;
-  padding: clamp(20px, 4vw, 28px);
-  border-radius: 22px;
-  background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.06),
-    0 12px 35px rgba(15, 23, 42, 0.07);
+  gap: 18px;
+  padding: clamp(22px, 4vw, 30px) clamp(22px, 4vw, 30px) clamp(18px, 3vw, 24px);
 }
 
 .pb-quote-package-head {
@@ -1095,11 +1125,11 @@
 .pb-quote-package ul {
   list-style: none;
   margin: 0;
-  padding: 18px 0 0;
+  padding: 16px 0 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px 18px;
-  border-top: 1px solid var(--doc-hairline);
+  gap: 11px 18px;
+  border-top: 1px solid rgba(184, 93, 53, 0.14);
 }
 
 .pb-quote-package li {
@@ -1122,7 +1152,9 @@
 
 .pb-quote-breakdown {
   display: grid;
-  margin: 0;
+  margin: 0 clamp(22px, 4vw, 30px);
+  padding: 6px 0 16px;
+  border-top: 1px solid rgba(184, 93, 53, 0.14);
 }
 
 .pb-quote-breakdown > div {
@@ -1130,46 +1162,73 @@
   align-items: baseline;
   justify-content: space-between;
   gap: 20px;
-  padding: 11px 2px;
+  padding: 12px 0;
+}
+
+.pb-quote-breakdown > div + div {
+  border-top: 1px dashed rgba(184, 93, 53, 0.18);
 }
 
 .pb-quote-breakdown dt {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pb-quote-breakdown dt > span {
+  color: var(--ink);
+  font-size: var(--doc-text-md);
+  font-weight: 540;
+  letter-spacing: -0.01em;
+}
+
+.pb-quote-breakdown dt > small {
   color: var(--muted);
-  font-size: var(--doc-text-sm);
+  font-size: var(--doc-text-xs);
+  line-height: 1.4;
+  text-wrap: pretty;
 }
 
 .pb-quote-breakdown dd {
   margin: 0;
   color: var(--accent-dark);
-  font-size: var(--doc-text-md);
+  font-size: var(--doc-text-lg);
   font-weight: 560;
+  letter-spacing: -0.02em;
 }
 
-.pb-quote-breakdown .pb-quote-total {
+/* The total is the destination of the whole dialog: one dark terracotta
+   band, mirroring the selected Advanced Baseline tile. */
+.pb-quote-total {
+  display: flex;
   align-items: center;
-  margin-top: 8px;
-  padding: 18px 20px;
-  border-radius: 18px;
-  background: var(--accent-tint);
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px clamp(22px, 4vw, 30px);
+  border-radius: 0 0 24px 24px;
+  background: var(--accent-dark);
+  color: #fff;
 }
 
-.pb-quote-total dt {
-  color: var(--ink);
-  font-size: 1rem;
-  font-weight: 600;
+.pb-quote-total > span {
+  font-size: var(--doc-text-md);
+  font-weight: 520;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.pb-quote-total dd {
-  color: var(--accent-dark);
-  font-size: clamp(1.65rem, 4vw, 2.15rem);
-  font-weight: 560;
+.pb-quote-total > strong {
+  font-size: clamp(1.7rem, 4vw, 2.2rem);
+  font-weight: 540;
   letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .pb-quote-next {
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: var(--doc-fill);
+  display: grid;
+  gap: 2px;
+  padding: 2px 18px 0;
   color: var(--muted);
   font-size: var(--doc-text-sm);
   line-height: 1.55;
@@ -1177,22 +1236,28 @@
   text-wrap: pretty;
 }
 
+.pb-quote-next strong {
+  color: var(--accent-dark);
+  font-size: var(--doc-text-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .pb-quote-foot {
   padding-inline: clamp(24px, 5vw, 42px);
 }
 
 .pb-quote-head,
-.pb-quote-package,
-.pb-quote-breakdown,
+.pb-quote-sheet,
 .pb-quote-next,
 .pb-quote-foot {
   animation: pb-quote-item-in 420ms var(--ease-spring) both;
 }
 
-.pb-quote-package { animation-delay: 70ms; }
-.pb-quote-breakdown { animation-delay: 130ms; }
-.pb-quote-next { animation-delay: 190ms; }
-.pb-quote-foot { animation-delay: 240ms; }
+.pb-quote-sheet { animation-delay: 80ms; }
+.pb-quote-next { animation-delay: 170ms; }
+.pb-quote-foot { animation-delay: 230ms; }
 
 @keyframes pb-quote-item-in {
   from {

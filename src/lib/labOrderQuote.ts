@@ -20,12 +20,12 @@ export function memberQuoteSummary(quote: LabOrderQuote): string {
     "• 2nd teleconsult with doctor",
   ];
   if (quote.personalizationDiscountMinor > 0) {
-    lines.push(`Doctor personalization adjustment — -${formatMyr(quote.personalizationDiscountMinor)}`);
+    lines.push(`Doctor personalization — -${formatMyr(quote.personalizationDiscountMinor)}`);
   }
   if (quote.foundingDiscountMinor > 0) {
     lines.push(`Founding member discount — -${formatMyr(quote.foundingDiscountMinor)}`);
   }
-  lines.push(`Total — ${formatMyr(quote.totalAmountMinor)}`);
+  lines.push(`Your price — ${formatMyr(quote.totalAmountMinor)}`);
   lines.push("A Verae support member will be in touch after this teleconsult to guide you on next steps.");
   return lines.join("\n");
 }
