@@ -19,6 +19,7 @@ import {
   DIET_OPTIONS,
   EXERCISE_OPTIONS,
   OTHER_OPTION,
+  PRESCRIPTION_MEDICATION_OPTION,
   REPORT_CATEGORY_LABELS,
   REPORT_OPTIONS,
   SMOKING_PRODUCT_OPTIONS,
@@ -724,6 +725,8 @@ function StepInputs({
   const key = step.kind === "supplements" ? "supplements" : (step.id as ToggleListKey);
   const otherAnswerKey = OTHER_ANSWER_KEYS[key];
   const showOtherInput = Boolean(step.allowsOther && answers[key].includes(OTHER_OPTION));
+  const showPrescriptionInput =
+    key === "supplements" && answers.supplements.includes(PRESCRIPTION_MEDICATION_OPTION);
 
   return (
     <div className="pf-controls pf-choice-controls">
@@ -734,6 +737,25 @@ function StepInputs({
         selected={answers[key]}
         onToggle={(option) => onToggle(key, option)}
       />
+      {key === "supplements" && (
+        <div
+          className={`pf-other-reveal pf-prescription-reveal ${showPrescriptionInput ? "is-open" : ""}`}
+          aria-hidden={!showPrescriptionInput}
+        >
+          <div className="pf-other-reveal-inner">
+            <input
+              className="pf-other-input pf-other-detail-input"
+              type="text"
+              aria-label="Prescription medications and doses"
+              placeholder="Tell us your prescription medications and doses"
+              value={answers.prescriptionMedicationDetails}
+              disabled={!showPrescriptionInput}
+              tabIndex={showPrescriptionInput ? 0 : -1}
+              onChange={(event) => onPatch({ prescriptionMedicationDetails: event.target.value })}
+            />
+          </div>
+        </div>
+      )}
       <div
         className={`pf-other-reveal ${showOtherInput ? "is-open" : ""}`}
         aria-hidden={!showOtherInput}

@@ -165,7 +165,12 @@ function ProfileSummary({
   const goals = withOther(answers.goals, answers.goalsOther);
   const symptoms = withOther(answers.symptoms, answers.symptomsOther);
   const family = withOther(answers.family, answers.familyOther);
-  const supplements = withOther(answers.supplements, answers.supplementsOther);
+  const supplements = [
+    ...withOther(answers.supplements, answers.supplementsOther),
+    ...(answers.prescriptionMedicationDetails.trim()
+      ? [`Prescription medications and doses: ${answers.prescriptionMedicationDetails.trim()}`]
+      : []),
+  ];
   const allergies = withOther(answers.allergies, answers.allergiesOther);
   const mainConcern =
     reason[0] || "A doctor review of my goals, lifestyle, history and previous results.";

@@ -106,6 +106,17 @@ describe("profile draft persistence", () => {
     expect(result.current.state.answers.allergiesOther).toBe("");
   });
 
+  it("clears prescription details when Prescription medication is deselected", async () => {
+    const { result } = renderHook(() => useProfileAnswers("member-a"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    act(() => result.current.toggleListItem("supplements", "Prescription medication"));
+    act(() => result.current.setAnswers({ prescriptionMedicationDetails: "Metformin 500 mg" }));
+    act(() => result.current.toggleListItem("supplements", "Prescription medication"));
+
+    expect(result.current.state.answers.prescriptionMedicationDetails).toBe("");
+  });
+
   it("treats an unknown medication-allergy status as exclusive", async () => {
     const { result } = renderHook(() => useProfileAnswers("member-a"));
     await waitFor(() => expect(result.current.hydrated).toBe(true));

@@ -14,6 +14,7 @@ import {
   EXCLUSIVE_PROFILE_OPTIONS,
   normalizeHabits,
   OTHER_OPTION,
+  PRESCRIPTION_MEDICATION_OPTION,
 } from "./profileQuestions";
 import type {
   ProfileAnswers,
@@ -285,6 +286,9 @@ export function useProfileAnswers(memberId: string) {
             ...current.answers,
             [key]: next,
             ...(otherAnswerKey && !next.includes(OTHER_OPTION) ? { [otherAnswerKey]: "" } : null),
+            ...(key === "supplements" && !next.includes(PRESCRIPTION_MEDICATION_OPTION)
+              ? { prescriptionMedicationDetails: "" }
+              : null),
           },
         };
       }),

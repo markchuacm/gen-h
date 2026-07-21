@@ -58,6 +58,10 @@ export function toAnswers(onboarding: Record<string, unknown>): ProfileAnswers {
     familyOther: typeof onboarding.familyOther === "string" ? onboarding.familyOther : "",
     supplements: asStringList(onboarding.supplements),
     supplementsOther: typeof onboarding.supplementsOther === "string" ? onboarding.supplementsOther : "",
+    prescriptionMedicationDetails:
+      typeof onboarding.prescriptionMedicationDetails === "string"
+        ? onboarding.prescriptionMedicationDetails
+        : "",
     allergies: asStringList(onboarding.allergies),
     allergiesOther: typeof onboarding.allergiesOther === "string" ? onboarding.allergiesOther : "",
   };

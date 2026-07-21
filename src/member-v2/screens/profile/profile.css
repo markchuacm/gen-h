@@ -851,6 +851,12 @@
   margin-top: 16px;
 }
 
+/* The first reveal preserves 2px below its input so a focus outline is never
+   clipped. Compensate for that only when its sibling field is also visible. */
+.pf-prescription-reveal.is-open + .pf-other-reveal.is-open .pf-other-input {
+  margin-top: 14px;
+}
+
 .pf-habit-product-options {
   display: grid;
   gap: 10px;
