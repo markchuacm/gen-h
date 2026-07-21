@@ -53,7 +53,10 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
     ["Diet", answers.lifestyle.diet],
     ["Stress", `${answers.lifestyle.stress} out of 5`],
     ["Alcohol", answers.habits.alcohol],
-    ["Smoking", answers.habits.smoking],
+    ["Smoking and/or vaping", answers.habits.smoking],
+    ...(answers.habits.smokingProducts.length > 0
+      ? [["Product types", answers.habits.smokingProducts.join(", ")]] as Array<[string, string]>
+      : []),
   ];
 
   const reasons = withOther(answers.reason, answers.reasonOther);
@@ -128,8 +131,8 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
             )}
           </section>
 
-          <section className="doc-card" aria-label="Allergies">
-            <h2 className="doc-card-title">Allergies</h2>
+          <section className="doc-card" aria-label="Allergies to medication">
+            <h2 className="doc-card-title">Allergies to medication</h2>
             {allergies.length === 0 ? (
               <p className="doc-muted">None shared.</p>
             ) : (

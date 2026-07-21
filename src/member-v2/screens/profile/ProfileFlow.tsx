@@ -14,12 +14,14 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
-  ALCOHOL_OPTIONS,
+  alcoholOptionForSex,
+  alcoholOptionsForSex,
   DIET_OPTIONS,
   EXERCISE_OPTIONS,
   OTHER_OPTION,
   REPORT_CATEGORY_LABELS,
   REPORT_OPTIONS,
+  SMOKING_PRODUCT_OPTIONS,
   SMOKING_OPTIONS,
   STEPS,
   STEP_COUNT,
@@ -85,18 +87,24 @@ function ChipGrid({
   selected,
   onToggle,
   numbered,
+  numberStart = 1,
   hasOther = false,
+  disabled = false,
+  ariaLabel,
 }: {
   options: string[];
   selected: string[];
   onToggle: (option: string) => void;
   numbered?: boolean;
+  numberStart?: number;
   hasOther?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
 }) {
   const displayOptions = hasOther ? [...options, OTHER_OPTION] : options;
 
   return (
-    <div className="pf-chips" role="group">
+    <div className="pf-chips" role="group" aria-label={ariaLabel}>
       {displayOptions.map((option, index) => {
         const isSelected = selected.includes(option);
         return (
@@ -105,10 +113,11 @@ function ChipGrid({
             type="button"
             className={`pf-chip ${isSelected ? "is-selected" : ""}`}
             aria-pressed={isSelected}
+            disabled={disabled}
             onClick={() => onToggle(option)}
           >
             {numbered && (option === OTHER_OPTION || index < 9) && (
-              <span className="pf-chip-key">{option === OTHER_OPTION ? 0 : index + 1}</span>
+              <span className="pf-chip-key">{option === OTHER_OPTION ? 0 : numberStart + index}</span>
             )}
             {option}
             {isSelected && <Check strokeWidth={2.6} />}
@@ -549,6 +558,7 @@ function StepInputs({
             type="text"
             value={basics.preferredName}
             placeholder={preferredNamePlaceholder}
+            autoFocus
             onChange={(event) =>
               onPatch({ basics: { ...basics, preferredName: event.target.value } })
             }
@@ -558,7 +568,16 @@ function StepInputs({
           label="Gender"
           options={["Male", "Female"]}
           value={basics.sex}
-          onSelect={(sex) => onPatch({ basics: { ...basics, sex: sex as "Male" | "Female" } })}
+          onSelect={(sex) => {
+            const nextSex = sex as "Male" | "Female";
+            onPatch({
+              basics: { ...basics, sex: nextSex },
+              habits: {
+                ...answers.habits,
+                alcohol: alcoholOptionForSex(answers.habits.alcohol, nextSex),
+              },
+            });
+          }}
         />
         <SliderControl
           label="Age"
@@ -637,11 +656,13 @@ function StepInputs({
 
   if (step.kind === "habits") {
     const { habits } = answers;
+    const alcoholOptions = alcoholOptionsForSex(answers.basics.sex);
+    const showSmokingProducts = habits.smoking !== "Never";
     return (
       <div className="pf-controls">
         <Segment
           label="Alcohol"
-          options={ALCOHOL_OPTIONS}
+          options={alcoholOptions}
           numberStart={1}
           value={habits.alcohol}
           onSelect={(alcohol) =>
@@ -649,14 +670,52 @@ function StepInputs({
           }
         />
         <Segment
-          label="Smoking"
+          label="Smoking and/or vaping"
           options={SMOKING_OPTIONS}
           numberStart={4}
           value={habits.smoking}
           onSelect={(smoking) =>
-            onPatch({ habits: { ...habits, smoking: smoking as typeof habits.smoking } })
+            onPatch({
+              habits: {
+                ...habits,
+                smoking: smoking as typeof habits.smoking,
+                smokingProducts: smoking === "Never" ? [] : habits.smokingProducts,
+              },
+            })
           }
         />
+        <div
+          className={`pf-other-reveal pf-habit-product-reveal ${showSmokingProducts ? "is-open" : ""}`}
+          aria-hidden={!showSmokingProducts}
+        >
+          <div className="pf-other-reveal-inner">
+            <div className="pf-habit-product-options">
+              <div className="pf-control-head">
+                <label>What types of products?</label>
+              </div>
+              <ChipGrid
+                ariaLabel="What types of products?"
+                options={[...SMOKING_PRODUCT_OPTIONS]}
+                selected={habits.smokingProducts}
+                numbered
+                numberStart={8}
+                disabled={!showSmokingProducts}
+                onToggle={(product) => {
+                  const smokingProduct = product as (typeof habits.smokingProducts)[number];
+                  const selected = habits.smokingProducts.includes(smokingProduct);
+                  onPatch({
+                    habits: {
+                      ...habits,
+                      smokingProducts: selected
+                        ? habits.smokingProducts.filter((item) => item !== smokingProduct)
+                        : [...habits.smokingProducts, smokingProduct],
+                    },
+                  });
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -782,12 +841,30 @@ function ProfileFlow({
       if (!inText && /^[0-9]$/.test(event.key)) {
         if (step.kind === "habits") {
           const shortcut = Number(event.key);
+          const alcoholOptions = alcoholOptionsForSex(answers.basics.sex);
           if (shortcut >= 1 && shortcut <= 3) {
-            const alcohol = ALCOHOL_OPTIONS[shortcut - 1];
+            const alcohol = alcoholOptions[shortcut - 1];
             onPatch({ habits: { ...answers.habits, alcohol } });
-          } else if (shortcut >= 4 && shortcut <= 6) {
+          } else if (shortcut >= 4 && shortcut <= 7) {
             const smoking = SMOKING_OPTIONS[shortcut - 4];
-            onPatch({ habits: { ...answers.habits, smoking } });
+            onPatch({
+              habits: {
+                ...answers.habits,
+                smoking,
+                smokingProducts: smoking === "Never" ? [] : answers.habits.smokingProducts,
+              },
+            });
+          } else if (shortcut >= 8 && shortcut <= 9 && answers.habits.smoking !== "Never") {
+            const product = SMOKING_PRODUCT_OPTIONS[shortcut - 8];
+            const selected = answers.habits.smokingProducts.includes(product);
+            onPatch({
+              habits: {
+                ...answers.habits,
+                smokingProducts: selected
+                  ? answers.habits.smokingProducts.filter((item) => item !== product)
+                  : [...answers.habits.smokingProducts, product],
+              },
+            });
           }
           return;
         }

@@ -101,16 +101,102 @@ describe("ProfileFlow refinements", () => {
     ).toBeTruthy();
   });
 
-  it("numbers Question 6 from 1–6 and supports those keyboard shortcuts", () => {
+  it("focuses the preferred-name field when the form opens", () => {
+    renderFlow(DEFAULT_ANSWERS, 0);
+    expect(document.activeElement).toBe(screen.getByLabelText("Preferred name"));
+  });
+
+  it("uses gender-specific alcohol options on Question 6", () => {
+    const view = renderFlow(DEFAULT_ANSWERS, 5);
+    expect(screen.getByRole("button", { name: "2 14 or less drinks a week" })).toBeTruthy();
+    expect(screen.queryByText("7 or less drinks a week")).toBeNull();
+
+    view.rerender(
+      <ProfileFlow
+        answers={{ ...DEFAULT_ANSWERS, basics: { ...DEFAULT_ANSWERS.basics, sex: "Female" } }}
+        preferredNamePlaceholder="Alex"
+        uploadErrors={[]}
+        startAt={5}
+        onPatch={vi.fn()}
+        onToggle={vi.fn()}
+        onToggleReport={vi.fn()}
+        onAddReports={vi.fn()}
+        onRemoveReport={vi.fn()}
+        onReachStep={vi.fn()}
+        onComplete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "2 7 or less drinks a week" })).toBeTruthy();
+    expect(screen.queryByText("14 or less drinks a week")).toBeNull();
+  });
+
+  it("numbers Question 6 from 1–9 and supports those keyboard shortcuts", () => {
     const onPatch = vi.fn();
     renderFlow(DEFAULT_ANSWERS, 5, vi.fn(), onPatch);
 
     expect(screen.getByRole("button", { name: "1 Rarely / never" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "4 Never" })).toBeTruthy();
-    fireEvent.keyDown(window, { key: "6" });
+    expect(screen.getByRole("button", { name: "7 Daily / regularly" })).toBeTruthy();
+    fireEvent.keyDown(window, { key: "7" });
     expect(onPatch).toHaveBeenCalledWith({
-      habits: { ...DEFAULT_ANSWERS.habits, smoking: "Current smoker" },
+      habits: { ...DEFAULT_ANSWERS.habits, smoking: "Daily / regularly" },
     });
+  });
+
+  it("assigns keyboard shortcuts 8 and 9 to the revealed product types", () => {
+    const onPatch = vi.fn();
+    const answers = {
+      ...DEFAULT_ANSWERS,
+      habits: { ...DEFAULT_ANSWERS.habits, smoking: "Occasional / social user" as const },
+    };
+    renderFlow(answers, 5, vi.fn(), onPatch);
+
+    expect(screen.getByRole("button", { name: "8 Cigarettes / Cigars" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "9 Vapes / E-cigarettes" })).toBeTruthy();
+    fireEvent.keyDown(window, { key: "8" });
+    expect(onPatch).toHaveBeenCalledWith({
+      habits: { ...answers.habits, smokingProducts: ["Cigarettes / Cigars"] },
+    });
+  });
+
+  it("reveals product types smoothly for anyone who has smoked or vaped", () => {
+    const view = renderFlow(DEFAULT_ANSWERS, 5);
+    const product = view.getByText("Cigarettes / Cigars", { selector: "button" }) as HTMLButtonElement;
+    const reveal = product.closest(".pf-habit-product-reveal");
+    expect(reveal?.classList.contains("is-open")).toBe(false);
+    expect(product.disabled).toBe(true);
+
+    view.rerender(
+      <ProfileFlow
+        answers={{
+          ...DEFAULT_ANSWERS,
+          habits: { ...DEFAULT_ANSWERS.habits, smoking: "Occasional / social user" },
+        }}
+        preferredNamePlaceholder="Alex"
+        uploadErrors={[]}
+        startAt={5}
+        onPatch={vi.fn()}
+        onToggle={vi.fn()}
+        onToggleReport={vi.fn()}
+        onAddReports={vi.fn()}
+        onRemoveReport={vi.fn()}
+        onReachStep={vi.fn()}
+        onComplete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(reveal?.classList.contains("is-open")).toBe(true);
+    expect(product.disabled).toBe(false);
+    expect(screen.getByText("What types of products?")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "9 Vapes / E-cigarettes" })).toBeTruthy();
+  });
+
+  it("uses the allergies-to-medication wording on Question 9", () => {
+    renderFlow(DEFAULT_ANSWERS, 8);
+    expect(screen.getByText("allergies to medication?")).toBeTruthy();
   });
 
   it("gives the Question 8 Other field relevant placeholder copy", () => {

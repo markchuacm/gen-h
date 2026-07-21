@@ -851,6 +851,17 @@
   margin-top: 16px;
 }
 
+.pf-habit-product-options {
+  display: grid;
+  gap: 10px;
+}
+
+.pf-habit-product-options .pf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* Composing interstitial */
 
 .pf-composing {
@@ -1040,8 +1051,8 @@
   height: 100%;
 }
 
-.pf-brief-panel:nth-child(2) .pf-brief-facts {
-  grid-template-columns: minmax(76px, 0.9fr) minmax(86px, 0.9fr) minmax(116px, 1.2fr);
+.pf-brief-health-facts {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.3fr);
 }
 
 .pf-brief-fact {
@@ -1367,7 +1378,7 @@
   }
 
   .pf-brief-facts,
-  .pf-brief-panel:nth-child(2) .pf-brief-facts {
+  .pf-brief-health-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px 20px;
   }

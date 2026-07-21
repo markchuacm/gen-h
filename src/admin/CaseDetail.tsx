@@ -247,7 +247,10 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
         ["Diet", answers.lifestyle.diet],
         ["Stress", `${answers.lifestyle.stress} out of 5`],
         ["Alcohol", answers.habits.alcohol],
-        ["Smoking", answers.habits.smoking],
+        ["Smoking and/or vaping", answers.habits.smoking],
+        ...(answers.habits.smokingProducts.length > 0
+          ? [["Product types", answers.habits.smokingProducts.join(", ")]] as [string, string][]
+          : []),
       ]
     : [];
 

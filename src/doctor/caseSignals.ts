@@ -4,6 +4,7 @@
 import {
   DEFAULT_ANSWERS,
   EXCLUSIVE_PROFILE_OPTIONS,
+  normalizeHabits,
   NOTHING_MAJOR_OPTION,
 } from "../member-v2/screens/profile/profileQuestions";
 import type { ProfileAnswers } from "../member-v2/screens/profile/profileQuestions";
@@ -32,14 +33,21 @@ export function asStringList(value: unknown): string[] {
 // The onboarding record is untyped jsonb, so every section is coerced back into
 // a ProfileAnswers shape defensively before doctor screens render it.
 export function toAnswers(onboarding: Record<string, unknown>): ProfileAnswers {
+  const basics = {
+    ...DEFAULT_ANSWERS.basics,
+    ...(asObject(onboarding.basics) as ProfileAnswers["basics"]),
+  };
   return {
     ...DEFAULT_ANSWERS,
-    basics: { ...DEFAULT_ANSWERS.basics, ...(asObject(onboarding.basics) as ProfileAnswers["basics"]) },
+    basics,
     lifestyle: {
       ...DEFAULT_ANSWERS.lifestyle,
       ...(asObject(onboarding.lifestyle) as ProfileAnswers["lifestyle"]),
     },
-    habits: { ...DEFAULT_ANSWERS.habits, ...(asObject(onboarding.habits) as ProfileAnswers["habits"]) },
+    habits: normalizeHabits(
+      asObject(onboarding.habits) as Partial<ProfileAnswers["habits"]>,
+      basics.sex,
+    ),
     reason: asStringList(onboarding.reason),
     reasonOther: typeof onboarding.reasonOther === "string" ? onboarding.reasonOther : "",
     goals: asStringList(onboarding.goals),
@@ -84,7 +92,7 @@ export function lifestyleConcerns(answers: ProfileAnswers): Set<string> {
   if (answers.lifestyle.sleepHours < 6) concerns.add("Sleep");
   if (answers.lifestyle.exerciseDays === "0") concerns.add("Exercise");
   if (answers.lifestyle.stress >= 4) concerns.add("Stress");
-  if (answers.habits.alcohol === "Most days") concerns.add("Alcohol");
-  if (answers.habits.smoking === "Current smoker") concerns.add("Smoking");
+  if (answers.habits.alcohol.endsWith("or more drinks a week")) concerns.add("Alcohol");
+  if (answers.habits.smoking === "Daily / regularly") concerns.add("Smoking and/or vaping");
   return concerns;
 }
