@@ -5,10 +5,11 @@
 import type { BiomarkerInput } from "../../lib/api/admin";
 import { extractLines, type ExtractProgress } from "./pdfExtract";
 import { parseLines } from "./labParser";
-import { matchBiomarker } from "./catalogMatch";
-import { catalogLookup } from "../biomarkerCatalog";
-import { deriveStatus, type RangeCtx } from "./deriveStatus";
+import { matchBiomarker, setMatchCatalog } from "./catalogMatch";
+import { catalogLookup, ensureCatalogIndex } from "../biomarkerCatalog";
+import { deriveStatus, setDeriveStatusCatalog, type RangeCtx } from "./deriveStatus";
 import type { IngestRow, ParsedLine } from "./types";
+import { loadCatalog } from "../../lib/api/catalog";
 
 let rowSeq = 0;
 const nextId = () => `row-${rowSeq++}`;
@@ -86,11 +87,24 @@ export function rebuildForCode(row: IngestRow, code: string, ctx: RangeCtx): Ing
 
 export type IngestResult = { rows: IngestRow[]; unmatched: string[] };
 
+/** Load the catalog into the matcher and the status deriver. Must resolve
+    before buildRow or rebuildForCode are called. */
+export async function primeIngestCatalog(): Promise<void> {
+  const catalog = await loadCatalog();
+  setMatchCatalog(catalog.biomarkers);
+  setDeriveStatusCatalog(catalog.byCode);
+  await ensureCatalogIndex();
+}
+
 export async function runIngest(
   file: File,
   ctx: RangeCtx,
   onProgress?: ExtractProgress,
 ): Promise<IngestResult> {
+  // Matching and status derivation both read the catalog; prime them once
+  // here, the single place the ingest pipeline is entered.
+  await primeIngestCatalog();
+
   const lines = await extractLines(file, onProgress);
   const parsed = parseLines(lines);
 

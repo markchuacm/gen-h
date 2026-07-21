@@ -13,6 +13,7 @@
     "worker": "node dist/worker.js",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "catalog:seed": "tsx src/scripts/seed-biomarker-catalog.ts",
     "auth:generate": "auth generate --config src/auth/auth.ts --output migrations/0001_better_auth.sql --yes",
     "bootstrap:admin": "tsx src/scripts/bootstrap-admin.ts",
     "db:provision-logins": "tsx src/scripts/provision-logins.ts",

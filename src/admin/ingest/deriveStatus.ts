@@ -4,7 +4,6 @@
 // Expression / parseRangeBranch / branchMatchesContext / statusFromResolved­
 // Range) so the ingested draft and the member view agree. Kept as pure
 // functions (no React/context) and reduced to the admin 3-value enum.
-import { BIOMARKERS } from "../../member-v2/screens/results/biomarkerData";
 import type { Biomarker } from "../../member-v2/screens/results/types";
 
 export type AdminStatus = "optimal" | "at_risk" | "needs_attention";
@@ -21,9 +20,13 @@ export type DerivedStatus = {
 
 type Branch = { label: string; lower: number | null; upper: number | null; comparator: "range" | "lower" | "upper" | "qualitative" };
 
-let BY_CODE: Map<string, Biomarker> | null = null;
+/** The catalog is fetched now, so callers pass it in. ingestPipeline primes it
+    once and threads it through. */
+let BY_CODE: Map<string, Biomarker> = new Map();
+export function setDeriveStatusCatalog(catalogByCode: Map<string, Biomarker>): void {
+  BY_CODE = catalogByCode;
+}
 function catalog(code: string): Biomarker | undefined {
-  if (!BY_CODE) BY_CODE = new Map(BIOMARKERS.map((b) => [b.id, b]));
   return BY_CODE.get(code);
 }
 

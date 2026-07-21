@@ -2,7 +2,7 @@ import { createContext, useContext, useMemo, useState } from "react";
 import { ChevronRight, Search, Stethoscope, X } from "lucide-react";
 import PendingPortalDialog from "../../shell/PendingPortalDialog";
 import { useMemberResults } from "./useMemberResults";
-import type { Biomarker, BiomarkerCategory, BiomarkerStatus, HistoricalValue } from "./types";
+import type { Biomarker, BiomarkerCategory, BiomarkerStatus, ContextRequirement, HistoricalValue } from "./types";
 import "./results.css";
 
 type FilterId = "all" | "optimal" | "at_risk" | "needs_attention" | "not_tested";
@@ -161,13 +161,13 @@ function formatRangeLabel(label: string, unit: string) {
   return unit ? `${refined} ${formatUnit(unit)}` : refined;
 }
 
-function formatContextLabel(context: PatientRangeContext, ruleType = "") {
+function formatContextLabel(context: PatientRangeContext, requirements: ContextRequirement[] = []) {
   const sex = context.sex === "male" ? "male" : "female";
   const parts: string[] = [];
-  const needsSex = ruleType.includes("SEX");
-  const needsAge = ruleType.includes("AGE");
-  const needsTime = ruleType.includes("TIME");
-  const needsCycle = ruleType.includes("CYCLE");
+  const needsSex = requirements.includes("sex");
+  const needsAge = requirements.includes("age");
+  const needsTime = requirements.includes("sample_timing");
+  const needsCycle = requirements.includes("cycle_phase");
 
   if (needsAge && needsSex) parts.push(`${context.age}-year-old ${sex}`);
   else if (needsAge) parts.push(`${context.age} years old`);
@@ -393,9 +393,9 @@ function resolveRangeContext(biomarker: Biomarker, context: PatientRangeContext)
     outOfRangeLabel:
       outOfRange?.label ??
       (biomarker.outOfRangeLabel.includes("OUTSIDE_")
-        ? `Outside ${formatContextLabel(context, biomarker.ruleType)} range`
+        ? `Outside ${formatContextLabel(context, biomarker.contextRequirements)} range`
         : biomarker.outOfRangeLabel),
-    contextLabel: formatContextLabel(context, biomarker.ruleType),
+    contextLabel: formatContextLabel(context, biomarker.contextRequirements),
     status,
     kind,
     isQualitative: directionality === "qualitative",

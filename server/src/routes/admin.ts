@@ -610,6 +610,50 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     });
   });
 
+  // Biomarker catalog management. Note the path segment: /v1/admin/biomarkers/:id
+  // already exists above and operates on biomarker_results rows by uuid, which
+  // is a different thing entirely.
+  app.get("/v1/admin/catalog/biomarkers", { preHandler: adminOnly }, async (request) => {
+    const current = actor(request);
+    return withActor(current, async (client) => {
+      // Unlike the member-facing catalog this returns retired markers too —
+      // an admin cannot reactivate what they cannot see. usage_count shows how
+      // many released results reference a marker before it is retired.
+      const result = await client.query(
+        `select b.id, b.display_name, b.unit, b.scoring_mode, b.is_active, b.deactivated_at,
+                coalesce(
+                  array_agg(c.name order by m.is_primary desc, c.display_order)
+                    filter (where c.name is not null), '{}'
+                ) as categories,
+                (select count(*) from app.biomarker_results r where r.biomarker_code = b.id) as usage_count
+         from app.biomarkers b
+         left join app.biomarker_category_members m on m.biomarker_id = b.id
+         left join app.biomarker_categories c on c.id = m.category_id
+         group by b.id
+         order by b.is_active desc, b.display_name`,
+      );
+      return { data: result.rows };
+    });
+  });
+
+  app.patch<{ Params: { code: string } }>("/v1/admin/catalog/biomarkers/:code", { preHandler: adminOnly }, async (request, reply) => {
+    const current = actor(request);
+    const body = z.object({ isActive: z.boolean() }).parse(request.body);
+    return withActor(current, async (client) => {
+      const result = await client.query(
+        `update app.biomarkers set
+           is_active = $2,
+           deactivated_at = case when $2 then null else now() end,
+           deactivated_by = case when $2 then null else $3 end
+         where id = $1
+         returning id`,
+        [request.params.code, body.isActive, current.userId],
+      );
+      if (result.rowCount === 0) return reply.notFound("Biomarker not found");
+      return { ok: true };
+    });
+  });
+
   app.delete<{ Params: { userId: string } }>("/v1/admin/users/:userId", { preHandler: developerOnly }, async (request, reply) => {
     const current = actor(request);
     if (request.params.userId === current.userId) {
