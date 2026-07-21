@@ -100,6 +100,11 @@
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
   background: #fff;
+  /* One measure for the question column and the footer under it, so every step
+     and its Continue row share the same left and right edge. Narrow enough that
+     chip rows and sliders end near the same right edge — a wider column leaves
+     chip-only steps looking left-skewed against the slider steps. */
+  --pf-measure: min(560px, calc(100% - 48px));
 }
 
 .pf-flow-top {
@@ -132,13 +137,15 @@
 }
 
 .pf-flow-close {
+  min-height: 40px;
   font-size: 0.88rem;
-  color: var(--muted);
+  font-weight: 700;
+  color: var(--ink);
   transition: color 180ms var(--ease-ui);
 }
 
 .pf-flow-close:hover {
-  color: var(--ink);
+  color: var(--accent-dark);
 }
 
 .pf-stage {
@@ -147,7 +154,7 @@
   justify-items: start;
   gap: 20px;
   min-height: 0;
-  width: min(680px, calc(100% - 48px));
+  width: var(--pf-measure);
   margin-inline: auto;
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -234,9 +241,9 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  width: min(680px, calc(100% - 48px));
+  width: var(--pf-measure);
   margin-inline: auto;
-  padding-block: 20px 32px;
+  padding: 20px 6px 32px;
 }
 
 .pf-enter-hint {
@@ -336,7 +343,9 @@
     transform 180ms var(--ease-ui);
 }
 
-.pf-report-tile:hover {
+.pf-report-tile:hover,
+.pf-report-tile.is-drag {
+  background: var(--accent-tint);
   box-shadow: var(--shadow-border-hover);
   transform: translateY(-1px);
 }
@@ -356,6 +365,11 @@
   font-weight: 650;
   line-height: 1.22;
   text-wrap: balance;
+}
+
+.pf-report-upload-tile .pf-report-tile-label {
+  max-width: none;
+  white-space: nowrap;
 }
 
 .pf-report-tile-helper {
@@ -517,13 +531,12 @@
   font-weight: inherit;
   color: inherit;
   text-align: left;
-  text-decoration: underline;
-  text-decoration-color: var(--faint);
-  text-underline-offset: 3px;
+  text-decoration: none;
+  transition: color 160ms var(--ease-ui);
 }
 
 .pf-report-file-open:hover {
-  text-decoration-color: var(--accent);
+  color: var(--accent-dark);
 }
 
 .pf-upload-files {
@@ -540,6 +553,19 @@
 
 .pf-upload-files > p,
 .pf-brief-muted {
+  color: var(--muted);
+}
+
+.pf-upload-files-shell {
+  overflow: hidden;
+  transition: height 300ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.pf-upload-files-content {
+  min-height: 1em;
+}
+
+.pf-upload-files-empty {
   color: var(--muted);
 }
 
@@ -563,12 +589,21 @@
   box-shadow: var(--shadow-border);
   transition:
     box-shadow 180ms var(--ease-ui),
-    transform 180ms var(--ease-ui);
+    transform 180ms var(--ease-ui),
+    opacity 180ms ease-in,
+    scale 180ms ease-in;
 }
 
 .pf-report-file:hover {
   box-shadow: var(--shadow-border-hover);
   transform: translateY(-1px);
+}
+
+.pf-report-file.is-removing {
+  pointer-events: none;
+  opacity: 0;
+  scale: 0.96;
+  transform: translateY(4px);
 }
 
 .pf-report-file-thumb {
@@ -765,9 +800,72 @@
   color: var(--muted);
 }
 
+.pf-preferred-name-input::placeholder,
+.pf-other-detail-input::placeholder {
+  color: rgba(71, 85, 105, 0.42);
+  font-size: 0.9rem;
+  opacity: 1;
+}
+
 .pf-other-input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 0;
+}
+
+.pf-choice-controls {
+  gap: 0;
+}
+
+.pf-other-reveal {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  translate: 0 -4px;
+  transition:
+    grid-template-rows 240ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 150ms ease-in,
+    translate 150ms ease-in;
+}
+
+.pf-other-reveal.is-open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    grid-template-rows 300ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 220ms cubic-bezier(0.2, 0, 0, 1) 60ms,
+    translate 220ms cubic-bezier(0.2, 0, 0, 1) 40ms;
+}
+
+.pf-other-reveal-inner {
+  min-height: 0;
+  overflow: hidden;
+  padding-inline: 2px;
+  padding-bottom: 2px;
+}
+
+.pf-other-reveal-inner .pf-other-input {
+  /* Narrower than the question column: this is a short free-text follow-up, and
+     a full-width field made the whole step read wider than its neighbours. */
+  max-width: 26rem;
+  margin-top: 16px;
+}
+
+/* The first reveal preserves 2px below its input so a focus outline is never
+   clipped. Compensate for that only when its sibling field is also visible. */
+.pf-prescription-reveal.is-open + .pf-other-reveal.is-open .pf-other-input {
+  margin-top: 14px;
+}
+
+.pf-habit-product-options {
+  display: grid;
+  gap: 10px;
+}
+
+.pf-habit-product-options .pf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 /* Composing interstitial */
@@ -959,8 +1057,8 @@
   height: 100%;
 }
 
-.pf-brief-panel:nth-child(2) .pf-brief-facts {
-  grid-template-columns: minmax(76px, 0.9fr) minmax(86px, 0.9fr) minmax(116px, 1.2fr);
+.pf-brief-health-facts {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.3fr);
 }
 
 .pf-brief-fact {
@@ -1286,7 +1384,7 @@
   }
 
   .pf-brief-facts,
-  .pf-brief-panel:nth-child(2) .pf-brief-facts {
+  .pf-brief-health-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 18px 20px;
   }

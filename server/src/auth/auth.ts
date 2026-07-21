@@ -49,6 +49,15 @@ const otpEmailHtml = (otp: string): string => `
     <p style="font-size:12px;color:#9aa5b1;margin:24px 0 0">If you didn't request this code, you can safely ignore this email.</p>
   </div>`;
 
+// Mirrors the web client's portalUrl(): the production host serves the member
+// portal at the origin root; every other environment serves it from /member.
+function portalErrorUrl(): string {
+  const origin = new URL(env.APP_ORIGIN);
+  return origin.hostname === "app.veraehealth.com"
+    ? origin.origin
+    : new URL("/member", origin).toString();
+}
+
 const plugins = [
   twoFactor({
     issuer: "Verae Health",
@@ -106,12 +115,21 @@ export const auth = betterAuth({
     onPasswordReset: async ({ user }) => {
       // A doctor invitation is completed by choosing a password from the one-time
       // activation link. Ordinary password resets leave account status unchanged.
-      await authPool.query(
+      const activated = await authPool.query(
         `update app.profiles
-           set account_status = 'active', password_set_at = coalesce(password_set_at, now()), updated_at = now()
+           set account_status = 'active', password_set_at = coalesce(password_set_at, now()),
+               email_verified_at = coalesce(email_verified_at, now()), updated_at = now()
          where id = $1 and role = 'doctor' and account_status = 'pending'`,
         [user.id],
       );
+      if (activated.rowCount) {
+        // The activation link arrived in the doctor's inbox, which proves email
+        // ownership — doctors have no OTP step to set this otherwise.
+        await authPool.query(
+          `update identity."user" set "emailVerified" = true, "updatedAt" = now() where id = $1`,
+          [user.id],
+        );
+      }
     },
   },
   socialProviders: env.GOOGLE_CLIENT_ID
@@ -131,7 +149,20 @@ export const auth = betterAuth({
       trustedProviders: ["google"],
       // The linked Google email must match the invited email.
       allowDifferentEmails: false,
+      // Invited accounts start with emailVerified=false until the wizard's OTP
+      // step, and doctors (activated via emailed link) never run that step —
+      // the default `true` blocked their Google sign-in with account_not_linked.
+      // Relaxing is safe here: sign-up is invite-only, Google is a trusted
+      // provider, and the emails must match exactly.
+      requireLocalEmailVerified: false,
     },
+  },
+  // Failed OAuth round-trips otherwise land on better-auth's /api/auth/error
+  // route, which in production 302s to the API domain root — a bare Fastify 404.
+  // Send them to the portal, where the login screen and setup wizard read
+  // ?error=<code>. Client calls also pass errorCallbackURL; this is the fallback.
+  onAPIError: {
+    errorURL: portalErrorUrl(),
   },
   session: {
     expiresIn: 60 * 60 * 24 * 7,

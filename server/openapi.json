@@ -167,6 +167,15 @@
         }
       }
     },
+    "/v1/catalog/biomarkers": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
     "/v1/member/setup/password": {
       "post": {
         "responses": {
@@ -444,6 +453,25 @@
     },
     "/v1/admin/cases/{memberId}": {
       "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "memberId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/admin/members/{memberId}/membership": {
+      "patch": {
         "parameters": [
           {
             "schema": {
@@ -762,6 +790,34 @@
             },
             "in": "path",
             "name": "userId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/admin/catalog/biomarkers": {
+      "get": {
+        "responses": {
+          "200": {
+            "description": "Default Response"
+          }
+        }
+      }
+    },
+    "/v1/admin/catalog/biomarkers/{code}": {
+      "patch": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "code",
             "required": true
           }
         ],

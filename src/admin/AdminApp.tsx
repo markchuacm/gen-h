@@ -6,10 +6,11 @@ import { disableDeveloperMode, enableDeveloperMode, fetchDeveloperMode } from ".
 import CasesList from "./CasesList";
 import CaseDetail from "./CaseDetail";
 import DoctorsPage from "./DoctorsPage";
+import CatalogPage from "./CatalogPage";
 import "../member-v2/shell/shell.css";
 import "./admin.css";
 
-type Tab = "cases" | "doctors";
+type Tab = "cases" | "doctors" | "biomarkers";
 
 function AdminApp() {
   const { profile, signOut } = useAuth();
@@ -131,6 +132,13 @@ function AdminApp() {
           >
             Doctors
           </button>
+          <button
+            type="button"
+            className={tab === "biomarkers" ? "is-active" : ""}
+            onClick={() => { setOpenMemberId(null); setTab("biomarkers"); }}
+          >
+            Biomarkers
+          </button>
         </nav>
         <div className="adm-user" ref={userMenu}>
           <button
@@ -211,6 +219,7 @@ function AdminApp() {
           ? <CaseDetail memberId={openMemberId} onBack={() => setOpenMemberId(null)} />
           : <CasesList onOpen={(id) => setOpenMemberId(id)} developerMode={developerMode} />)}
         {tab === "doctors" && <DoctorsPage developerMode={developerMode} />}
+        {tab === "biomarkers" && <CatalogPage />}
       </main>
     </div>
   );

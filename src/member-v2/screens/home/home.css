@@ -1,16 +1,11 @@
 /* v2 Home — journey-state-driven. One layout, five content states. */
 
-.home-head {
+.home-page {
   display: grid;
-  margin-bottom: 30px;
-}
-
-.home-title-row {
-  display: grid;
-  grid-template-columns: minmax(300px, 0.92fr) minmax(440px, 1.08fr);
-  gap: clamp(28px, 4vw, 56px);
   align-items: center;
-  min-width: 0;
+  min-height: calc(100dvh - var(--portal-nav-height));
+  padding-top: 0;
+  padding-bottom: var(--portal-nav-height);
 }
 
 /* ── Journey rail ────────────────────────────────────────────────────────── */
@@ -174,7 +169,8 @@
   position: relative;
   width: min(720px, 100%);
   max-height: min(720px, calc(100vh - 48px));
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-radius: 28px;
   background: #fff;
   box-shadow:
@@ -215,10 +211,80 @@
   transform: translateY(-1px);
 }
 
+.home-detail-viewport {
+  overflow: hidden;
+}
+
+.home-detail-track {
+  display: grid;
+  grid-template-columns: repeat(2, 100%);
+  align-items: stretch;
+  translate: 0 0;
+  transition-property: translate;
+  transition-duration: 280ms;
+  transition-timing-function: var(--ease-spring);
+}
+
+.home-detail-track.is-journey {
+  translate: -100% 0;
+}
+
+.home-detail-screen {
+  min-width: 0;
+}
+
+.home-detail-screen--details {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 64px;
+}
+
+.home-detail-screen--journey {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
 .home-detail-body {
   display: grid;
   gap: 20px;
-  padding: 34px 28px 28px;
+  padding: 34px 0 28px 28px;
+}
+
+.home-detail-screen-nav {
+  align-self: center;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.045);
+  color: var(--muted);
+  transition-property: background-color, color, translate, scale;
+  transition-duration: 180ms;
+  transition-timing-function: var(--ease-ui);
+}
+
+.home-detail-screen-nav:hover {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+}
+
+.home-detail-screen-next:hover {
+  translate: 2px 0;
+}
+
+.home-detail-screen-back:hover {
+  translate: -2px 0;
+}
+
+.home-detail-screen-nav:active {
+  translate: 0 0;
+  scale: 0.96;
+}
+
+.home-detail-screen-nav svg {
+  width: 20px;
+  height: 20px;
 }
 
 .home-context {
@@ -432,29 +498,55 @@
   font-size: 0.95rem;
 }
 
-/* ── Breakpoints ─────────────────────────────────────────────────────────── */
+/* Journey overview — shared second screen for every sub-CTA dialog */
 
-@media (max-width: 960px) {
-  .home-title-row {
-    grid-template-columns: 1fr;
-    gap: 20px;
-    align-items: start;
-  }
-
-  .home-rail {
-    width: 100%;
-    margin-bottom: 0;
-  }
-
+.home-journey-body {
+  display: grid;
+  gap: 20px;
+  padding: 34px 28px 28px 0;
 }
 
-@media (max-width: 720px) {
-  .home-head {
-    margin-bottom: 24px;
-  }
+.home-journey-progress {
+  display: grid;
+  align-content: center;
+  gap: 30px;
+  min-height: 210px;
+  padding: 28px 24px;
+  border-radius: 22px;
+  background: rgba(15, 23, 42, 0.025);
+}
 
-  .home-title-row {
-    gap: 16px;
+.home-journey-progress h3,
+.home-journey-explainer h3 {
+  font-size: 1.24rem;
+  line-height: 1.2;
+}
+
+.home-journey-explainer {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  min-height: 170px;
+  padding: 26px 28px;
+  border-radius: 22px;
+  background: #f8f6f3;
+}
+
+.home-journey-explainer p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+
+/* ── Breakpoints ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 720px) {
+  .home-page {
+    display: block;
+    min-height: 0;
+    padding-top: 32px;
+    padding-bottom: 72px;
   }
 
   .home-hero {
@@ -480,10 +572,6 @@
 
   .home-hero-copy p {
     font-size: 0.98rem;
-  }
-
-  .home-rail {
-    display: none;
   }
 
   .home-rail-status {
@@ -522,7 +610,36 @@
 
   .home-detail-body {
     gap: 18px;
-    padding: 32px 22px 22px;
+    padding: 32px 0 22px 18px;
+  }
+
+  .home-detail-screen--details {
+    grid-template-columns: minmax(0, 1fr) 54px;
+  }
+
+  .home-detail-screen--journey {
+    grid-template-columns: 54px minmax(0, 1fr);
+  }
+
+  .home-detail-screen-nav {
+    width: 40px;
+    height: 40px;
+  }
+
+  .home-journey-body {
+    gap: 16px;
+    padding: 32px 18px 22px 0;
+  }
+
+  .home-journey-progress {
+    min-height: 190px;
+    gap: 24px;
+    padding: 24px 14px;
+  }
+
+  .home-journey-explainer {
+    min-height: 0;
+    padding: 22px;
   }
 
   .home-context-details > div {
@@ -540,10 +657,6 @@
 }
 
 @media (max-width: 460px) {
-  .home-head {
-    margin-bottom: 20px;
-  }
-
   .home-rail-label {
     font-size: 0.68rem;
   }
@@ -567,6 +680,22 @@
   }
 
   .home-detail-body {
-    padding: 30px 18px 18px;
+    padding: 30px 0 18px 14px;
+  }
+
+  .home-detail-screen--details {
+    grid-template-columns: minmax(0, 1fr) 48px;
+  }
+
+  .home-detail-screen--journey {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+
+  .home-journey-body {
+    padding: 30px 14px 18px 0;
+  }
+
+  .home-journey-progress {
+    padding-inline: 10px;
   }
 }

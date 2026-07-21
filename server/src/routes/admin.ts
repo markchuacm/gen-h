@@ -142,13 +142,14 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
                 m.height_cm as "heightCm", m.weight_kg as "weightKg", m.goals, m.medications,
                 m.conditions, m.preferred_name as "preferredName", m.current_stage as "currentStage",
                 m.onboarding_status as "onboardingStatus", m.phone,
+                m.is_founding_member as "isFoundingMember",
                 p.invited_at as "invitedAt", p.temp_password_expires_at as "tempPasswordExpiresAt",
                 p.setup_completed_at as "setupCompletedAt"
          from app.profiles p left join app.member_profiles m on m.member_id = p.id where p.id = $1`,
         [request.params.memberId],
       );
       if (!base.rows[0]) return { data: null };
-      const [responses, docs, assignment, plan] = await Promise.all([
+      const [responses, docs, assignment, plan, labOrder] = await Promise.all([
         client.query<{ question_key: string; response: unknown }>("select question_key, response from app.onboarding_responses where member_id = $1", [request.params.memberId]),
         client.query(
           `select id, file_name, object_key as storage_path, mime_type, size_bytes, doc_type, uploaded_by, created_at
@@ -167,7 +168,33 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
            where cp.member_id = $1 order by cp.created_at desc limit 1`,
           [request.params.memberId],
         ),
+        client.query(
+          `select biomarker_codes as "biomarkerCodes", status, ordered_at as "orderedAt",
+                  quote_pricing_version as "pricingVersion", quote_currency as currency,
+                  quote_catalog_count as "catalogCount", quote_selected_count as "selectedCount",
+                  quote_base_amount_minor as "baseAmountMinor",
+                  quote_personalization_discount_minor as "personalizationDiscountMinor",
+                  quote_founding_discount_minor as "foundingDiscountMinor",
+                  quote_is_founding_member as "isFoundingMember",
+                  quote_total_amount_minor as "totalAmountMinor", quoted_at as "quotedAt"
+           from app.lab_orders where member_id = $1
+           order by (status in ('draft','ordered','collected')) desc, created_at desc limit 1`,
+          [request.params.memberId],
+        ),
       ]);
+      const order = labOrder.rows[0] ?? null;
+      const quote = order?.quotedAt == null ? null : {
+        pricingVersion: order.pricingVersion,
+        currency: order.currency,
+        catalogCount: order.catalogCount,
+        selectedCount: order.selectedCount,
+        baseAmountMinor: order.baseAmountMinor,
+        personalizationDiscountMinor: order.personalizationDiscountMinor,
+        foundingDiscountMinor: order.foundingDiscountMinor,
+        isFoundingMember: order.isFoundingMember,
+        totalAmountMinor: order.totalAmountMinor,
+        quotedAt: order.quotedAt,
+      };
       return {
         data: {
           ...base.rows[0],
@@ -176,10 +203,34 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
           doctorId: assignment.rows[0]?.doctorId ?? null,
           doctorName: assignment.rows[0]?.doctorName ?? null,
           carePlan: plan.rows[0] ?? null,
+          labOrder: order ? {
+            biomarkerCodes: order.biomarkerCodes,
+            status: order.status,
+            orderedAt: order.orderedAt,
+            quote,
+          } : null,
         },
       };
     });
   });
+
+  app.patch<{ Params: { memberId: string } }>(
+    "/v1/admin/members/:memberId/membership",
+    { preHandler: adminOnly },
+    async (request, reply) => {
+      const current = actor(request);
+      const body = z.object({ isFoundingMember: z.boolean() }).parse(request.body);
+      const updated = await withActor(current, async (client) => client.query(
+        `update app.member_profiles set is_founding_member = $2
+         where member_id = $1 returning member_id`,
+        [request.params.memberId, body.isFoundingMember],
+      ));
+      if (!updated.rows[0]) {
+        return reply.code(404).send({ error: "Member not found", code: "NOT_FOUND", requestId: request.id });
+      }
+      return { data: { isFoundingMember: body.isFoundingMember } };
+    },
+  );
 
   app.post("/v1/admin/patients", { preHandler: adminOnly }, async (request, reply) => {
     const current = actor(request);
@@ -606,6 +657,50 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
           account_status=coalesce($3,account_status) where id=$1`,
         [request.params.userId, body.doctorActive ?? null, body.accountStatus ?? null],
       );
+      return { ok: true };
+    });
+  });
+
+  // Biomarker catalog management. Note the path segment: /v1/admin/biomarkers/:id
+  // already exists above and operates on biomarker_results rows by uuid, which
+  // is a different thing entirely.
+  app.get("/v1/admin/catalog/biomarkers", { preHandler: adminOnly }, async (request) => {
+    const current = actor(request);
+    return withActor(current, async (client) => {
+      // Unlike the member-facing catalog this returns retired markers too —
+      // an admin cannot reactivate what they cannot see. usage_count shows how
+      // many released results reference a marker before it is retired.
+      const result = await client.query(
+        `select b.id, b.display_name, b.unit, b.scoring_mode, b.is_active, b.deactivated_at,
+                coalesce(
+                  array_agg(c.name order by m.is_primary desc, c.display_order)
+                    filter (where c.name is not null), '{}'
+                ) as categories,
+                (select count(*) from app.biomarker_results r where r.biomarker_code = b.id) as usage_count
+         from app.biomarkers b
+         left join app.biomarker_category_members m on m.biomarker_id = b.id
+         left join app.biomarker_categories c on c.id = m.category_id
+         group by b.id
+         order by b.is_active desc, b.display_name`,
+      );
+      return { data: result.rows };
+    });
+  });
+
+  app.patch<{ Params: { code: string } }>("/v1/admin/catalog/biomarkers/:code", { preHandler: adminOnly }, async (request, reply) => {
+    const current = actor(request);
+    const body = z.object({ isActive: z.boolean() }).parse(request.body);
+    return withActor(current, async (client) => {
+      const result = await client.query(
+        `update app.biomarkers set
+           is_active = $2,
+           deactivated_at = case when $2 then null else now() end,
+           deactivated_by = case when $2 then null else $3 end
+         where id = $1
+         returning id`,
+        [request.params.code, body.isActive, current.userId],
+      );
+      if (result.rowCount === 0) return reply.notFound("Biomarker not found");
       return { ok: true };
     });
   });

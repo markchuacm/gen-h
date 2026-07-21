@@ -1,10 +1,24 @@
 import { apiError, apiRequest } from "../apiClient";
 
+export type LabOrderQuote = {
+  pricingVersion: number;
+  currency: "MYR";
+  catalogCount: number;
+  selectedCount: number;
+  baseAmountMinor: number;
+  personalizationDiscountMinor: number;
+  foundingDiscountMinor: number;
+  isFoundingMember: boolean;
+  totalAmountMinor: number;
+  quotedAt: string;
+};
+
 export type LabOrderRow = {
   member_id: string;
   biomarker_codes: string[];
   status: "draft" | "ordered" | "collected" | "completed" | "cancelled";
   ordered_at: string | null;
+  quote: LabOrderQuote | null;
 };
 
 /** The member's current blood panel, or a specific member's when memberId is
@@ -28,12 +42,12 @@ export async function fetchLabOrder(memberId?: string): Promise<{
     security-definer RPC so the stage advance stays atomic. */
 export async function saveLabOrder(memberId: string, codes: string[]) {
   try {
-    await apiRequest("/v1/member/lab-orders", {
+    const { data } = await apiRequest<{ data: LabOrderRow }>("/v1/member/lab-orders", {
       method: "PUT",
       body: JSON.stringify({ memberId, codes }),
     });
-    return { error: null };
+    return { data, error: null };
   } catch (error) {
-    return { error: apiError(error) };
+    return { data: null, error: apiError(error) };
   }
 }

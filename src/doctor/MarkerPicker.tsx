@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, Plus, X } from "lucide-react";
-import { BIOMARKERS } from "../member-v2/screens/results/biomarkerData";
+import { useBiomarkerCatalog } from "../lib/api/catalog";
 import { matchesQuery } from "./caseSignals";
 
 const MAX_SUGGESTIONS = 8;
@@ -11,14 +11,18 @@ const MAX_SUGGESTIONS = 8;
     dropped — but flagged as unlinked. */
 function MarkerPicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
   const [query, setQuery] = useState("");
+  const { catalog, loading } = useBiomarkerCatalog();
 
-  const catalogNames = useMemo(() => new Set(BIOMARKERS.map((marker) => marker.displayName)), []);
+  const catalogNames = useMemo(
+    () => new Set(catalog.biomarkers.map((marker) => marker.displayName)),
+    [catalog],
+  );
   const suggestions = useMemo(() => {
     if (!query.trim()) return [];
-    return BIOMARKERS.filter(
-      (marker) => matchesQuery(marker, query.trim()) && !value.includes(marker.displayName),
-    ).slice(0, MAX_SUGGESTIONS);
-  }, [query, value]);
+    return catalog.biomarkers
+      .filter((marker) => matchesQuery(marker, query.trim()) && !value.includes(marker.displayName))
+      .slice(0, MAX_SUGGESTIONS);
+  }, [catalog, query, value]);
 
   const add = (name: string) => {
     onChange([...value, name]);
@@ -32,7 +36,7 @@ function MarkerPicker({ value, onChange }: { value: string[]; onChange: (next: s
       {value.length > 0 && (
         <ul className="doc-chips">
           {value.map((marker) => {
-            const unlinked = !catalogNames.has(marker);
+            const unlinked = !loading && !catalogNames.has(marker);
             return (
               <li
                 key={marker}

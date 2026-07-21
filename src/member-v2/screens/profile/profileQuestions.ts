@@ -3,7 +3,7 @@
 
 export type StepId =
   | "reports"
-  | "reportUpload"
+  | "allergies"
   | "basics"
   | "reason"
   | "goals"
@@ -15,7 +15,7 @@ export type StepId =
 
 export type StepDef = {
   id: StepId;
-  kind: "reports" | "reportUpload" | "basics" | "chips" | "lifestyle" | "habits" | "supplements";
+  kind: "reports" | "basics" | "chips" | "lifestyle" | "habits" | "supplements";
   prompt: string;
   promptEm?: string;
   helper?: string;
@@ -23,6 +23,9 @@ export type StepDef = {
   /** Section title in the doctor brief summary. */
   summaryLabel: string;
   options?: string[];
+  /** Adds a keyboard-accessible “Other” choice (0) and a conditional text field. */
+  allowsOther?: boolean;
+  otherPlaceholder?: string;
   /** For chips steps: at least one selection required to continue. */
   required?: boolean;
 };
@@ -52,17 +55,17 @@ export const REPORT_OPTIONS: Array<{
 }> = [
   {
     id: "health_screening",
-    label: "Health screening",
+    label: "Upload health screenings",
     helper: "Blood work, urine tests, health screening reports",
   },
   {
     id: "genetic_tests",
-    label: "Genetic tests",
+    label: "Upload genetic tests",
     helper: "DNA, ancestry, nutrigenomics or carrier reports",
   },
   {
     id: "other_tests",
-    label: "Other tests",
+    label: "Upload other tests",
     helper: "Imaging, gut microbiome, wearable data or other files",
   },
   {
@@ -76,6 +79,8 @@ export const REPORT_CATEGORY_LABELS: Record<ReportUploadCategory, string> = {
   genetic_tests: "Genetic tests",
   other_tests: "Other tests",
 };
+
+export const PRESCRIPTION_MEDICATION_OPTION = "Prescription medication";
 
 export const STEPS: StepDef[] = [
   {
@@ -92,10 +97,12 @@ export const STEPS: StepDef[] = [
     kind: "chips",
     prompt: "What brings you ",
     promptEm: "here?",
-    helper: "Choose everything that fits.",
+    helper: "Choose everything that fits, by pressing the number on keyboard",
     whyWeAsk: "This helps your doctor understand what you most want from the consult.",
     summaryLabel: "Why I'm here",
     required: true,
+    allowsOther: true,
+    otherPlaceholder: "Tell us what else brings you here",
     options: [
       "I've done tests, but I don't know what to do with the results",
       "I'm worried about long-term health or family history",
@@ -111,6 +118,8 @@ export const STEPS: StepDef[] = [
     promptEm: "12 months?",
     whyWeAsk: "Your goals help your doctor focus the consult on what matters to you.",
     summaryLabel: "Main goals",
+    allowsOther: true,
+    otherPlaceholder: "Tell us what else you would like to improve",
     options: [
       "Energy",
       "Focus / brain fog",
@@ -119,9 +128,8 @@ export const STEPS: StepDef[] = [
       "Fitness / performance",
       "Body composition",
       "Libido / hormones",
-      "Cardiovascular prevention",
       "Blood sugar / metabolic health",
-      "Longevity / prevention",
+      "Longevity / preventive",
     ],
   },
   {
@@ -131,12 +139,13 @@ export const STEPS: StepDef[] = [
     promptEm: "most off?",
     whyWeAsk: "Naming what feels off gives your doctor useful context alongside any results.",
     summaryLabel: "What feels off",
+    allowsOther: true,
+    otherPlaceholder: "Tell us what else has felt off",
     options: [
       "Low energy / afternoon crash",
       "Brain fog / poor focus",
       "Low mood / anxiety / irritability",
       "Poor sleep quality",
-      "Waking unrefreshed",
       "Low libido / drive",
       "Frequent illness / slow recovery",
       "Digestive issues",
@@ -159,7 +168,7 @@ export const STEPS: StepDef[] = [
     prompt: "Two honest ",
     promptEm: "habit questions",
     helper: "No judgement — this only makes your results easier to read.",
-    whyWeAsk: "Alcohol and smoking directly shift several of the markers we test.",
+    whyWeAsk: "Alcohol, smoking and vaping directly shift several of the markers we test.",
     summaryLabel: "Habits",
   },
   {
@@ -170,6 +179,8 @@ export const STEPS: StepDef[] = [
     helper: "Parents and siblings count most.",
     whyWeAsk: "Family history changes which prevention targets your doctor sets first.",
     summaryLabel: "Family history",
+    allowsOther: true,
+    otherPlaceholder: "Tell us about any other family history",
     options: [
       "Heart disease",
       "Diabetes",
@@ -189,6 +200,8 @@ export const STEPS: StepDef[] = [
     whyWeAsk:
       "Supplements, medications and allergies help your doctor interpret everything else safely.",
     summaryLabel: "Supplements & medications",
+    allowsOther: true,
+    otherPlaceholder: "Tell us about any other supplements or medications",
     options: [
       "Multivitamin",
       "Vitamin D",
@@ -197,30 +210,40 @@ export const STEPS: StepDef[] = [
       "Protein powder",
       "Creatine",
       "Traditional / herbal remedies",
-      "Prescription medication",
+      PRESCRIPTION_MEDICATION_OPTION,
       "Nothing at the moment",
+    ],
+  },
+  {
+    id: "allergies",
+    kind: "chips",
+    prompt: "Do you have any ",
+    promptEm: "allergies to medication?",
+    whyWeAsk: "Allergies to medication help your doctor prescribe and recommend treatments safely.",
+    summaryLabel: "Allergies to medication",
+    allowsOther: true,
+    otherPlaceholder: "Tell us about any other allergies to medication",
+    options: [
+      "Penicillin / amoxicillin",
+      "Cephalosporin antibiotics",
+      "Sulfonamide antibiotics (sulfa)",
+      "NSAIDs (aspirin, ibuprofen, naproxen)",
+      "Anticonvulsants",
+      "Opioid pain medicines",
+      "Anaesthetic medicines",
+      "Contrast dye",
+      "Not that I'm aware of",
     ],
   },
   {
     id: "reports",
     kind: "reports",
-    prompt: "Do you have any previous ",
-    promptEm: "tests?",
-    helper: "Choose every type you can share. Uploads come next.",
+    prompt: "Share what you already ",
+    promptEm: "have",
     whyWeAsk:
       "Existing reports help your doctor connect your current profile with what has already been measured.",
     summaryLabel: "Previous reports",
     required: true,
-  },
-  {
-    id: "reportUpload",
-    kind: "reportUpload",
-    prompt: "Upload what you already ",
-    promptEm: "have",
-    helper: "PDF, JPG, PNG, CSV, DOC or DOCX. You can also continue without uploading.",
-    whyWeAsk:
-      "Your doctor can review these files alongside your answers, even before any new testing is done.",
-    summaryLabel: "Uploaded reports",
   },
 ];
 
@@ -228,13 +251,51 @@ export const STEP_COUNT = STEPS.length;
 
 export const EXERCISE_OPTIONS = ["0", "1–2", "3–4", "5+"] as const;
 export const DIET_OPTIONS = ["Mostly home-cooked", "Mixed", "Mostly eating out"] as const;
-export const ALCOHOL_OPTIONS = ["Rarely / never", "Socially", "Most days"] as const;
-export const SMOKING_OPTIONS = ["Never", "Former smoker", "Current smoker"] as const;
+export const MEN_ALCOHOL_OPTIONS = [
+  "Rarely / never",
+  "14 or less drinks a week",
+  "15 or more drinks a week",
+] as const;
+export const WOMEN_ALCOHOL_OPTIONS = [
+  "Rarely / never",
+  "7 or less drinks a week",
+  "8 or more drinks a week",
+] as const;
+export const SMOKING_OPTIONS = [
+  "Never",
+  "Former user",
+  "Occasional / social user",
+  "Daily / regularly",
+] as const;
+export const SMOKING_PRODUCT_OPTIONS = ["Cigarettes / Cigars", "Vapes / E-cigarettes"] as const;
+
+export type AlcoholOption =
+  | (typeof MEN_ALCOHOL_OPTIONS)[number]
+  | (typeof WOMEN_ALCOHOL_OPTIONS)[number];
+export type SmokingOption = (typeof SMOKING_OPTIONS)[number];
+export type SmokingProductOption = (typeof SMOKING_PRODUCT_OPTIONS)[number];
+
+export function alcoholOptionsForSex(sex: "Male" | "Female") {
+  return sex === "Female" ? WOMEN_ALCOHOL_OPTIONS : MEN_ALCOHOL_OPTIONS;
+}
+
+/** Keeps the alcohol answer meaningful if the member corrects their gender. */
+export function alcoholOptionForSex(
+  option: AlcoholOption,
+  sex: "Male" | "Female",
+): AlcoholOption {
+  if (option === "Rarely / never") return option;
+  const options = alcoholOptionsForSex(sex);
+  return option.includes("or less") ? options[1] : options[2];
+}
+
+export const OTHER_OPTION = "Other";
+export const NOTHING_MAJOR_OPTION = "Nothing major — mostly prevention";
 
 export const EXCLUSIVE_PROFILE_OPTIONS = {
-  symptoms: "Nothing major — mostly prevention",
   family: "None that I know of",
   supplements: "Nothing at the moment",
+  allergies: "Not that I'm aware of",
 } as const;
 
 export type ProfileAnswers = {
@@ -242,8 +303,11 @@ export type ProfileAnswers = {
   uploadedReports: UploadedReport[];
   basics: { preferredName: string; age: number; sex: "Male" | "Female"; heightCm: number; weightKg: number };
   reason: string[];
+  reasonOther: string;
   goals: string[];
+  goalsOther: string;
   symptoms: string[];
+  symptomsOther: string;
   lifestyle: {
     sleepHours: number;
     exerciseDays: (typeof EXERCISE_OPTIONS)[number];
@@ -251,24 +315,71 @@ export type ProfileAnswers = {
     stress: number;
   };
   habits: {
-    alcohol: (typeof ALCOHOL_OPTIONS)[number];
-    smoking: (typeof SMOKING_OPTIONS)[number];
+    alcohol: AlcoholOption;
+    smoking: SmokingOption;
+    smokingProducts: SmokingProductOption[];
   };
   family: string[];
+  familyOther: string;
   supplements: string[];
   supplementsOther: string;
+  prescriptionMedicationDetails: string;
+  allergies: string[];
+  allergiesOther: string;
 };
+
+/**
+ * Onboarding answers are persisted as JSON. Normalize earlier answer labels
+ * whenever a saved draft is loaded so the current controls always have a
+ * selected option, while retaining the answer's low/high intent.
+ */
+export function normalizeHabits(
+  habits: Partial<ProfileAnswers["habits"]>,
+  sex: "Male" | "Female",
+): ProfileAnswers["habits"] {
+  const savedAlcohol = habits.alcohol as string | undefined;
+  const savedSmoking = habits.smoking as string | undefined;
+  const alcoholOptions = alcoholOptionsForSex(sex);
+  const alcohol = savedAlcohol === "Rarely / never"
+    ? savedAlcohol
+    : savedAlcohol?.includes("or less") || savedAlcohol === "Socially"
+      ? alcoholOptions[1]
+      : savedAlcohol?.includes("or more") || savedAlcohol === "Most days"
+        ? alcoholOptions[2]
+        : alcoholOptions[1];
+  const smoking = savedSmoking === "Former smoker"
+    ? "Former user"
+    : savedSmoking === "Current smoker"
+      ? "Daily / regularly"
+      : SMOKING_OPTIONS.includes(savedSmoking as SmokingOption)
+        ? savedSmoking as SmokingOption
+        : "Never";
+  const smokingProducts = Array.isArray(habits.smokingProducts)
+    ? habits.smokingProducts.filter((product): product is SmokingProductOption =>
+        SMOKING_PRODUCT_OPTIONS.includes(product as SmokingProductOption),
+      )
+    : [];
+
+  return { alcohol, smoking, smokingProducts: smoking === "Never" ? [] : smokingProducts };
+}
 
 export const DEFAULT_ANSWERS: ProfileAnswers = {
   reportSelections: [],
   uploadedReports: [],
   basics: { preferredName: "", age: 36, sex: "Male", heightCm: 173, weightKg: 76 },
   reason: [],
+  reasonOther: "",
   goals: [],
+  goalsOther: "",
   symptoms: [],
+  symptomsOther: "",
   lifestyle: { sleepHours: 6.5, exerciseDays: "1–2", diet: "Mixed", stress: 3 },
-  habits: { alcohol: "Socially", smoking: "Never" },
+  habits: { alcohol: "14 or less drinks a week", smoking: "Never", smokingProducts: [] },
   family: [],
+  familyOther: "",
   supplements: [],
   supplementsOther: "",
+  prescriptionMedicationDetails: "",
+  allergies: [],
+  allergiesOther: "",
 };

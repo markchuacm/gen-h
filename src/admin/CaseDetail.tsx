@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import {
   assignDoctor,
   cancelAppointment,
@@ -9,6 +10,7 @@ import {
   fetchAdminLabReports,
   resetInvite,
   scheduleAppointment,
+  setFoundingMember,
   setStage,
   STAGE_LABELS,
   STAGE_OPTIONS,
@@ -21,6 +23,7 @@ import { createDocumentSignedUrl } from "../lib/api/healthDocuments";
 import { CLEAR_ANSWERS, lifestyleConcerns, toAnswers } from "../doctor/caseSignals";
 import LabResultsSection from "./LabResultsSection";
 import CaseTimeline from "./CaseTimeline";
+import { formatMyr, memberQuoteSummary } from "../lib/labOrderQuote";
 
 const DOC_TYPES = [
   { value: "health_screening", label: "Health screening" },
@@ -30,6 +33,12 @@ const DOC_TYPES = [
 ];
 
 const MEET_URL_PATTERN = /^https:\/\/meet\.google\.com\/.+/;
+
+function boundaryValue(value: number, low: number, high: number, unit = "") {
+  if (value < low) return `<${low}${unit}`;
+  if (value > high) return `>${high}${unit}`;
+  return `${value}${unit}`;
+}
 
 // Malaysia observes a fixed UTC+08:00 offset year-round, so a datetime-local
 // value (wall-clock, no zone) can be pinned to KL time regardless of the admin's
@@ -83,6 +92,7 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [invite, setInvite] = useState<{ tempPassword: string } | null>(null);
+  const [copied, setCopied] = useState<"amount" | "summary" | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [docType, setDocType] = useState(DOC_TYPES[0].value);
 
@@ -145,6 +155,25 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
     else if (data) setInvite({ tempPassword: data.tempPassword });
     await reload();
     setBusy(false);
+  };
+
+  const onFoundingChange = async () => {
+    setBusy(true);
+    setError(null);
+    const { error: err } = await setFoundingMember(memberId, !detail?.isFoundingMember);
+    if (err) setError(err);
+    else await reload();
+    setBusy(false);
+  };
+
+  const copyQuote = async (kind: "amount" | "summary", text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(kind);
+      window.setTimeout(() => setCopied((current) => current === kind ? null : current), 1800);
+    } catch {
+      setError("Couldn't copy to the clipboard. Please copy the quote manually.");
+    }
   };
 
   const onAssign = async (doctorId: string) => {
@@ -222,19 +251,29 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const concerns = answers ? lifestyleConcerns(answers) : new Set<string>();
 
   const vitals: [string, string][] = [];
-  if (detail.age != null) vitals.push(["Age", `${detail.age}`]);
+  if (detail.age != null) vitals.push(["Age", boundaryValue(detail.age, 18, 80)]);
   if (detail.sex) vitals.push(["Sex", detail.sex]);
-  if (detail.heightCm != null) vitals.push(["Height", `${detail.heightCm} cm`]);
-  if (detail.weightKg != null) vitals.push(["Weight", `${detail.weightKg} kg`]);
+  if (detail.heightCm != null) vitals.push(["Height", boundaryValue(detail.heightCm, 140, 220, " cm")]);
+  if (detail.weightKg != null) vitals.push(["Weight", boundaryValue(detail.weightKg, 30, 200, " kg")]);
 
   const lifestyleFacts: [string, string][] = answers
     ? [
-        ["Sleep", `~${answers.lifestyle.sleepHours}h per night`],
+        [
+          "Sleep",
+          answers.lifestyle.sleepHours < 4
+            ? "<4h per night"
+            : answers.lifestyle.sleepHours > 10
+              ? ">10h per night"
+              : `~${answers.lifestyle.sleepHours}h per night`,
+        ],
         ["Exercise", `${answers.lifestyle.exerciseDays} days per week`],
         ["Diet", answers.lifestyle.diet],
         ["Stress", `${answers.lifestyle.stress} out of 5`],
         ["Alcohol", answers.habits.alcohol],
-        ["Smoking", answers.habits.smoking],
+        ["Smoking and/or vaping", answers.habits.smoking],
+        ...(answers.habits.smokingProducts.length > 0
+          ? [["Product types", answers.habits.smokingProducts.join(", ")]] as [string, string][]
+          : []),
       ]
     : [];
 
@@ -320,6 +359,89 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
         carePlanStatus={carePlanStatus}
       />
 
+      <div className="adm-card adm-membership-card">
+        <div className="adm-card-head">
+          <div>
+            <h2>Membership</h2>
+            <p className="adm-muted">Controls eligibility for the founding-member discount on the next saved quote.</p>
+          </div>
+          <button
+            type="button"
+            className={`adm-switch ${detail.isFoundingMember ? "is-on" : ""}`}
+            role="switch"
+            aria-checked={detail.isFoundingMember}
+            disabled={busy}
+            onClick={() => void onFoundingChange()}
+          >
+            <span aria-hidden="true" />
+            {detail.isFoundingMember ? "Founding member" : "Standard member"}
+          </button>
+        </div>
+        <p className="adm-hint">Changing this does not alter a quote the doctor has already shared.</p>
+      </div>
+
+      <div className="adm-card adm-quote-card">
+        <div className="adm-card-head">
+          <div>
+            <h2>Blood panel quote</h2>
+            <p className="adm-muted">Use the saved amount when creating the member's payment link externally.</p>
+          </div>
+          {detail.labOrder?.quote && (
+            <span className="adm-quote-status"><Check strokeWidth={2} aria-hidden="true" /> Quote saved</span>
+          )}
+        </div>
+
+        {!detail.labOrder ? (
+          <p className="adm-muted">No blood panel has been saved yet.</p>
+        ) : !detail.labOrder.quote ? (
+          <div className="adm-quote-empty">
+            <p>This panel predates saved pricing.</p>
+            <span>The quote will appear after the doctor reviews and saves the panel again.</span>
+          </div>
+        ) : (
+          <>
+            <div className="adm-quote-meta">
+              <div><span>Selected biomarkers</span><strong>{detail.labOrder.quote.selectedCount}</strong></div>
+              <div><span>Quoted</span><strong>{new Date(detail.labOrder.quote.quotedAt).toLocaleString("en-MY", {
+                dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kuala_Lumpur",
+              })}</strong></div>
+              <div><span>Eligibility snapshot</span><strong>{detail.labOrder.quote.isFoundingMember ? "Founding" : "Standard"}</strong></div>
+            </div>
+
+            <dl className="adm-quote-breakdown">
+              <div><dt>Advanced Blood Baseline</dt><dd>{formatMyr(detail.labOrder.quote.baseAmountMinor)}</dd></div>
+              <div>
+                <dt>Doctor personalization adjustment</dt>
+                <dd>−{formatMyr(detail.labOrder.quote.personalizationDiscountMinor)}</dd>
+              </div>
+              {detail.labOrder.quote.foundingDiscountMinor > 0 && (
+                <div><dt>Founding member discount</dt><dd>−{formatMyr(detail.labOrder.quote.foundingDiscountMinor)}</dd></div>
+              )}
+              <div className="adm-quote-total"><dt>Total</dt><dd>{formatMyr(detail.labOrder.quote.totalAmountMinor)}</dd></div>
+            </dl>
+
+            <div className="adm-quote-actions">
+              <button
+                type="button"
+                className="adm-btn-ghost"
+                onClick={() => void copyQuote("amount", (detail.labOrder!.quote!.totalAmountMinor / 100).toFixed(2))}
+              >
+                {copied === "amount" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                {copied === "amount" ? "Amount copied" : "Copy amount"}
+              </button>
+              <button
+                type="button"
+                className="adm-btn"
+                onClick={() => void copyQuote("summary", memberQuoteSummary(detail.labOrder!.quote!))}
+              >
+                {copied === "summary" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                {copied === "summary" ? "Summary copied" : "Copy member summary"}
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
       <div className="adm-card">
         <h2>Member profile</h2>
 
@@ -367,7 +489,7 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
 
             <div className="adm-brief-section">
               <span className="adm-group-label">Supplements &amp; medications</span>
-              {supplements.length === 0 && !answers.supplementsOther && !detail.medications ? (
+              {supplements.length === 0 && !answers.supplementsOther && !answers.prescriptionMedicationDetails && !detail.medications ? (
                 <p className="adm-muted">Nothing at the moment.</p>
               ) : (
                 <>
@@ -379,6 +501,11 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
                     </ul>
                   )}
                   {answers.supplementsOther && <p className="adm-muted">{answers.supplementsOther}</p>}
+                  {answers.prescriptionMedicationDetails && (
+                    <p className="adm-muted">
+                      Prescription medications and doses: {answers.prescriptionMedicationDetails}
+                    </p>
+                  )}
                   {detail.medications && (
                     <p className="adm-muted">Medications: {detail.medications}</p>
                   )}

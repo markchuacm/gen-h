@@ -4,17 +4,18 @@
 import {
   DEFAULT_ANSWERS,
   EXCLUSIVE_PROFILE_OPTIONS,
+  normalizeHabits,
+  NOTHING_MAJOR_OPTION,
 } from "../member-v2/screens/profile/profileQuestions";
 import type { ProfileAnswers } from "../member-v2/screens/profile/profileQuestions";
 import type { Biomarker } from "../member-v2/screens/results/types";
-import type { DoctorCaseDetail } from "../lib/api/doctor";
-import type { RecommendationInput } from "./recommendedPanel";
 
 // "No concern" answers that shouldn't read as risk flags.
 export const CLEAR_ANSWERS = new Set<string>([
   EXCLUSIVE_PROFILE_OPTIONS.family,
-  EXCLUSIVE_PROFILE_OPTIONS.symptoms,
   EXCLUSIVE_PROFILE_OPTIONS.supplements,
+  EXCLUSIVE_PROFILE_OPTIONS.allergies,
+  NOTHING_MAJOR_OPTION,
 ]);
 
 export function asObject(value: unknown): Record<string, unknown> {
@@ -30,20 +31,37 @@ export function asStringList(value: unknown): string[] {
 // The onboarding record is untyped jsonb, so every section is coerced back into
 // a ProfileAnswers shape defensively before doctor screens render it.
 export function toAnswers(onboarding: Record<string, unknown>): ProfileAnswers {
+  const basics = {
+    ...DEFAULT_ANSWERS.basics,
+    ...(asObject(onboarding.basics) as ProfileAnswers["basics"]),
+  };
   return {
     ...DEFAULT_ANSWERS,
-    basics: { ...DEFAULT_ANSWERS.basics, ...(asObject(onboarding.basics) as ProfileAnswers["basics"]) },
+    basics,
     lifestyle: {
       ...DEFAULT_ANSWERS.lifestyle,
       ...(asObject(onboarding.lifestyle) as ProfileAnswers["lifestyle"]),
     },
-    habits: { ...DEFAULT_ANSWERS.habits, ...(asObject(onboarding.habits) as ProfileAnswers["habits"]) },
+    habits: normalizeHabits(
+      asObject(onboarding.habits) as Partial<ProfileAnswers["habits"]>,
+      basics.sex,
+    ),
     reason: asStringList(onboarding.reason),
+    reasonOther: typeof onboarding.reasonOther === "string" ? onboarding.reasonOther : "",
     goals: asStringList(onboarding.goals),
+    goalsOther: typeof onboarding.goalsOther === "string" ? onboarding.goalsOther : "",
     symptoms: asStringList(onboarding.symptoms),
+    symptomsOther: typeof onboarding.symptomsOther === "string" ? onboarding.symptomsOther : "",
     family: asStringList(onboarding.family),
+    familyOther: typeof onboarding.familyOther === "string" ? onboarding.familyOther : "",
     supplements: asStringList(onboarding.supplements),
     supplementsOther: typeof onboarding.supplementsOther === "string" ? onboarding.supplementsOther : "",
+    prescriptionMedicationDetails:
+      typeof onboarding.prescriptionMedicationDetails === "string"
+        ? onboarding.prescriptionMedicationDetails
+        : "",
+    allergies: asStringList(onboarding.allergies),
+    allergiesOther: typeof onboarding.allergiesOther === "string" ? onboarding.allergiesOther : "",
   };
 }
 
@@ -53,16 +71,6 @@ export function matchesQuery(marker: Biomarker | undefined, query: string) {
   if (!marker) return false;
   const haystack = [marker.displayName, marker.name, ...marker.aliases].join(" ").toLowerCase();
   return haystack.includes(query.toLowerCase());
-}
-
-export function toRecommendationInput(detail: DoctorCaseDetail): RecommendationInput {
-  return {
-    sex: detail.sex ?? "",
-    age: detail.age,
-    goals: asStringList(detail.onboarding.goals),
-    symptoms: asStringList(detail.onboarding.symptoms),
-    family: asStringList(detail.onboarding.family),
-  };
 }
 
 /** Lifestyle/habit answers that warrant the doctor's attention, keyed by the
@@ -76,7 +84,7 @@ export function lifestyleConcerns(answers: ProfileAnswers): Set<string> {
   if (answers.lifestyle.sleepHours < 6) concerns.add("Sleep");
   if (answers.lifestyle.exerciseDays === "0") concerns.add("Exercise");
   if (answers.lifestyle.stress >= 4) concerns.add("Stress");
-  if (answers.habits.alcohol === "Most days") concerns.add("Alcohol");
-  if (answers.habits.smoking === "Current smoker") concerns.add("Smoking");
+  if (answers.habits.alcohol.endsWith("or more drinks a week")) concerns.add("Alcohol");
+  if (answers.habits.smoking === "Daily / regularly") concerns.add("Smoking and/or vaping");
   return concerns;
 }

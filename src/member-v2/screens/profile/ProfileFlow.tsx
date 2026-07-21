@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   Check,
   CircleSlash,
@@ -14,11 +14,15 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
-  ALCOHOL_OPTIONS,
+  alcoholOptionForSex,
+  alcoholOptionsForSex,
   DIET_OPTIONS,
   EXERCISE_OPTIONS,
+  OTHER_OPTION,
+  PRESCRIPTION_MEDICATION_OPTION,
   REPORT_CATEGORY_LABELS,
   REPORT_OPTIONS,
+  SMOKING_PRODUCT_OPTIONS,
   SMOKING_OPTIONS,
   STEPS,
   STEP_COUNT,
@@ -32,7 +36,17 @@ import type {
   UploadedReportKind,
 } from "./profileQuestions";
 
-export type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements";
+export type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements" | "allergies";
+type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
+
+const OTHER_ANSWER_KEYS: Record<ToggleListKey, OtherAnswerKey> = {
+  reason: "reasonOther",
+  goals: "goalsOther",
+  symptoms: "symptomsOther",
+  family: "familyOther",
+  supplements: "supplementsOther",
+  allergies: "allergiesOther",
+};
 
 type ProfileFlowProps = {
   answers: ProfileAnswers;
@@ -47,12 +61,9 @@ type ProfileFlowProps = {
   onReachStep: (step: number) => void;
   onComplete: () => void;
   onClose: () => void | Promise<void>;
-  saving?: boolean;
   saveError?: string | null;
 };
 
-const REPORT_STEP_INDEX = STEPS.findIndex((step) => step.id === "reports");
-const REPORT_UPLOAD_STEP_INDEX = STEPS.findIndex((step) => step.id === "reportUpload");
 // Must stay in sync with the health-documents bucket config (6 types, 10MB).
 const ACCEPT_REPORTS =
   ".pdf,.png,.jpg,.jpeg,.csv,.doc,.docx,application/pdf,image/png,image/jpeg,text/csv,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -72,26 +83,30 @@ const REPORT_FILE_ICONS: Record<UploadedReportKind, LucideIcon> = {
   other: Paperclip,
 };
 
-function uploadCategories(answers: ProfileAnswers): ReportUploadCategory[] {
-  return answers.reportSelections.filter(
-    (selection): selection is ReportUploadCategory => selection !== "no_tests",
-  );
-}
-
 function ChipGrid({
   options,
   selected,
   onToggle,
   numbered,
+  numberStart = 1,
+  hasOther = false,
+  disabled = false,
+  ariaLabel,
 }: {
   options: string[];
   selected: string[];
   onToggle: (option: string) => void;
   numbered?: boolean;
+  numberStart?: number;
+  hasOther?: boolean;
+  disabled?: boolean;
+  ariaLabel?: string;
 }) {
+  const displayOptions = hasOther ? [...options, OTHER_OPTION] : options;
+
   return (
-    <div className="pf-chips" role="group">
-      {options.map((option, index) => {
+    <div className="pf-chips" role="group" aria-label={ariaLabel}>
+      {displayOptions.map((option, index) => {
         const isSelected = selected.includes(option);
         return (
           <button
@@ -99,9 +114,12 @@ function ChipGrid({
             type="button"
             className={`pf-chip ${isSelected ? "is-selected" : ""}`}
             aria-pressed={isSelected}
+            disabled={disabled}
             onClick={() => onToggle(option)}
           >
-            {numbered && index < 9 && <span className="pf-chip-key">{index + 1}</span>}
+            {numbered && (option === OTHER_OPTION || index < 9) && (
+              <span className="pf-chip-key">{option === OTHER_OPTION ? 0 : numberStart + index}</span>
+            )}
             {option}
             {isSelected && <Check strokeWidth={2.6} />}
           </button>
@@ -116,11 +134,13 @@ function Segment({
   value,
   onSelect,
   label,
+  numberStart,
 }: {
   options: readonly string[];
   value: string;
   onSelect: (option: string) => void;
   label?: string;
+  numberStart?: number;
 }) {
   return (
     <div className="pf-control">
@@ -130,7 +150,7 @@ function Segment({
         </div>
       )}
       <div className="pf-segment" role="group" aria-label={label}>
-        {options.map((option) => (
+        {options.map((option, index) => (
           <button
             key={option}
             type="button"
@@ -138,6 +158,9 @@ function Segment({
             aria-pressed={value === option}
             onClick={() => onSelect(option)}
           >
+            {numberStart !== undefined && (
+              <span className="pf-chip-key">{numberStart + index}</span>
+            )}
             {option}
           </button>
         ))}
@@ -182,57 +205,27 @@ function SliderControl({
   );
 }
 
-function ReportSelectionGrid({
-  answers,
-  onToggleReport,
-}: {
-  answers: ProfileAnswers;
-  onToggleReport: (selection: ReportSelection) => void;
-}) {
-  return (
-    <div className="pf-report-grid" role="group" aria-label="Previous test types">
-      {REPORT_OPTIONS.map((option) => {
-        const selected = answers.reportSelections.includes(option.id);
-        const Icon = REPORT_ICONS[option.id];
-        return (
-          <button
-            key={option.id}
-            type="button"
-            className={`pf-report-tile ${selected ? "is-selected" : ""}`}
-            aria-pressed={selected}
-            onClick={() => onToggleReport(option.id)}
-          >
-            <span className="pf-report-tile-label">{option.label}</span>
-            {option.helper && <span className="pf-report-tile-helper">{option.helper}</span>}
-            <span className="pf-report-tile-icon" aria-hidden="true">
-              <Icon strokeWidth={1.8} />
-            </span>
-            <span className="pf-report-tile-check" aria-hidden="true">
-              <Check strokeWidth={2.4} />
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function ReportDropzone({
+function ReportUploadTile({
   category,
+  label,
+  helper,
   onAddReports,
 }: {
   category: ReportUploadCategory;
+  label: string;
+  helper?: string;
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
-  const label = REPORT_CATEGORY_LABELS[category];
+  const Icon = REPORT_ICONS[category];
 
   return (
-    <section className="pf-upload-group" aria-label={`Upload ${label}`}>
+    <section className="pf-upload-group" aria-label={label}>
       <button
         type="button"
-        className={`pf-dropzone ${dragOver ? "is-drag" : ""}`}
+        className={`pf-report-tile pf-report-upload-tile ${dragOver ? "is-drag" : ""}`}
+        aria-label={label}
         onClick={() => inputRef.current?.click()}
         onDragOver={(event) => {
           event.preventDefault();
@@ -246,9 +239,11 @@ function ReportDropzone({
           if (files.length) onAddReports(files, category);
         }}
       >
-        <Paperclip strokeWidth={1.7} aria-hidden="true" />
-        <strong>Upload {label.toLowerCase()}</strong>
-        <span>Drop files here or click to browse</span>
+        <span className="pf-report-tile-label">{label}</span>
+        {helper && <span className="pf-report-tile-helper">{helper}</span>}
+        <span className="pf-report-tile-icon" aria-hidden="true">
+          <Icon strokeWidth={1.8} />
+        </span>
       </button>
       <input
         ref={inputRef}
@@ -266,13 +261,144 @@ function ReportDropzone({
   );
 }
 
+function ReportSelectionGrid({
+  answers,
+  uploadErrors,
+  onToggleReport,
+  onAddReports,
+  onRemoveReport,
+}: {
+  answers: ProfileAnswers;
+  uploadErrors: string[];
+  onToggleReport: (selection: ReportSelection) => void;
+  onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
+  onRemoveReport: (id: string) => void;
+}) {
+  return (
+    <div className="pf-upload-layout">
+      <div className="pf-report-grid" role="group" aria-label="Previous test uploads">
+        {REPORT_OPTIONS.map((option) => {
+          const selected = answers.reportSelections.includes(option.id);
+          const Icon = REPORT_ICONS[option.id];
+
+          if (option.id !== "no_tests") {
+            return (
+              <ReportUploadTile
+                key={option.id}
+                category={option.id}
+                label={option.label}
+                helper={option.helper}
+                onAddReports={onAddReports}
+              />
+            );
+          }
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              className={`pf-report-tile ${selected ? "is-selected" : ""}`}
+              aria-pressed={selected}
+              onClick={() => onToggleReport(option.id)}
+            >
+              <span className="pf-report-tile-label">{option.label}</span>
+              <span className="pf-report-tile-icon" aria-hidden="true">
+                <Icon strokeWidth={1.8} />
+              </span>
+              <span className="pf-report-tile-check" aria-hidden="true">
+                <Check strokeWidth={2.4} />
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {uploadErrors.length > 0 && (
+        <ul className="pf-upload-errors" role="alert">
+          {uploadErrors.map((message) => (
+            <li key={message}>{message}</li>
+          ))}
+        </ul>
+      )}
+      <section className="pf-upload-files" aria-label="Files uploaded">
+        <h3>Files uploaded</h3>
+        <AnimatedUploadedReports
+          reports={answers.uploadedReports}
+          onRemove={onRemoveReport}
+        />
+      </section>
+    </div>
+  );
+}
+
+function AnimatedUploadedReports({
+  reports,
+  onRemove,
+}: {
+  reports: UploadedReport[];
+  onRemove: (id: string) => void;
+}) {
+  const shellRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const previousHeight = useRef<number>();
+  const animationFrame = useRef<number>();
+
+  useLayoutEffect(() => {
+    const shell = shellRef.current;
+    const content = contentRef.current;
+    if (!shell || !content) return;
+
+    const nextHeight = content.getBoundingClientRect().height;
+    const priorHeight = previousHeight.current;
+    previousHeight.current = nextHeight;
+
+    if (priorHeight === undefined || Math.abs(priorHeight - nextHeight) < 1) {
+      shell.style.height = "auto";
+      return;
+    }
+
+    shell.style.height = `${priorHeight}px`;
+    void shell.offsetHeight;
+    animationFrame.current = window.requestAnimationFrame(() => {
+      shell.style.height = `${nextHeight}px`;
+    });
+
+    return () => {
+      if (animationFrame.current !== undefined) {
+        window.cancelAnimationFrame(animationFrame.current);
+      }
+    };
+  }, [reports]);
+
+  return (
+    <div
+      ref={shellRef}
+      className="pf-upload-files-shell"
+      onTransitionEnd={(event) => {
+        if (event.propertyName === "height") event.currentTarget.style.height = "auto";
+      }}
+    >
+      <div ref={contentRef} className="pf-upload-files-content">
+        {reports.length > 0 ? (
+          <UploadedReportGrid reports={reports} onRemove={onRemove} />
+        ) : (
+          <p className="pf-upload-files-empty">-</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function UploadedReportTile({
   report,
   onRemove,
+  elementRef,
 }: {
   report: UploadedReport;
   onRemove: (id: string) => void;
+  elementRef: (node: HTMLElement | null) => void;
 }) {
+  const [removing, setRemoving] = useState(false);
+  const removeTimer = useRef<ReturnType<typeof setTimeout>>();
   const Icon = REPORT_FILE_ICONS[report.kind];
   const ext = report.name.includes(".") ? report.name.split(".").pop()?.toUpperCase() : report.kind;
   const uploading = report.status === "uploading";
@@ -284,13 +410,25 @@ function UploadedReportTile({
     if (url) window.open(url, "_blank", "noopener");
   };
 
+  const beginRemove = () => {
+    if (removing) return;
+    setRemoving(true);
+    removeTimer.current = setTimeout(() => onRemove(report.id), 200);
+  };
+
+  useEffect(() => () => clearTimeout(removeTimer.current), []);
+
   return (
-    <article className={`pf-report-file pf-report-file--${report.kind}`}>
+    <article
+      ref={elementRef}
+      className={`pf-report-file pf-report-file--${report.kind} ${removing ? "is-removing" : ""}`}
+    >
       <button
         type="button"
         className="pf-report-file-remove"
         aria-label={`Remove ${report.name}`}
-        onClick={() => onRemove(report.id)}
+        disabled={removing}
+        onClick={beginRemove}
       >
         <X strokeWidth={2} aria-hidden="true" />
       </button>
@@ -314,46 +452,62 @@ function UploadedReportTile({
   );
 }
 
-function ReportUploadStep({
-  answers,
-  uploadErrors,
-  onAddReports,
-  onRemoveReport,
+function UploadedReportGrid({
+  reports,
+  onRemove,
 }: {
-  answers: ProfileAnswers;
-  uploadErrors: string[];
-  onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
-  onRemoveReport: (id: string) => void;
+  reports: UploadedReport[];
+  onRemove: (id: string) => void;
 }) {
-  const categories = uploadCategories(answers);
-  const compactDropzones = categories.length === 3;
+  const nodes = useRef(new Map<string, HTMLElement>());
+  const previousPositions = useRef(new Map<string, DOMRect>());
+
+  const removeWithLayoutMotion = (id: string) => {
+    previousPositions.current = new Map(
+      Array.from(nodes.current.entries(), ([reportId, node]) => [
+        reportId,
+        node.getBoundingClientRect(),
+      ]),
+    );
+    onRemove(id);
+  };
+
+  useLayoutEffect(() => {
+    if (previousPositions.current.size === 0) return;
+
+    for (const [id, node] of nodes.current) {
+      const previous = previousPositions.current.get(id);
+      if (!previous) continue;
+      const next = node.getBoundingClientRect();
+      const deltaX = previous.left - next.left;
+      const deltaY = previous.top - next.top;
+      if ((deltaX || deltaY) && typeof node.animate === "function") {
+        node.animate(
+          [
+            { transform: `translate(${deltaX}px, ${deltaY}px)` },
+            { transform: "translate(0, 0)" },
+          ],
+          { duration: 280, easing: "cubic-bezier(0.2, 0, 0, 1)" },
+        );
+      }
+    }
+
+    previousPositions.current.clear();
+  }, [reports]);
 
   return (
-    <div className="pf-upload-layout">
-      <div className={`pf-upload-dropzones ${compactDropzones ? "is-compact" : ""}`}>
-        {categories.map((category) => (
-          <ReportDropzone key={category} category={category} onAddReports={onAddReports} />
-        ))}
-      </div>
-      {uploadErrors.length > 0 && (
-        <ul className="pf-upload-errors" role="alert">
-          {uploadErrors.map((message) => (
-            <li key={message}>{message}</li>
-          ))}
-        </ul>
-      )}
-      <section className="pf-upload-files" aria-label="Files uploaded">
-        <h3>Files uploaded</h3>
-        {answers.uploadedReports.length > 0 ? (
-          <div className="pf-report-file-grid">
-            {answers.uploadedReports.map((report) => (
-              <UploadedReportTile key={report.id} report={report} onRemove={onRemoveReport} />
-            ))}
-          </div>
-        ) : (
-          <p>-</p>
-        )}
-      </section>
+    <div className="pf-report-file-grid">
+      {reports.map((report) => (
+        <UploadedReportTile
+          key={report.id}
+          report={report}
+          onRemove={removeWithLayoutMotion}
+          elementRef={(node) => {
+            if (node) nodes.current.set(report.id, node);
+            else nodes.current.delete(report.id);
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -380,14 +534,11 @@ function StepInputs({
   onRemoveReport: (id: string) => void;
 }) {
   if (step.kind === "reports") {
-    return <ReportSelectionGrid answers={answers} onToggleReport={onToggleReport} />;
-  }
-
-  if (step.kind === "reportUpload") {
     return (
-      <ReportUploadStep
+      <ReportSelectionGrid
         answers={answers}
         uploadErrors={uploadErrors}
+        onToggleReport={onToggleReport}
         onAddReports={onAddReports}
         onRemoveReport={onRemoveReport}
       />
@@ -404,10 +555,11 @@ function StepInputs({
           </div>
           <input
             id="pf-preferred-name"
-            className="pf-other-input"
+            className="pf-other-input pf-preferred-name-input"
             type="text"
             value={basics.preferredName}
             placeholder={preferredNamePlaceholder}
+            autoFocus
             onChange={(event) =>
               onPatch({ basics: { ...basics, preferredName: event.target.value } })
             }
@@ -417,32 +569,41 @@ function StepInputs({
           label="Gender"
           options={["Male", "Female"]}
           value={basics.sex}
-          onSelect={(sex) => onPatch({ basics: { ...basics, sex: sex as "Male" | "Female" } })}
+          onSelect={(sex) => {
+            const nextSex = sex as "Male" | "Female";
+            onPatch({
+              basics: { ...basics, sex: nextSex },
+              habits: {
+                ...answers.habits,
+                alcohol: alcoholOptionForSex(answers.habits.alcohol, nextSex),
+              },
+            });
+          }}
         />
         <SliderControl
           label="Age"
           value={basics.age}
-          display={`${basics.age}`}
+          display={basics.age > 80 ? ">80" : `${basics.age}`}
           min={18}
-          max={80}
+          max={81}
           step={1}
           onChange={(age) => onPatch({ basics: { ...basics, age } })}
         />
         <SliderControl
           label="Height"
           value={basics.heightCm}
-          display={`${basics.heightCm} cm`}
-          min={140}
-          max={205}
+          display={basics.heightCm < 140 ? "<140 cm" : basics.heightCm > 220 ? ">220 cm" : `${basics.heightCm} cm`}
+          min={139}
+          max={221}
           step={1}
           onChange={(heightCm) => onPatch({ basics: { ...basics, heightCm } })}
         />
         <SliderControl
           label="Weight"
           value={basics.weightKg}
-          display={`${basics.weightKg} kg`}
-          min={40}
-          max={150}
+          display={basics.weightKg < 30 ? "<30 kg" : basics.weightKg > 200 ? ">200 kg" : `${basics.weightKg} kg`}
+          min={29}
+          max={201}
           step={1}
           onChange={(weightKg) => onPatch({ basics: { ...basics, weightKg } })}
         />
@@ -455,11 +616,11 @@ function StepInputs({
     return (
       <div className="pf-controls">
         <SliderControl
-          label="Weekday sleep"
+          label="Daily average"
           value={lifestyle.sleepHours}
-          display={`${lifestyle.sleepHours} h`}
-          min={4}
-          max={10}
+          display={lifestyle.sleepHours < 4 ? "<4 h" : lifestyle.sleepHours > 10 ? ">10 h" : `${lifestyle.sleepHours} h`}
+          min={3.5}
+          max={10.5}
           step={0.5}
           onChange={(sleepHours) => onPatch({ lifestyle: { ...lifestyle, sleepHours } })}
         />
@@ -496,57 +657,123 @@ function StepInputs({
 
   if (step.kind === "habits") {
     const { habits } = answers;
+    const alcoholOptions = alcoholOptionsForSex(answers.basics.sex);
+    const showSmokingProducts = habits.smoking !== "Never";
     return (
       <div className="pf-controls">
         <Segment
           label="Alcohol"
-          options={ALCOHOL_OPTIONS}
+          options={alcoholOptions}
+          numberStart={1}
           value={habits.alcohol}
           onSelect={(alcohol) =>
             onPatch({ habits: { ...habits, alcohol: alcohol as typeof habits.alcohol } })
           }
         />
         <Segment
-          label="Smoking"
+          label="Smoking and/or vaping"
           options={SMOKING_OPTIONS}
+          numberStart={4}
           value={habits.smoking}
           onSelect={(smoking) =>
-            onPatch({ habits: { ...habits, smoking: smoking as typeof habits.smoking } })
+            onPatch({
+              habits: {
+                ...habits,
+                smoking: smoking as typeof habits.smoking,
+                smokingProducts: smoking === "Never" ? [] : habits.smokingProducts,
+              },
+            })
           }
         />
+        <div
+          className={`pf-other-reveal pf-habit-product-reveal ${showSmokingProducts ? "is-open" : ""}`}
+          aria-hidden={!showSmokingProducts}
+        >
+          <div className="pf-other-reveal-inner">
+            <div className="pf-habit-product-options">
+              <div className="pf-control-head">
+                <label>What types of products?</label>
+              </div>
+              <ChipGrid
+                ariaLabel="What types of products?"
+                options={[...SMOKING_PRODUCT_OPTIONS]}
+                selected={habits.smokingProducts}
+                numbered
+                numberStart={8}
+                disabled={!showSmokingProducts}
+                onToggle={(product) => {
+                  const smokingProduct = product as (typeof habits.smokingProducts)[number];
+                  const selected = habits.smokingProducts.includes(smokingProduct);
+                  onPatch({
+                    habits: {
+                      ...habits,
+                      smokingProducts: selected
+                        ? habits.smokingProducts.filter((item) => item !== smokingProduct)
+                        : [...habits.smokingProducts, smokingProduct],
+                    },
+                  });
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (step.kind === "supplements") {
-    return (
-      <div className="pf-controls">
-        <ChipGrid
-          numbered
-          options={step.options ?? []}
-          selected={answers.supplements}
-          onToggle={(option) => onToggle("supplements", option)}
-        />
-        <input
-          className="pf-other-input"
-          type="text"
-          placeholder="Anything else — the only typing in this whole flow"
-          value={answers.supplementsOther}
-          onChange={(event) => onPatch({ supplementsOther: event.target.value })}
-        />
-      </div>
-    );
-  }
+  // Multi-select chips (reason / goals / symptoms / family / supplements / allergies).
+  const key = step.kind === "supplements" ? "supplements" : (step.id as ToggleListKey);
+  const otherAnswerKey = OTHER_ANSWER_KEYS[key];
+  const showOtherInput = Boolean(step.allowsOther && answers[key].includes(OTHER_OPTION));
+  const showPrescriptionInput =
+    key === "supplements" && answers.supplements.includes(PRESCRIPTION_MEDICATION_OPTION);
 
-  // Plain multi-select chips (reason / goals / symptoms / family).
-  const key = step.id as ToggleListKey;
   return (
-    <ChipGrid
-      numbered
-      options={step.options ?? []}
-      selected={answers[key]}
-      onToggle={(option) => onToggle(key, option)}
-    />
+    <div className="pf-controls pf-choice-controls">
+      <ChipGrid
+        numbered
+        hasOther={step.allowsOther}
+        options={step.options ?? []}
+        selected={answers[key]}
+        onToggle={(option) => onToggle(key, option)}
+      />
+      {key === "supplements" && (
+        <div
+          className={`pf-other-reveal pf-prescription-reveal ${showPrescriptionInput ? "is-open" : ""}`}
+          aria-hidden={!showPrescriptionInput}
+        >
+          <div className="pf-other-reveal-inner">
+            <input
+              className="pf-other-input pf-other-detail-input"
+              type="text"
+              aria-label="Prescription medications and doses"
+              placeholder="Tell us your prescription medications and doses"
+              value={answers.prescriptionMedicationDetails}
+              disabled={!showPrescriptionInput}
+              tabIndex={showPrescriptionInput ? 0 : -1}
+              onChange={(event) => onPatch({ prescriptionMedicationDetails: event.target.value })}
+            />
+          </div>
+        </div>
+      )}
+      <div
+        className={`pf-other-reveal ${showOtherInput ? "is-open" : ""}`}
+        aria-hidden={!showOtherInput}
+      >
+        <div className="pf-other-reveal-inner">
+          <input
+            className="pf-other-input pf-other-detail-input"
+            type="text"
+            aria-label={`Other ${step.summaryLabel.toLowerCase()}`}
+            placeholder={step.otherPlaceholder}
+            value={answers[otherAnswerKey]}
+            disabled={!showOtherInput}
+            tabIndex={showOtherInput ? 0 : -1}
+            onChange={(event) => onPatch({ [otherAnswerKey]: event.target.value })}
+          />
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -563,7 +790,6 @@ function ProfileFlow({
   onReachStep,
   onComplete,
   onClose,
-  saving = false,
   saveError = null,
 }: ProfileFlowProps) {
   const [stepIndex, setStepIndex] = useState(Math.min(startAt ?? 0, STEP_COUNT - 1));
@@ -573,25 +799,26 @@ function ProfileFlow({
 
   const canContinue = useMemo(() => {
     if (step.kind === "reports") {
-      return answers.reportSelections.length > 0;
+      return answers.reportSelections.includes("no_tests") || answers.uploadedReports.length > 0;
     }
     if (step.kind === "chips" && step.required) {
       const key = step.id as "reason" | "goals" | "symptoms" | "family";
-      return answers[key].length > 0;
+      if (answers[key].length === 0) return false;
+      if (
+        key === "reason" &&
+        answers.reason.length === 1 &&
+        answers.reason.includes(OTHER_OPTION)
+      ) {
+        return answers.reasonOther.trim().length > 0;
+      }
+      return true;
     }
     return true;
   }, [step, answers]);
 
-  const nextStepIndex = () => {
-    if (stepIndex === REPORT_STEP_INDEX) {
-      return answers.reportSelections.includes("no_tests") ? STEP_COUNT : REPORT_UPLOAD_STEP_INDEX;
-    }
-    return stepIndex + 1;
-  };
-
   const advance = () => {
     if (!canContinue) return;
-    const target = nextStepIndex();
+    const target = stepIndex + 1;
     if (target >= STEP_COUNT) {
       onReachStep(STEP_COUNT);
       setComposing(true);
@@ -632,16 +859,42 @@ function ProfileFlow({
       }
       if (event.key === "Escape") void onClose();
       if (event.key === "ArrowLeft" && !inText) back();
-      // 1–9 toggles chips/report tiles on choice steps.
-      if (!inText && /^[1-9]$/.test(event.key)) {
-        if (step.kind === "reports") {
-          const option = REPORT_OPTIONS[Number(event.key) - 1];
-          if (option) onToggleReport(option.id);
+      // 1–9 toggles numbered choices; 0 opens the conditional “Other” field.
+      if (!inText && /^[0-9]$/.test(event.key)) {
+        if (step.kind === "habits") {
+          const shortcut = Number(event.key);
+          const alcoholOptions = alcoholOptionsForSex(answers.basics.sex);
+          if (shortcut >= 1 && shortcut <= 3) {
+            const alcohol = alcoholOptions[shortcut - 1];
+            onPatch({ habits: { ...answers.habits, alcohol } });
+          } else if (shortcut >= 4 && shortcut <= 7) {
+            const smoking = SMOKING_OPTIONS[shortcut - 4];
+            onPatch({
+              habits: {
+                ...answers.habits,
+                smoking,
+                smokingProducts: smoking === "Never" ? [] : answers.habits.smokingProducts,
+              },
+            });
+          } else if (shortcut >= 8 && shortcut <= 9 && answers.habits.smoking !== "Never") {
+            const product = SMOKING_PRODUCT_OPTIONS[shortcut - 8];
+            const selected = answers.habits.smokingProducts.includes(product);
+            onPatch({
+              habits: {
+                ...answers.habits,
+                smokingProducts: selected
+                  ? answers.habits.smokingProducts.filter((item) => item !== product)
+                  : [...answers.habits.smokingProducts, product],
+              },
+            });
+          }
           return;
         }
         const options = step.options;
         if (!options || (step.kind !== "chips" && step.kind !== "supplements")) return;
-        const option = options[Number(event.key) - 1];
+        const option = event.key === "0"
+          ? (step.allowsOther ? OTHER_OPTION : undefined)
+          : options[Number(event.key) - 1];
         if (!option) return;
         const key = step.kind === "supplements" ? "supplements" : (step.id as ToggleListKey);
         onToggle(key, option);
@@ -658,8 +911,7 @@ function ProfileFlow({
 
   const progress = ((stepIndex + (composing ? 1 : 0)) / STEP_COUNT) * 100;
   const willFinish =
-    stepIndex === STEP_COUNT - 1 ||
-    (stepIndex === REPORT_STEP_INDEX && answers.reportSelections.includes("no_tests"));
+    stepIndex === STEP_COUNT - 1;
 
   return (
     <div className="pf-flow" role="dialog" aria-label="Health profile">
@@ -668,8 +920,8 @@ function ProfileFlow({
         <div className="pf-flow-bar" aria-hidden="true">
           <span style={{ width: `${progress}%` }} />
         </div>
-        <button className="pf-flow-close" type="button" disabled={saving} onClick={() => void onClose()}>
-          {saving ? "Saving…" : "Save & close"}
+        <button className="pf-flow-close" type="button" onClick={() => void onClose()}>
+          Save &amp; Close
         </button>
       </div>
 

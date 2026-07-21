@@ -2,9 +2,9 @@
 // per-category library of common actions. Everything here is a draft the
 // doctor edits — inserting never writes to the database by itself.
 //
-// Marker strings must be exact biomarkerData displayNames: the member app
-// links each marker chip to the results screen by that name.
-import { BIOMARKERS } from "../member-v2/screens/results/biomarkerData";
+// Marker strings must be exact biomarker catalog displayNames: the member app
+// links each marker chip to the results screen by that name. Enforced by
+// carePlanLibrary.test.ts against server/seeds/biomarker-catalog.json.
 import type { CarePlanActionData } from "../lib/api/carePlan";
 import type { DraftSection } from "../lib/api/doctor";
 
@@ -264,8 +264,8 @@ export const FOCUS_AREA_TEMPLATES: LibraryTemplate[] = [
     imageKey: "chia-yoghurt",
     title: "Nutrient status",
     summary:
-      "Filling the measured gaps — vitamin D, iron, magnesium and omega-3 — through food first, supplements where the numbers say so.",
-    markers: ["Vitamin D", "Ferritin", "Magnesium", "Omega-3 Total"],
+      "Filling the measured gaps — vitamin D, iron, magnesium and B-vitamin status — through food first, supplements where the numbers say so.",
+    markers: ["Vitamin D", "Ferritin", "Magnesium", "Homocysteine"],
     doctorNote:
       "These are the deficiencies your results actually show, so this section is deliberately boring: food first, a small number of supplements, retest in twelve weeks.",
     actions: [
@@ -560,18 +560,3 @@ export const LIBRARY_ACTIONS: Record<LifestyleCategory, LibraryAction[]> = {
     },
   ],
 };
-
-// Every template marker must resolve to a catalog displayName, or the member's
-// marker chip dead-links. Checked in dev so a typo fails loudly at import.
-if (import.meta.env.DEV) {
-  const catalogNames = new Set(BIOMARKERS.map((marker) => marker.displayName));
-  for (const template of FOCUS_AREA_TEMPLATES) {
-    for (const marker of template.markers) {
-      if (!catalogNames.has(marker)) {
-        throw new Error(
-          `carePlanLibrary: template "${template.id}" marker "${marker}" is not a biomarker catalog displayName`,
-        );
-      }
-    }
-  }
-}

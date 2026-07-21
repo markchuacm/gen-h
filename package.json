@@ -16,6 +16,7 @@
     "test:e2e:install": "playwright install chromium webkit",
     "db:migrate": "pnpm --filter @verae/api db:migrate",
     "db:seed": "pnpm --filter @verae/api db:seed",
+    "catalog:seed": "pnpm --filter @verae/api catalog:seed",
     "deploy:check-env": "node scripts/check-deployment-env.mjs",
     "preview": "vite --config vite.config.ts preview --host 127.0.0.1"
   },

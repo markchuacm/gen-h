@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   CalendarDays,
   Check,
+  ChevronLeft,
   ChevronRight,
   Clock3,
   FlaskConical,
@@ -20,7 +21,6 @@ import "./home.css";
 
 type HomeScreenProps = {
   config: JourneyStateConfig;
-  firstName: string;
   onNav: (tab: MemberTab) => void;
   onStartProfile: () => void;
 };
@@ -108,7 +108,7 @@ function DetailsContent({
   if (data.type === "consult") {
     return (
       <section className="home-context" aria-labelledby="home-detail-title">
-        <h3>Your pre-test consult</h3>
+        <h3 id="home-detail-title">Your pre-test consult</h3>
         <div className="home-context-person">
           <span className="home-context-avatar" aria-hidden="true">
             {data.doctorInitials}
@@ -152,7 +152,7 @@ function DetailsContent({
   if (data.type === "bloodDraw") {
     return (
       <section className="home-context" aria-labelledby="home-detail-title">
-        <h3>Blood draw details</h3>
+        <h3 id="home-detail-title">Blood draw details</h3>
         <div className="home-context-person">
           <span className="home-context-avatar" aria-hidden="true">
             {data.labInitials}
@@ -185,7 +185,7 @@ function DetailsContent({
   if (data.type === "resultsTimeline") {
     return (
       <section className="home-context" aria-labelledby="home-detail-title">
-        <h3>Where your sample is</h3>
+        <h3 id="home-detail-title">Where your sample is</h3>
         <div className="home-context-person">
           <span className="home-context-avatar" aria-hidden="true">
             <FlaskConical strokeWidth={1.6} style={{ width: 18, height: 18 }} />
@@ -230,7 +230,7 @@ function DetailsContent({
 
   return (
     <section className="home-context" aria-labelledby="home-detail-title">
-      <h3>Your care plan, at a glance</h3>
+      <h3 id="home-detail-title">Your care plan, at a glance</h3>
       <div className="home-teaser-stats">
         <div>
           <strong>{data.focusAreaCount}</strong>
@@ -269,6 +269,8 @@ function DetailDialog({
   onClose: () => void;
   onNav: (tab: MemberTab) => void;
 }) {
+  const [screen, setScreen] = useState<"details" | "journey">("details");
+
   return (
     <div className="home-detail-backdrop" role="presentation" onClick={onClose}>
       <section
@@ -288,19 +290,66 @@ function DetailDialog({
             <X strokeWidth={1.8} />
           </button>
         </header>
-        <div className="home-detail-body">
-          <DetailsContent data={config.contextCard} onNav={onNav} onClose={onClose} />
-          <aside className="home-detail-tip">
-            <strong>{config.tip.title}</strong>
-            <p>{config.tip.body}</p>
-          </aside>
+        <div className="home-detail-viewport">
+          <div className={`home-detail-track ${screen === "journey" ? "is-journey" : ""}`}>
+            <div
+              className="home-detail-screen home-detail-screen--details"
+              aria-hidden={screen !== "details"}
+              {...(screen !== "details" ? { inert: "" } : {})}
+            >
+              <div className="home-detail-body">
+                <DetailsContent data={config.contextCard} onNav={onNav} onClose={onClose} />
+                <aside className="home-detail-tip">
+                  <strong>{config.tip.title}</strong>
+                  <p>{config.tip.body}</p>
+                </aside>
+              </div>
+              <button
+                className="home-detail-screen-nav home-detail-screen-next"
+                type="button"
+                aria-label="View your Verae journey"
+                onClick={() => setScreen("journey")}
+              >
+                <ChevronRight strokeWidth={1.8} aria-hidden="true" />
+              </button>
+            </div>
+            <div
+              className="home-detail-screen home-detail-screen--journey"
+              aria-hidden={screen !== "journey"}
+              {...(screen !== "journey" ? { inert: "" } : {})}
+            >
+              <button
+                className="home-detail-screen-nav home-detail-screen-back"
+                type="button"
+                aria-label="Back to details"
+                onClick={() => setScreen("details")}
+              >
+                <ChevronLeft strokeWidth={1.8} aria-hidden="true" />
+              </button>
+              <div className="home-journey-body">
+                <section className="home-journey-progress" aria-labelledby="home-journey-title">
+                  <h3 id="home-journey-title">Your Verae journey</h3>
+                  <JourneyRail steps={config.steps} />
+                </section>
+                <section className="home-journey-explainer" aria-labelledby="home-journey-explainer-title">
+                  <h3 id="home-journey-explainer-title">How the Verae health consult works</h3>
+                  <p>
+                    Your journey starts with a health profile and pre-test consultation, where your
+                    doctor learns what matters to you and selects the right tests. After your blood
+                    draw, your results are reviewed in context and turned into a personalised care
+                    plan with clear actions and follow-up.
+                  </p>
+                </section>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </div>
   );
 }
 
-function HomeScreen({ config, firstName, onNav, onStartProfile }: HomeScreenProps) {
+function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   const handleHeroAction = (action: HeroAction) => {
@@ -310,14 +359,7 @@ function HomeScreen({ config, firstName, onNav, onStartProfile }: HomeScreenProp
   };
 
   return (
-    <main className="p-page">
-      <header className="home-head">
-        <span className="p-eyebrow">HOME</span>
-        <div className="home-title-row">
-          <h1 className="p-h1">{`${config.greetingPrefix}, ${firstName}`}</h1>
-          <JourneyRail steps={config.steps} />
-        </div>
-      </header>
+    <main className="p-page home-page">
       <HeroCard
         hero={config.hero}
         onAction={handleHeroAction}

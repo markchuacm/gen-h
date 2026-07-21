@@ -9,7 +9,13 @@ import {
   fetchOnboardingResponses,
   upsertOnboardingResponses,
 } from "../../../lib/api/memberProfile";
-import { DEFAULT_ANSWERS, EXCLUSIVE_PROFILE_OPTIONS } from "./profileQuestions";
+import {
+  DEFAULT_ANSWERS,
+  EXCLUSIVE_PROFILE_OPTIONS,
+  normalizeHabits,
+  OTHER_OPTION,
+  PRESCRIPTION_MEDICATION_OPTION,
+} from "./profileQuestions";
 import type {
   ProfileAnswers,
   ReportSelection,
@@ -43,7 +49,17 @@ const INITIAL_STATE: ProfileState = {
   pendingSync: false,
 };
 
-type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements";
+type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements" | "allergies";
+type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
+
+const OTHER_ANSWER_KEYS: Partial<Record<ToggleListKey, OtherAnswerKey>> = {
+  reason: "reasonOther",
+  goals: "goalsOther",
+  symptoms: "symptomsOther",
+  family: "familyOther",
+  supplements: "supplementsOther",
+  allergies: "allergiesOther",
+};
 
 function applyExclusiveSelection(key: ToggleListKey, list: string[], option: string) {
   const exclusiveOption = EXCLUSIVE_PROFILE_OPTIONS[key as keyof typeof EXCLUSIVE_PROFILE_OPTIONS];
@@ -58,15 +74,15 @@ function applyExclusiveSelection(key: ToggleListKey, list: string[], option: str
 function sanitizeExclusiveSelections(answers: ProfileAnswers) {
   return {
     ...answers,
-    symptoms: answers.symptoms.includes(EXCLUSIVE_PROFILE_OPTIONS.symptoms)
-      ? [EXCLUSIVE_PROFILE_OPTIONS.symptoms]
-      : answers.symptoms,
     family: answers.family.includes(EXCLUSIVE_PROFILE_OPTIONS.family)
       ? [EXCLUSIVE_PROFILE_OPTIONS.family]
       : answers.family,
     supplements: answers.supplements.includes(EXCLUSIVE_PROFILE_OPTIONS.supplements)
       ? [EXCLUSIVE_PROFILE_OPTIONS.supplements]
       : answers.supplements,
+    allergies: answers.allergies.includes(EXCLUSIVE_PROFILE_OPTIONS.allergies)
+      ? [EXCLUSIVE_PROFILE_OPTIONS.allergies]
+      : answers.allergies,
   };
 }
 
@@ -92,12 +108,13 @@ function load(memberId: string): ProfileState {
     const raw = localStorage.getItem(storageKey(memberId));
     if (!raw) return INITIAL_STATE;
     const parsed = JSON.parse(raw) as ProfileState;
+    const basics = { ...DEFAULT_ANSWERS.basics, ...parsed.answers?.basics };
     const answers = sanitizeExclusiveSelections({
       ...DEFAULT_ANSWERS,
       ...parsed.answers,
-      basics: { ...DEFAULT_ANSWERS.basics, ...parsed.answers?.basics },
+      basics,
       lifestyle: { ...DEFAULT_ANSWERS.lifestyle, ...parsed.answers?.lifestyle },
-      habits: { ...DEFAULT_ANSWERS.habits, ...parsed.answers?.habits },
+      habits: normalizeHabits(parsed.answers?.habits ?? {}, basics.sex),
     });
 
     return {
@@ -262,14 +279,15 @@ export function useProfileAnswers(memberId: string) {
       save((current) => {
         const list = current.answers[key];
         const next = applyExclusiveSelection(key, list, option);
+        const otherAnswerKey = OTHER_ANSWER_KEYS[key];
         return {
           ...current,
           answers: {
             ...current.answers,
             [key]: next,
-            ...(key === "supplements" &&
-            next.includes(EXCLUSIVE_PROFILE_OPTIONS.supplements)
-              ? { supplementsOther: "" }
+            ...(otherAnswerKey && !next.includes(OTHER_OPTION) ? { [otherAnswerKey]: "" } : null),
+            ...(key === "supplements" && !next.includes(PRESCRIPTION_MEDICATION_OPTION)
+              ? { prescriptionMedicationDetails: "" }
               : null),
           },
         };
@@ -329,13 +347,25 @@ export function useProfileAnswers(memberId: string) {
 
   const dropReport = useCallback(
     (id: string) =>
-      save((current) => ({
-        ...current,
-        answers: {
-          ...current.answers,
-          uploadedReports: current.answers.uploadedReports.filter((file) => file.id !== id),
-        },
-      })),
+      save((current) => {
+        const removed = current.answers.uploadedReports.find((file) => file.id === id);
+        const uploadedReports = current.answers.uploadedReports.filter((file) => file.id !== id);
+        const hasAnotherInCategory = removed
+          ? uploadedReports.some((file) => file.category === removed.category)
+          : true;
+
+        return {
+          ...current,
+          answers: {
+            ...current.answers,
+            uploadedReports,
+            reportSelections:
+              removed && !hasAnotherInCategory
+                ? current.answers.reportSelections.filter((selection) => selection !== removed.category)
+                : current.answers.reportSelections,
+          },
+        };
+      }),
     [save],
   );
 
@@ -372,6 +402,10 @@ export function useProfileAnswers(memberId: string) {
         ...current,
         answers: {
           ...current.answers,
+          reportSelections: [
+            ...current.answers.reportSelections.filter((selection) => selection !== "no_tests"),
+            ...(current.answers.reportSelections.includes(category) ? [] : [category]),
+          ],
           uploadedReports: [
             ...current.answers.uploadedReports,
             ...pending.map((entry) => entry.report),
