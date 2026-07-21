@@ -117,6 +117,70 @@ update app.health_documents set scan_status='clean'
 where id='00000000-0000-4000-8000-000000000010';
 reset role;
 
+-- Biomarker catalog: retired markers must be invisible to everyone but admins,
+-- because "deactivated" has to hold even if a screen forgets to filter.
+insert into app.biomarker_categories (id,name,description,display_order) values
+  ('rls-cat','RLS Category','',900);
+insert into app.biomarkers (id,name,display_name,scoring_mode,directionality) values
+  ('rls-active','RLS Active','RLS Active','THREE_TIER','range_based'),
+  ('rls-retired','RLS Retired','RLS Retired','THREE_TIER','range_based');
+update app.biomarkers set is_active=false, deactivated_at=now() where id='rls-retired';
+insert into app.biomarker_category_members (biomarker_id,category_id,is_primary) values
+  ('rls-active','rls-cat',true), ('rls-retired','rls-cat',true);
+
+do $$
+begin
+  begin
+    insert into app.biomarkers (id,name,display_name,scoring_mode)
+    values ('rls-bad-mode','Bad','Bad','FOUR_TIER');
+    raise exception 'invalid scoring_mode unexpectedly accepted';
+  exception when check_violation then null; end;
+  begin
+    insert into app.biomarkers (id,name,display_name,context_requirements)
+    values ('rls-bad-ctx','Bad','Bad','{menstrual}');
+    raise exception 'invalid context_requirement unexpectedly accepted';
+  exception when check_violation then null; end;
+  -- A two-tier marker must not carry a middle band: presenting a lab reference
+  -- interval as a wellness target is exactly what this mode exists to prevent.
+  begin
+    insert into app.biomarkers (id,name,display_name,scoring_mode,suboptimal_range_label)
+    values ('rls-bad-band','Bad','Bad','TWO_TIER','1-2');
+    raise exception 'TWO_TIER marker with a sub-optimal band unexpectedly accepted';
+  exception when check_violation then null; end;
+  begin
+    insert into app.biomarker_category_members (biomarker_id,category_id,is_primary)
+    values ('rls-active','rls-cat',true);
+    raise exception 'second primary category unexpectedly accepted';
+  exception when unique_violation then null; end;
+end $$;
+
+set local role verae_app;
+select set_config('app.user_id','rls-member-a',true);
+select set_config('app.user_role','member',true);
+do $$
+begin
+  if (select count(*) from app.biomarkers where id like 'rls-%') <> 1 then
+    raise exception 'member saw a retired biomarker';
+  end if;
+  if (select count(*) from app.biomarker_category_members where biomarker_id like 'rls-%') <> 1 then
+    raise exception 'member saw a retired biomarker category membership';
+  end if;
+  begin
+    update app.biomarkers set is_active=false where id='rls-active';
+    if found then raise exception 'member mutated the biomarker catalog'; end if;
+  exception when insufficient_privilege then null; end;
+end $$;
+
+select set_config('app.user_role','admin',true);
+do $$
+begin
+  if (select count(*) from app.biomarkers where id like 'rls-%') <> 2 then
+    raise exception 'admin could not see retired biomarkers to reactivate them';
+  end if;
+  update app.biomarkers set is_active=true, deactivated_at=null where id='rls-retired';
+end $$;
+reset role;
+
 rollback;
 
 \echo 'RLS checks passed'

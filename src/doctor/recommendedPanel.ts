@@ -1,6 +1,6 @@
 // Turns a member's profile into a recommended blood panel: a baseline everyone
 // gets, plus condition-driven bundles triggered by their stated goals,
-// symptoms and family history. All codes are catalog ids from biomarkerData.ts.
+// symptoms and family history. All codes are ids from the biomarker catalog.
 // Pure and self-contained so the doctor lands on a sensible, editable draft.
 
 export type RecommendationInput = {
@@ -32,6 +32,7 @@ export const BASELINE_CODES: string[] = [
   "non-hdl-cholesterol",
   "triglycerides",
   "apolipoprotein-b-apob",
+  "apolipoprotein-a1",
   "high-sensitivity-c-reactive-protein-hs-crp",
   // Metabolic
   "glucose",
@@ -43,7 +44,6 @@ export const BASELINE_CODES: string[] = [
   "vitamin-d",
   "magnesium",
   "homocysteine",
-  "omega-3-total",
   // Thyroid
   "thyroid-stimulating-hormone-tsh",
   // Liver
@@ -57,7 +57,8 @@ export const BASELINE_CODES: string[] = [
   // Kidneys
   "creatinine",
   "estimated-glomerular-filtration-rate-egfr",
-  "blood-urea-nitrogen-bun",
+  "urea",
+  "urine-albumin-creatinine-ratio",
   "sodium",
   "potassium",
   "calcium",
@@ -103,10 +104,8 @@ export const PANEL_BUNDLES: PanelBundle[] = [
     reason: "Family history or a cardiovascular-prevention goal",
     codes: [
       "apolipoprotein-b-apob",
-      "lipoprotein-a",
-      "ldl-particle-number",
-      "ldl-small",
-      "ldl-pattern",
+      "apolipoprotein-a1",
+      "apolipoprotein-b-a1-ratio",
       "total-cholesterol-hdl-ratio",
       "high-sensitivity-c-reactive-protein-hs-crp",
     ],
@@ -118,7 +117,7 @@ export const PANEL_BUNDLES: PanelBundle[] = [
     id: "metabolic",
     label: "Metabolic",
     reason: "Family history of diabetes or a metabolic / body-composition goal",
-    codes: ["glucose", "hemoglobin-a1c-hba1c", "insulin", "uric-acid", "leptin"],
+    codes: ["glucose", "hemoglobin-a1c-hba1c", "insulin", "uric-acid"],
     applies: (input) =>
       input.family.includes("Diabetes") ||
       hasAny(input.goals, ["Blood sugar / metabolic health", "Body composition"]) ||
@@ -136,8 +135,8 @@ export const PANEL_BUNDLES: PanelBundle[] = [
       "iron",
       "iron-percent-saturation",
       "vitamin-d",
-      "methylmalonic-acid",
       "homocysteine",
+      "erythrocyte-sedimentation-rate",
     ],
     applies: (input) =>
       hasAny(input.symptoms, [
@@ -179,7 +178,7 @@ export const PANEL_BUNDLES: PanelBundle[] = [
       "sex-hormone-binding-globulin-shbg",
       "total-testosterone",
       "free-testosterone",
-      "anti-mullerian-hormone-amh",
+      "progesterone",
       "dhea-sulfate",
     ],
     applies: (input) =>
@@ -203,8 +202,6 @@ export const PANEL_BUNDLES: PanelBundle[] = [
     reason: "Male, age 45+",
     codes: [
       "prostate-specific-antigen-psa-total",
-      "prostate-specific-antigen-psa-free",
-      "prostate-specific-antigen-psa-percent-free",
     ],
     applies: (input) => isMale(input.sex) && (input.age ?? 0) >= 45,
     sexSpecific: "male",

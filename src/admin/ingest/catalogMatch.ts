@@ -1,8 +1,9 @@
 // Matches a parsed lab label to a canonical biomarker in the catalog, using an
-// alias index plus tiered fuzzy fallback. The catalog (biomarkerData.ts) is the
-// source of truth for valid biomarker_code values, so a confident match here is
-// what lets the ingest flow pre-fill a commit-ready row.
-import { BIOMARKERS } from "../../member-v2/screens/results/biomarkerData";
+// alias index plus tiered fuzzy fallback. app.biomarkers is the source of truth
+// for valid biomarker_code values, so a confident match here is what lets the
+// ingest flow pre-fill a commit-ready row. The catalog is fetched, so
+// ingestPipeline primes the index via setMatchCatalog before matching.
+import type { Biomarker } from "../../member-v2/screens/results/types";
 import type { MatchResult } from "./types";
 
 type Entry = {
@@ -76,13 +77,20 @@ function tokenize(norm: string): Set<string> {
 let INDEX: Entry[] | null = null;
 let BY_NORM: Map<string, Entry> | null = null;
 let BY_CODE: Map<string, Entry> | null = null;
+let SOURCE: Biomarker[] = [];
+
+/** Supply the catalog to match against, and rebuild the alias index. */
+export function setMatchCatalog(biomarkers: Biomarker[]): void {
+  SOURCE = biomarkers;
+  INDEX = null;
+}
 
 function buildIndex() {
   if (INDEX) return;
   INDEX = [];
   BY_NORM = new Map();
   BY_CODE = new Map();
-  for (const b of BIOMARKERS) {
+  for (const b of SOURCE) {
     const category = (b.categories && b.categories[0]) || b.category || "";
     const unit = (b.unit || "").split(";")[0].trim();
     const names = [b.displayName, b.name, ...(b.aliases || [])].filter(Boolean) as string[];

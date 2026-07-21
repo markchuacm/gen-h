@@ -3,7 +3,8 @@ import { fetchLabOrder } from "../../../lib/api/labOrder";
 import { fetchMemberProfile } from "../../../lib/api/memberProfile";
 import { fetchReleasedReports } from "../../../lib/api/results";
 import type { BiomarkerResultRow, LabReportRow } from "../../../lib/api/results";
-import { BIOMARKER_CATEGORIES, BIOMARKERS } from "./biomarkerData";
+import { loadCatalog } from "../../../lib/api/catalog";
+import type { BiomarkerCatalog } from "../../../lib/api/catalog";
 import type { Biomarker, BiomarkerCategory, HistoricalValue } from "./types";
 
 const OTHER_CATEGORY = "Other results";
@@ -20,18 +21,6 @@ export type MemberResults = {
   hasOrder: boolean;
 };
 
-/** Catalog entry with the demo values stripped — the shipped baseline is
-    "not tested yet" for every marker. */
-function bareCatalogEntry(entry: Biomarker): Biomarker {
-  return {
-    ...entry,
-    status: "not_available",
-    latestValue: null,
-    latestDate: null,
-    historicalValues: [],
-  };
-}
-
 function syntheticEntry(row: BiomarkerResultRow): Biomarker {
   return {
     id: row.biomarker_code,
@@ -44,7 +33,8 @@ function syntheticEntry(row: BiomarkerResultRow): Biomarker {
     whatItMeasures: "",
     whyItMatters: "",
     unit: row.unit ?? "",
-    ruleType: "NUMERIC_FIXED",
+    scoringMode: "THREE_TIER",
+    contextRequirements: [],
     optimalRangeLabel: "",
     suboptimalRangeLabel: "",
     outOfRangeLabel: "",
@@ -63,17 +53,18 @@ function syntheticEntry(row: BiomarkerResultRow): Biomarker {
 /** Merge released biomarker rows (reports ordered oldest→newest) into the
     static catalog: newest value becomes latest, older numeric values become
     trend history, admin-entered ranges override catalog defaults. */
-export function mergeResults(reports: LabReportRow[]): {
+export function mergeResults(reports: LabReportRow[], catalog: BiomarkerCatalog): {
   biomarkers: Biomarker[];
   categories: BiomarkerCategory[];
 } {
-  const merged = new Map<string, Biomarker>(
-    BIOMARKERS.map((entry) => [entry.id, bareCatalogEntry(entry)]),
-  );
+  const merged = new Map<string, Biomarker>(catalog.biomarkers.map((entry) => [entry.id, entry]));
   const extraIds: string[] = [];
 
   for (const report of reports) {
     for (const row of report.biomarker_results) {
+      // A result for a retired marker is dropped, not shown as an unrecognised
+      // extra — deactivating a marker has to hide it everywhere.
+      if (catalog.retiredCodes.has(row.biomarker_code)) continue;
       let entry = merged.get(row.biomarker_code);
       if (!entry) {
         entry = syntheticEntry(row);
@@ -105,7 +96,7 @@ export function mergeResults(reports: LabReportRow[]): {
 
   // Unknown codes render in their own category (or an existing one when the
   // admin-entered category matches a catalog category name).
-  const categories: BiomarkerCategory[] = BIOMARKER_CATEGORIES.map((category) => ({
+  const categories: BiomarkerCategory[] = catalog.categories.map((category) => ({
     ...category,
     biomarkerIds: [...category.biomarkerIds],
   }));
@@ -153,7 +144,7 @@ export function useMemberResults(memberId?: string): MemberResults {
     loading: true,
     error: null,
     biomarkers: [],
-    categories: BIOMARKER_CATEGORIES,
+    categories: [],
     age: null,
     sex: null,
     hasResults: false,
@@ -166,18 +157,19 @@ export function useMemberResults(memberId?: string): MemberResults {
       fetchReleasedReports(memberId),
       fetchMemberProfile(memberId),
       fetchLabOrder(memberId),
-    ]).then(([reports, memberProfile, order]) => {
+      loadCatalog(),
+    ]).then(([reports, memberProfile, order, catalog]) => {
       if (cancelled) return;
       if (reports.error) {
         setResults((current) => ({
           ...current,
           loading: false,
           error: reports.error!.message,
-          biomarkers: BIOMARKERS.map(bareCatalogEntry),
+          biomarkers: catalog.biomarkers,
         }));
         return;
       }
-      const { biomarkers, categories } = mergeResults(reports.data ?? []);
+      const { biomarkers, categories } = mergeResults(reports.data ?? [], catalog);
       const orderedCodes = order.data ? order.data.biomarker_codes : null;
       const sexRaw = memberProfile.data?.sex?.toLowerCase();
       setResults({
@@ -190,6 +182,13 @@ export function useMemberResults(memberId?: string): MemberResults {
         hasResults: (reports.data ?? []).some((report) => report.biomarker_results.length > 0),
         hasOrder: order.data !== null,
       });
+    }).catch((error: unknown) => {
+      if (cancelled) return;
+      setResults((current) => ({
+        ...current,
+        loading: false,
+        error: error instanceof Error ? error.message : "Could not load your results",
+      }));
     });
     return () => {
       cancelled = true;

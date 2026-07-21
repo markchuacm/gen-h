@@ -2,6 +2,7 @@ import { auth } from "../auth/auth.js";
 import { env } from "../config.js";
 import { systemPool } from "./pools.js";
 import { encryptPartnerSecret } from "../services/partner-secrets.js";
+import { seedBiomarkerCatalog } from "../scripts/seed-biomarker-catalog.js";
 
 const PASSWORD = "Verae-local-2026!";
 
@@ -26,6 +27,8 @@ async function ensureUser(name: string, email: string, role: "member" | "doctor"
 
 async function seed(): Promise<void> {
   if (env.NODE_ENV === "production") throw new Error("Synthetic seed is disabled in production");
+  // Without the catalog the results dashboard and panel picker render empty.
+  await seedBiomarkerCatalog();
   const adminId = await ensureUser("Verae Admin", "admin@example.test", "admin");
   const doctorId = await ensureUser("Dr Synthetic", "doctor@example.test", "doctor");
   const memberId = await ensureUser("Amina Synthetic", "member@example.test", "member");

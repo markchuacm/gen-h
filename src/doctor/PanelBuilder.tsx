@@ -15,8 +15,8 @@ import {
   Shield,
   Zap,
 } from "lucide-react";
-import { BIOMARKERS, BIOMARKER_CATEGORIES } from "../member-v2/screens/results/biomarkerData";
-import type { Biomarker } from "../member-v2/screens/results/types";
+import { useBiomarkerCatalog } from "../lib/api/catalog";
+import type { Biomarker, BiomarkerCategory } from "../member-v2/screens/results/types";
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import { fetchLabOrder, saveLabOrder } from "../lib/api/labOrder";
 import { BASELINE_BUNDLE, offerableBundles, recommendedCodes } from "./recommendedPanel";
@@ -47,13 +47,19 @@ function PanelBuilder({
   onBack: () => void;
   onSaved: () => void;
 }) {
-  const catalog = useMemo(() => new Map(BIOMARKERS.map((marker) => [marker.id, marker])), []);
+  const { catalog, loading: catalogLoading } = useBiomarkerCatalog();
+  const byCode = catalog.byCode;
 
   const profileInput = useMemo(() => toRecommendationInput(detail), [detail]);
-  const recommended = useMemo(() => recommendedCodes(profileInput), [profileInput]);
+  // A recommendation can name a marker that has since been retired; only offer
+  // what the catalog still carries.
+  const recommended = useMemo(
+    () => recommendedCodes(profileInput).filter((code) => byCode.has(code)),
+    [profileInput, byCode],
+  );
   const recommendedSet = useMemo(() => new Set(recommended), [recommended]);
 
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(recommended));
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [view, setView] = useState<CatalogView>("list");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState("");
@@ -63,19 +69,21 @@ function PanelBuilder({
   const [error, setError] = useState<string | null>(null);
 
   // Load any existing panel; otherwise the recommendation stands as the draft.
+  // Waits for the catalog, since the recommendation is filtered against it and
+  // a saved panel may still name markers that have since been retired.
   useEffect(() => {
+    if (catalogLoading) return;
     let cancelled = false;
     fetchLabOrder(memberId).then(({ data }) => {
       if (cancelled) return;
-      if (data && data.biomarker_codes.length > 0) {
-        setSelected(new Set(data.biomarker_codes));
-      }
+      const saved = data?.biomarker_codes.filter((code) => byCode.has(code)) ?? [];
+      setSelected(new Set(saved.length > 0 ? saved : recommended));
       setLoading(false);
     });
     return () => {
       cancelled = true;
     };
-  }, [memberId]);
+  }, [memberId, catalogLoading, byCode, recommended]);
 
   const toggleCode = (code: string) =>
     setSelected((current) => {
@@ -100,17 +108,11 @@ function PanelBuilder({
 
   const addedCount = [...selected].filter((id) => !recommendedSet.has(id)).length;
 
-  // Mirror the panel-level rule in the catalog: don't offer the other sex's
-  // category (e.g. Male Health / PSA for a female member). Unknown sex keeps
-  // everything visible.
-  const hiddenCategory = detail.sex
-    ? detail.sex.toLowerCase().startsWith("m")
-      ? "Female Health"
-      : "Male Health"
-    : null;
-  const visibleCategories = BIOMARKER_CATEGORIES.filter(
-    (category) => category.name !== hiddenCategory,
-  );
+  // Hormones is a single category for every member now, so there is no
+  // opposite-sex category to hide. Sex-appropriateness lives in the panel
+  // bundles (PanelBundle.sexSpecific), which still keeps PSA off a female
+  // member's draft while leaving the doctor free to order it.
+  const visibleCategories = catalog.categories;
 
   const subtext = [detail.age ? `${detail.age}y` : null, detail.sex].filter(Boolean).join(" · ");
 
@@ -123,7 +125,7 @@ function PanelBuilder({
     else onSaved();
   };
 
-  if (loading) {
+  if (loading || catalogLoading) {
     return (
       <main className="p-page doc-page">
         <button type="button" className="doc-back" onClick={onBack}>
@@ -219,7 +221,7 @@ function PanelBuilder({
 
         <div className="pb-catalog doc-card">
           {visibleCategories.map((category) => {
-            const visibleIds = category.biomarkerIds.filter((id) => matchesQuery(catalog.get(id), query));
+            const visibleIds = category.biomarkerIds.filter((id) => matchesQuery(byCode.get(id), query));
             if (visibleIds.length === 0) return null;
             const selectedCount = category.biomarkerIds.filter((id) => selected.has(id)).length;
             const allSelected = selectedCount === category.biomarkerIds.length;
@@ -265,7 +267,7 @@ function PanelBuilder({
                 {view === "pills" ? (
                   <ul className="pb-markers">
                     {visibleIds.map((id) => {
-                      const marker = catalog.get(id);
+                      const marker = byCode.get(id);
                       if (!marker) return null;
                       const checked = selected.has(id);
                       return (
@@ -292,7 +294,7 @@ function PanelBuilder({
                   isOpen && (
                     <ul className="pb-rows">
                       {visibleIds.map((id) => {
-                        const marker = catalog.get(id);
+                        const marker = byCode.get(id);
                         if (!marker) return null;
                         const checked = selected.has(id);
                         const alias = marker.aliases.find((value) => value !== marker.displayName);
@@ -349,7 +351,8 @@ function PanelBuilder({
 
       {reviewing && (
         <PanelReview
-          catalog={catalog}
+          byCode={byCode}
+          categories={visibleCategories}
           selected={selected}
           saving={saving}
           error={error}
@@ -364,14 +367,16 @@ function PanelBuilder({
 /** Confirmation overlay: only the selected markers, grouped by the categories
     they'll be reported under, then one explicit confirm. */
 function PanelReview({
-  catalog,
+  byCode,
+  categories,
   selected,
   saving,
   error,
   onClose,
   onConfirm,
 }: {
-  catalog: Map<string, Biomarker>;
+  byCode: Map<string, Biomarker>;
+  categories: BiomarkerCategory[];
   selected: Set<string>;
   saving: boolean;
   error: string | null;
@@ -386,7 +391,7 @@ function PanelReview({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const groups = BIOMARKER_CATEGORIES.map((category) => ({
+  const groups = categories.map((category) => ({
     name: category.name,
     markers: category.biomarkerIds.filter((id) => selected.has(id)),
   })).filter((group) => group.markers.length > 0);
@@ -407,7 +412,7 @@ function PanelReview({
               <span className="doc-group-label">{group.name}</span>
               <ul>
                 {group.markers.map((id) => (
-                  <li key={id}>{catalog.get(id)?.displayName ?? id}</li>
+                  <li key={id}>{byCode.get(id)?.displayName ?? id}</li>
                 ))}
               </ul>
             </div>

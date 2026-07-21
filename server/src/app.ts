@@ -13,6 +13,7 @@ import { env } from "./config.js";
 import { databaseReady } from "./db/pools.js";
 import { storageReady } from "./services/storage.js";
 import { adminRoutes } from "./routes/admin.js";
+import { catalogRoutes } from "./routes/catalog.js";
 import { documentRoutes } from "./routes/documents.js";
 import { doctorRoutes } from "./routes/doctor.js";
 import { labRoutes } from "./routes/labs.js";
@@ -73,6 +74,7 @@ export async function buildApp() {
   });
 
   await app.register(memberRoutes);
+  await app.register(catalogRoutes);
   await app.register(setupRoutes);
   await app.register(documentRoutes);
   await app.register(doctorRoutes);

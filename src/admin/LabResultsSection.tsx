@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   createBiomarker,
   createLabReport,
@@ -10,7 +10,7 @@ import {
   updateLabReport,
 } from "../lib/api/admin";
 import type { AdminBiomarkerRow, AdminLabReport, BiomarkerInput } from "../lib/api/admin";
-import { BIOMARKER_CATALOG, catalogLookup } from "./biomarkerCatalog";
+import { biomarkerCatalog, ensureCatalogIndex, catalogLookup } from "./biomarkerCatalog";
 
 const IngestModal = import.meta.env.DEV ? lazy(() => import("./ingest/IngestModal")) : null;
 
@@ -306,6 +306,18 @@ function LabResultsSection({
   onChange: () => Promise<void>;
 }) {
   const [creating, setCreating] = useState(false);
+  // The code datalist and the name/category/unit autofill both read the primed
+  // catalog index, so prime it before this section is usable.
+  const [catalogCodes, setCatalogCodes] = useState(biomarkerCatalog);
+  useEffect(() => {
+    let cancelled = false;
+    ensureCatalogIndex().then((entries) => {
+      if (!cancelled) setCatalogCodes(entries);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [ingesting, setIngesting] = useState(false);
   const [labName, setLabName] = useState("");
   const [panelName, setPanelName] = useState("");
@@ -335,7 +347,7 @@ function LabResultsSection({
   return (
     <div className="adm-card">
       <datalist id="bio-codes">
-        {BIOMARKER_CATALOG.map((c) => (
+        {catalogCodes.map((c) => (
           <option key={c.code} value={c.code}>{c.name}</option>
         ))}
       </datalist>

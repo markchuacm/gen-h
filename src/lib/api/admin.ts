@@ -460,3 +460,29 @@ export const STAGE_LABELS: Record<string, string> = {
   results_ready: "Results ready",
   care_plan_ready: "Care plan released",
 };
+
+export type CatalogBiomarkerRow = {
+  id: string;
+  display_name: string;
+  unit: string;
+  scoring_mode: string;
+  is_active: boolean;
+  deactivated_at: string | null;
+  categories: string[];
+  usage_count: string;
+};
+
+/** The full catalog including retired markers — admin-only, since the
+    member-facing endpoint deliberately hides anything deactivated. */
+export async function fetchCatalogBiomarkers() {
+  try {
+    const { data } = await apiRequest<{ data: CatalogBiomarkerRow[] }>("/v1/admin/catalog/biomarkers");
+    return { data, error: null };
+  } catch (error) {
+    return { data: [] as CatalogBiomarkerRow[], error: apiError(error) };
+  }
+}
+
+export async function setBiomarkerActive(code: string, isActive: boolean) {
+  return mutation(`/v1/admin/catalog/biomarkers/${encodeURIComponent(code)}`, "PATCH", { isActive });
+}

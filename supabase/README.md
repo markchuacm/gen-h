@@ -9,7 +9,7 @@ dashboard (service role), which bypasses RLS.
 
 - `migrations/` — schema, RLS, functions, triggers. Applied with `supabase db push`.
 - `admin-snippets.sql` — copy/paste SQL for the admin workflow (entering & releasing lab results, promoting users, assigning doctors).
-- `biomarker-codes.md` — valid `biomarker_code` values (generated from `src/member-v2/screens/results/biomarkerData.ts`).
+- `biomarker-codes.md` — valid `biomarker_code` values (generated from `server/seeds/biomarker-catalog.json`).
 - `tests/rls_checks.sql` — runnable assertions for the RLS guarantees.
 
 ## Environment

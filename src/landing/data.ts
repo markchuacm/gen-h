@@ -97,7 +97,7 @@ export const biomarkerGroups: BiomarkerGroup[] = [
   {
     title: "Heart & metabolic",
     count: "18+ biomarkers",
-    tests: ["ApoB", "Lipoprotein (a)", "LDL and HDL cholesterol", "Triglycerides", "Fasting insulin", "HbA1c"],
+    tests: ["ApoB", "ApoB/ApoA1 ratio", "LDL and HDL cholesterol", "Triglycerides", "Fasting insulin", "HbA1c"],
     icon: HeartPulse,
     image: heartMetabolicImage,
     imageAlt: "Microscopic organic forms in teal and cream representing metabolic biomarkers",
@@ -129,7 +129,7 @@ export const biomarkerGroups: BiomarkerGroup[] = [
   {
     title: "Nutrients & vitamins",
     count: "14+ biomarkers",
-    tests: ["Vitamin D", "Vitamin B12", "Folate", "Ferritin", "Magnesium", "Methylmalonic acid"],
+    tests: ["Vitamin D", "Ferritin", "Iron studies", "Magnesium", "Calcium", "Homocysteine"],
     icon: Sparkles,
     image: nutrientsVitaminsImage,
     imageAlt: "Red and green microscopic plant cells representing nutrient status",
@@ -145,7 +145,7 @@ export const biomarkerGroups: BiomarkerGroup[] = [
   {
     title: "Aging & stress",
     count: "10+ biomarkers",
-    tests: ["Homocysteine", "DHEA-S", "Cortisol", "Uric acid", "Omega balance"],
+    tests: ["Cortisol", "IGF-1", "DHEA-S", "Homocysteine", "Uric acid"],
     icon: Waves,
     image: agingStressImage,
     imageAlt: "Warm close-up skin texture representing aging and stress markers",
