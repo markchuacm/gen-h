@@ -14,9 +14,6 @@ type ProfileSummaryProps = {
   /** The built-in "Previous reports" text row in "More details". The doctor
       view hides it and renders prominent, clickable attachment tiles instead. */
   showReports?: boolean;
-  /** Overrides the Health-context "Reports" fact. The doctor passes a real
-      document count; the member view derives it from their uploads. */
-  reportsFact?: string;
 };
 
 function stepIndexOf(stepId: StepId) {
@@ -73,12 +70,6 @@ function reportSummary(answers: ProfileAnswers) {
     .map((selection) => REPORT_CATEGORY_LABELS[selection]);
 
   if (selectedLabels.length > 0) return `${selectedLabels.join(" / ")} selected; no files uploaded`;
-  return "None uploaded";
-}
-
-function contextReportSummary(answers: ProfileAnswers) {
-  if (answers.uploadedReports.length > 0) return reportSummary(answers);
-  if (answers.reportSelections.includes("no_tests")) return "None shared";
   return "None uploaded";
 }
 
@@ -167,7 +158,6 @@ function ProfileSummary({
   onEditStep,
   showTitle = true,
   showReports = true,
-  reportsFact,
 }: ProfileSummaryProps) {
   const { basics, lifestyle, habits } = answers;
 
@@ -221,10 +211,9 @@ function ProfileSummary({
 
         <section className="pf-brief-panel" aria-labelledby="profile-health-context">
           <h2 id="profile-health-context">Health context</h2>
-          <div className="pf-brief-facts">
+          <div className="pf-brief-facts pf-brief-health-facts">
             <BriefFact label="Alcohol" value={conciseHabit(habits.alcohol)} />
-            <BriefFact label="Smoking" value={habits.smoking} />
-            <BriefFact label="Reports" value={reportsFact ?? contextReportSummary(answers)} />
+            <BriefFact label="Smoking and/or vaping" value={habits.smoking} />
           </div>
         </section>
       </div>
@@ -265,7 +254,7 @@ function ProfileSummary({
           />
           <DetailRow
             stepId="allergies"
-            label="Allergies"
+            label="Allergies to medication"
             value={<TagList items={allergies} />}
             onEditStep={onEditStep}
           />

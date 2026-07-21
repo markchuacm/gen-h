@@ -166,7 +166,7 @@ export const STEPS: StepDef[] = [
     prompt: "Two honest ",
     promptEm: "habit questions",
     helper: "No judgement — this only makes your results easier to read.",
-    whyWeAsk: "Alcohol and smoking directly shift several of the markers we test.",
+    whyWeAsk: "Alcohol, smoking and vaping directly shift several of the markers we test.",
     summaryLabel: "Habits",
   },
   {
@@ -216,11 +216,11 @@ export const STEPS: StepDef[] = [
     id: "allergies",
     kind: "chips",
     prompt: "Do you have any ",
-    promptEm: "medication allergies?",
-    whyWeAsk: "Medication allergies help your doctor prescribe and recommend treatments safely.",
-    summaryLabel: "Medication allergies",
+    promptEm: "allergies to medication?",
+    whyWeAsk: "Allergies to medication help your doctor prescribe and recommend treatments safely.",
+    summaryLabel: "Allergies to medication",
     allowsOther: true,
-    otherPlaceholder: "Tell us about any other medication allergies",
+    otherPlaceholder: "Tell us about any other allergies to medication",
     options: [
       "Penicillin / amoxicillin",
       "Cephalosporin antibiotics",
@@ -249,8 +249,43 @@ export const STEP_COUNT = STEPS.length;
 
 export const EXERCISE_OPTIONS = ["0", "1–2", "3–4", "5+"] as const;
 export const DIET_OPTIONS = ["Mostly home-cooked", "Mixed", "Mostly eating out"] as const;
-export const ALCOHOL_OPTIONS = ["Rarely / never", "Socially", "Most days"] as const;
-export const SMOKING_OPTIONS = ["Never", "Former smoker", "Current smoker"] as const;
+export const MEN_ALCOHOL_OPTIONS = [
+  "Rarely / never",
+  "14 or less drinks a week",
+  "15 or more drinks a week",
+] as const;
+export const WOMEN_ALCOHOL_OPTIONS = [
+  "Rarely / never",
+  "7 or less drinks a week",
+  "8 or more drinks a week",
+] as const;
+export const SMOKING_OPTIONS = [
+  "Never",
+  "Former user",
+  "Occasional / social user",
+  "Daily / regularly",
+] as const;
+export const SMOKING_PRODUCT_OPTIONS = ["Cigarettes / Cigars", "Vapes / E-cigarettes"] as const;
+
+export type AlcoholOption =
+  | (typeof MEN_ALCOHOL_OPTIONS)[number]
+  | (typeof WOMEN_ALCOHOL_OPTIONS)[number];
+export type SmokingOption = (typeof SMOKING_OPTIONS)[number];
+export type SmokingProductOption = (typeof SMOKING_PRODUCT_OPTIONS)[number];
+
+export function alcoholOptionsForSex(sex: "Male" | "Female") {
+  return sex === "Female" ? WOMEN_ALCOHOL_OPTIONS : MEN_ALCOHOL_OPTIONS;
+}
+
+/** Keeps the alcohol answer meaningful if the member corrects their gender. */
+export function alcoholOptionForSex(
+  option: AlcoholOption,
+  sex: "Male" | "Female",
+): AlcoholOption {
+  if (option === "Rarely / never") return option;
+  const options = alcoholOptionsForSex(sex);
+  return option.includes("or less") ? options[1] : options[2];
+}
 
 export const OTHER_OPTION = "Other";
 export const NOTHING_MAJOR_OPTION = "Nothing major — mostly prevention";
@@ -278,8 +313,9 @@ export type ProfileAnswers = {
     stress: number;
   };
   habits: {
-    alcohol: (typeof ALCOHOL_OPTIONS)[number];
-    smoking: (typeof SMOKING_OPTIONS)[number];
+    alcohol: AlcoholOption;
+    smoking: SmokingOption;
+    smokingProducts: SmokingProductOption[];
   };
   family: string[];
   familyOther: string;
@@ -288,6 +324,41 @@ export type ProfileAnswers = {
   allergies: string[];
   allergiesOther: string;
 };
+
+/**
+ * Onboarding answers are persisted as JSON. Normalize earlier answer labels
+ * whenever a saved draft is loaded so the current controls always have a
+ * selected option, while retaining the answer's low/high intent.
+ */
+export function normalizeHabits(
+  habits: Partial<ProfileAnswers["habits"]>,
+  sex: "Male" | "Female",
+): ProfileAnswers["habits"] {
+  const savedAlcohol = habits.alcohol as string | undefined;
+  const savedSmoking = habits.smoking as string | undefined;
+  const alcoholOptions = alcoholOptionsForSex(sex);
+  const alcohol = savedAlcohol === "Rarely / never"
+    ? savedAlcohol
+    : savedAlcohol?.includes("or less") || savedAlcohol === "Socially"
+      ? alcoholOptions[1]
+      : savedAlcohol?.includes("or more") || savedAlcohol === "Most days"
+        ? alcoholOptions[2]
+        : alcoholOptions[1];
+  const smoking = savedSmoking === "Former smoker"
+    ? "Former user"
+    : savedSmoking === "Current smoker"
+      ? "Daily / regularly"
+      : SMOKING_OPTIONS.includes(savedSmoking as SmokingOption)
+        ? savedSmoking as SmokingOption
+        : "Never";
+  const smokingProducts = Array.isArray(habits.smokingProducts)
+    ? habits.smokingProducts.filter((product): product is SmokingProductOption =>
+        SMOKING_PRODUCT_OPTIONS.includes(product as SmokingProductOption),
+      )
+    : [];
+
+  return { alcohol, smoking, smokingProducts: smoking === "Never" ? [] : smokingProducts };
+}
 
 export const DEFAULT_ANSWERS: ProfileAnswers = {
   reportSelections: [],
@@ -300,7 +371,7 @@ export const DEFAULT_ANSWERS: ProfileAnswers = {
   symptoms: [],
   symptomsOther: "",
   lifestyle: { sleepHours: 6.5, exerciseDays: "1–2", diet: "Mixed", stress: 3 },
-  habits: { alcohol: "Socially", smoking: "Never" },
+  habits: { alcohol: "14 or less drinks a week", smoking: "Never", smokingProducts: [] },
   family: [],
   familyOther: "",
   supplements: [],

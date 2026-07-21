@@ -9,7 +9,12 @@ import {
   fetchOnboardingResponses,
   upsertOnboardingResponses,
 } from "../../../lib/api/memberProfile";
-import { DEFAULT_ANSWERS, EXCLUSIVE_PROFILE_OPTIONS, OTHER_OPTION } from "./profileQuestions";
+import {
+  DEFAULT_ANSWERS,
+  EXCLUSIVE_PROFILE_OPTIONS,
+  normalizeHabits,
+  OTHER_OPTION,
+} from "./profileQuestions";
 import type {
   ProfileAnswers,
   ReportSelection,
@@ -102,12 +107,13 @@ function load(memberId: string): ProfileState {
     const raw = localStorage.getItem(storageKey(memberId));
     if (!raw) return INITIAL_STATE;
     const parsed = JSON.parse(raw) as ProfileState;
+    const basics = { ...DEFAULT_ANSWERS.basics, ...parsed.answers?.basics };
     const answers = sanitizeExclusiveSelections({
       ...DEFAULT_ANSWERS,
       ...parsed.answers,
-      basics: { ...DEFAULT_ANSWERS.basics, ...parsed.answers?.basics },
+      basics,
       lifestyle: { ...DEFAULT_ANSWERS.lifestyle, ...parsed.answers?.lifestyle },
-      habits: { ...DEFAULT_ANSWERS.habits, ...parsed.answers?.habits },
+      habits: normalizeHabits(parsed.answers?.habits ?? {}, basics.sex),
     });
 
     return {
