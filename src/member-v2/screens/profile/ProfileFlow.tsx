@@ -698,7 +698,7 @@ function StepInputs({
     return (
       <div className="pf-controls">
         <SliderControl
-          label="Daily average"
+          label="Sleep - daily average"
           value={lifestyle.sleepHours}
           display={lifestyle.sleepHours < 4 ? "<4 h" : lifestyle.sleepHours > 10 ? ">10 h" : `${lifestyle.sleepHours} h`}
           min={3.5}

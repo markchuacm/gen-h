@@ -251,7 +251,7 @@ describe("ProfileFlow refinements", () => {
     expect((screen.getByLabelText("Other supplements & medications") as HTMLInputElement).disabled).toBe(false);
   });
 
-  it("starts the daily-average sleep scale below four hours", () => {
+  it("labels the daily-average sleep scale below four hours", () => {
     renderFlow(
       {
         ...DEFAULT_ANSWERS,
@@ -260,7 +260,7 @@ describe("ProfileFlow refinements", () => {
       5,
     );
 
-    const slider = screen.getByRole("slider", { name: "Daily average" });
+    const slider = screen.getByRole("slider", { name: "Sleep - daily average" });
     expect(slider.getAttribute("min")).toBe("3.5");
     expect(slider.getAttribute("max")).toBe("10.5");
     expect(screen.getByText("<4 h")).toBeTruthy();

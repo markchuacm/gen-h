@@ -1,6 +1,6 @@
 import type { DoctorCaseDetail } from "../lib/api/doctor";
 import CaseAttachments from "./CaseAttachments";
-import { OTHER_OPTION } from "../member-v2/screens/profile/profileQuestions";
+import { bmiLabel, OTHER_OPTION } from "../member-v2/screens/profile/profileQuestions";
 import { CLEAR_ANSWERS, lifestyleConcerns, toAnswers } from "./caseSignals";
 
 function withOther(items: string[], other: string) {
@@ -33,12 +33,14 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
 
   const answers = toAnswers(detail.onboarding);
   const concerns = lifestyleConcerns(answers);
+  const bmi = bmiLabel(answers.basics.heightCm, answers.basics.weightKg);
 
   const vitals: Array<[string, string]> = [];
   if (detail.age) vitals.push(["Age", boundaryValue(detail.age, 18, 80)]);
   if (detail.sex) vitals.push(["Sex", detail.sex]);
   if (answers.basics.heightCm) vitals.push(["Height", boundaryValue(answers.basics.heightCm, 140, 220, " cm")]);
   if (answers.basics.weightKg) vitals.push(["Weight", boundaryValue(answers.basics.weightKg, 30, 200, " kg")]);
+  if (bmi) vitals.push(["BMI", bmi]);
 
   const lifestyleFacts: Array<[string, string]> = [
     [

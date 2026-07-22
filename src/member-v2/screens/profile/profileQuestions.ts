@@ -341,6 +341,13 @@ export type ProfileAnswers = {
   allergiesOther: string;
 };
 
+/** Formats the derived BMI for the patient and doctor brief hero summaries. */
+export function bmiLabel(heightCm: number, weightKg: number): string | null {
+  if (!(heightCm > 0) || !(weightKg > 0)) return null;
+  const bmi = weightKg / (heightCm / 100) ** 2;
+  return Number.isFinite(bmi) ? `${bmi.toFixed(1)} kg/m²` : null;
+}
+
 /**
  * Onboarding answers are persisted as JSON. Normalize earlier answer labels
  * whenever a saved draft is loaded so the current controls always have a
