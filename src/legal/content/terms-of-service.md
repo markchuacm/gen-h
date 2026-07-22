@@ -4,7 +4,7 @@
 
 These Terms form an agreement between you and **GEN H HOLDINGS SDN. BHD. (Company No. 202601020381 (1682478-D))**, trading as Verae Health. They govern your use of the Verae portal and the administrative, laboratory-coordination and preventive-health services described below.
 
-Verae is a technology and service platform that connects members with independent registered medical practitioners. Each doctor is responsible for their own professional judgement, clinical care, prescribing and recommendations. A doctor–patient relationship is formed between you and the relevant doctor when the doctor accepts and provides the consultation. Verae is not the prescribing or dispensing entity.
+Verae is a technology and service platform that connects members with registered medical practitioners providing services through the platform. Each doctor is responsible for their own professional judgement, clinical care, prescribing and recommendations. A doctor–patient relationship is formed between you and the relevant doctor when the doctor accepts and provides the consultation. Verae is not the prescribing or dispensing entity.
 
 Nothing in these Terms excludes duties that a healthcare professional owes you or rights and remedies that cannot lawfully be excluded under Malaysian law.
 
@@ -24,7 +24,7 @@ Verae or your doctor may ask to verify your identity, age, location and suitabil
 Depending on the membership or package you purchase, the service may include:
 
 - a health and lifestyle questionnaire and upload of relevant records;
-- one or more video teleconsultations with a registered medical practitioner;
+- one or more video teleconsultations with a registered medical practitioner providing services through the platform;
 - coordination of blood collection and testing by a partner laboratory;
 - secure receipt and display of laboratory results;
 - physician-reviewed explanation of selected biomarkers and patterns relevant to preventive-health awareness;
@@ -161,7 +161,7 @@ Verae does not apply a blanket “use at your own risk” exclusion. Any additio
 
 You are responsible for losses, claims and reasonable costs suffered by Verae or a third party to the extent directly caused by your fraud, wilful misuse of the portal, unlawful use of the service, infringement of another person’s rights, unauthorised disclosure of another person’s confidential information, or material breach of these Terms.
 
-This indemnity does not apply to the extent a claim or loss is caused by Verae’s negligence, fraud, wilful misconduct, breach of confidentiality or data-protection obligations, misleading conduct, breach of professional duty, or any act or omission of an independent doctor or laboratory for which that provider is responsible. It does not limit any consumer right or liability that cannot lawfully be excluded.
+This indemnity does not apply to the extent a claim or loss is caused by Verae’s negligence, fraud, wilful misconduct, breach of confidentiality or data-protection obligations, misleading conduct, breach of professional duty, or any act or omission of a doctor or laboratory provider for which that provider is responsible. It does not limit any consumer right or liability that cannot lawfully be excluded.
 
 Verae does not require members to indemnify Verae for clinical outcomes, medical injury, prescribing decisions or laboratory services merely because the member used the service.
 

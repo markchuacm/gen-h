@@ -14,7 +14,7 @@ I understand which information is required, who may receive it, and that refusin
 
 ## 3. Teleconsultation
 
-I consent to consulting a registered medical practitioner using video or another approved secure remote channel. I understand that remote care cannot provide every element of an in-person assessment and carries risks of incomplete information, misunderstanding, technology failure and delayed diagnosis or treatment. I agree that the doctor may stop or decline remote care and recommend in-person, urgent or specialist assessment.
+I consent to consulting, by video or another approved secure remote channel, a registered medical practitioner who provides services through the platform. I understand that remote care cannot provide every element of an in-person assessment and carries risks of incomplete information, misunderstanding, technology failure and delayed diagnosis or treatment. I agree that the doctor may stop or decline remote care and recommend in-person, urgent or specialist assessment.
 
 I will identify myself accurately, state my physical location, disclose who else is present and participate from a private and safe setting. I understand that my identity, the doctor’s identity and the identities of other participants will be documented at each consultation.
 
@@ -28,7 +28,7 @@ The ordering doctor and laboratory will present the specific panel, specimen req
 
 ## 5. Physician review and technology support
 
-I understand that Verae does not currently use AI or automated software to produce clinical interpretations, make clinical decisions or train AI models using member data. A registered medical practitioner will review my results, interpretation, personalised preventive health plan and any medication or supplement recommendation before release.
+I understand that Verae does not currently use AI or automated software to produce clinical interpretations, make clinical decisions or train AI models using member data. A registered medical practitioner who provides services through the platform will review my results, interpretation, personalised preventive health plan and any medication or supplement recommendation before release.
 
 ## 6. Follow-up and responsibility for urgent care
 
@@ -44,7 +44,7 @@ I understand that a written clinical record will be kept, but the audio or video
 
 ## 9. Withdrawal
 
-I may withdraw consent for a future teleconsultation, sample collection or optional data use by contacting **mark@veraehealth.com**. Withdrawal will not undo a consultation, collection, analysis, disclosure or other processing already lawfully completed. It will not require deletion of records that must be kept for clinical, legal, safety, audit or regulatory reasons. Verae will explain the practical consequences, which may include ending or limiting the service.
+I may withdraw consent for a future teleconsultation, sample collection or optional data use by contacting **support@veraehealth.com**. Withdrawal will not undo a consultation, collection, analysis, disclosure or other processing already lawfully completed. It will not require deletion of records that must be kept for clinical, legal, safety, audit or regulatory reasons. Verae will explain the practical consequences, which may include ending or limiting the service.
 
 ## 10. No guarantee
 

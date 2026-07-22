@@ -2,7 +2,7 @@
 
 ## 1. Who controls your personal data
 
-GEN H HOLDINGS SDN. BHD. (Company No. 202601020381 (1682478-D)), trading as Verae Health, is the data controller for the personal data it determines how and why to process. The independent doctor and Innoquest Pathology Sdn Bhd may also be separate data controllers for records and activities under their professional or legal responsibility. The parties coordinate access, security, retention and continuity of care.
+GEN H HOLDINGS SDN. BHD. (Company No. 202601020381 (1682478-D)), trading as Verae Health, is the data controller for the personal data it determines how and why to process. Registered medical practitioners providing services through the platform and Innoquest Pathology Sdn Bhd may also be separate data controllers for records and activities under their professional or legal responsibility. The parties coordinate access, security, retention and continuity of care.
 
 For questions or requests, contact **privacy@veraehealth.com** or write to Verae at Level 7, Mercu 3, No. 3, Jalan Bangsar, KL Eco City, 59200 Kuala Lumpur, W.P. Kuala Lumpur, Malaysia.
 

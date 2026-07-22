@@ -2,7 +2,7 @@
 
 ## 1. Pihak yang mengawal data peribadi anda
 
-GEN H HOLDINGS SDN. BHD. (No. Syarikat 202601020381 (1682478-D)), yang menjalankan perniagaan sebagai Verae Health, ialah pengawal data bagi data peribadi yang ditentukan cara dan sebab pemprosesannya oleh Verae. Doktor bebas dan Innoquest Pathology Sdn Bhd juga boleh menjadi pengawal data berasingan bagi rekod dan aktiviti di bawah tanggungjawab profesional atau undang-undang masing-masing. Pihak-pihak menyelaras akses, keselamatan, penyimpanan dan kesinambungan penjagaan.
+GEN H HOLDINGS SDN. BHD. (No. Syarikat 202601020381 (1682478-D)), yang menjalankan perniagaan sebagai Verae Health, ialah pengawal data bagi data peribadi yang ditentukan cara dan sebab pemprosesannya oleh Verae. Pengamal perubatan berdaftar yang menyediakan perkhidmatan melalui platform ini dan Innoquest Pathology Sdn Bhd juga boleh menjadi pengawal data berasingan bagi rekod dan aktiviti di bawah tanggungjawab profesional atau undang-undang masing-masing. Pihak-pihak menyelaras akses, keselamatan, penyimpanan dan kesinambungan penjagaan.
 
 Untuk pertanyaan atau permintaan, hubungi **privacy@veraehealth.com** atau tulis kepada Verae di Level 7, Mercu 3, No. 3, Jalan Bangsar, KL Eco City, 59200 Kuala Lumpur, W.P. Kuala Lumpur, Malaysia.
 
