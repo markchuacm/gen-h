@@ -11,6 +11,7 @@ export type StepId =
   | "symptoms"
   | "lifestyle"
   | "habits"
+  | "conditions"
   | "family"
   | "supplements";
 
@@ -26,6 +27,8 @@ export type StepDef = {
   options?: string[];
   /** Adds a keyboard-accessible “Other” choice (0) and a conditional text field. */
   allowsOther?: boolean;
+  /** Places the generated “Other” choice immediately before the final option. */
+  otherBeforeLast?: boolean;
   otherPlaceholder?: string;
   /** For chips steps: at least one selection required to continue. */
   required?: boolean;
@@ -116,6 +119,7 @@ export const STEPS: StepDef[] = [
       "I've done tests, but I don't know what to do with the results",
       "I'm worried about long-term health or family history",
       "I feel off despite “normal” results",
+      "I have an existing health condition, and I would like to manage it",
       "I want to optimise energy, focus, body composition, or longevity",
       "I want a doctor to review everything together",
     ],
@@ -179,6 +183,29 @@ export const STEPS: StepDef[] = [
     helper: "No judgement — this only makes your results easier to read.",
     whyWeAsk: "Alcohol, smoking and vaping directly shift several of the markers we test.",
     summaryLabel: "Habits",
+  },
+  {
+      id: "conditions",
+      kind: "chips",
+      prompt: "Do you have any existing ",
+      promptEm: "medical conditions?",
+      whyWeAsk: "Existing conditions help your doctor interpret your results and tailor recommendations safely.",
+      summaryLabel: "Medical conditions",
+      allowsOther: true,
+      otherBeforeLast: true,
+    otherPlaceholder: "Tell us about any other medical conditions",
+    options: [
+      "Hypertension",
+      "Diabetes",
+      "Asthma",
+      "Chronic kidney disease",
+      "Hyperlipidaemia",
+      "Autoimmune disease",
+      "Previous heart attack or stroke",
+      "Mental health conditions",
+      "Cancer",
+      "None",
+    ],
   },
   {
     id: "family",
@@ -302,6 +329,7 @@ export const OTHER_OPTION = "Other";
 export const NOTHING_MAJOR_OPTION = "Nothing major — mostly prevention";
 
 export const EXCLUSIVE_PROFILE_OPTIONS = {
+  conditions: "None",
   family: "None that I know of",
   supplements: "Nothing at the moment",
   allergies: "Not that I'm aware of",
@@ -332,6 +360,8 @@ export type ProfileAnswers = {
     smoking: SmokingOption;
     smokingProducts: SmokingProductOption[];
   };
+  conditions: string[];
+  conditionsOther: string;
   family: string[];
   familyOther: string;
   supplements: string[];
@@ -396,6 +426,8 @@ export const DEFAULT_ANSWERS: ProfileAnswers = {
   symptomsOther: "",
   lifestyle: { sleepHours: 6.5, exerciseDays: "1–2", diet: "Mixed", stress: 3 },
   habits: { alcohol: "14 or less drinks a week", smoking: "Never", smokingProducts: [] },
+  conditions: [],
+  conditionsOther: "",
   family: [],
   familyOther: "",
   supplements: [],

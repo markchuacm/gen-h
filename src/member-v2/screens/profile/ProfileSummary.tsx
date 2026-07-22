@@ -164,6 +164,7 @@ function ProfileSummary({
   const reason = withOther(answers.reason, answers.reasonOther);
   const goals = withOther(answers.goals, answers.goalsOther);
   const symptoms = withOther(answers.symptoms, answers.symptomsOther);
+  const conditions = withOther(answers.conditions, answers.conditionsOther);
   const family = withOther(answers.family, answers.familyOther);
   const supplements = [
     ...withOther(answers.supplements, answers.supplementsOther),
@@ -245,6 +246,12 @@ function ProfileSummary({
             stepId="symptoms"
             label="What feels off"
             value={<TagList items={symptoms} />}
+            onEditStep={onEditStep}
+          />
+          <DetailRow
+            stepId="conditions"
+            label="Medical conditions"
+            value={<TagList items={conditions} />}
             onEditStep={onEditStep}
           />
           <DetailRow

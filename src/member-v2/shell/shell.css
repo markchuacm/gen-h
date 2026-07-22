@@ -734,9 +734,3 @@
   font-size: 0.95rem;
   font-weight: 400;
 }
-
-/* Native date input: brand-coloured picker, matching the page. */
-.p-account-modal-fields input[type="date"] {
-  color-scheme: light;
-  accent-color: var(--accent);
-}

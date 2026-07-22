@@ -49,13 +49,14 @@ const INITIAL_STATE: ProfileState = {
   pendingSync: false,
 };
 
-type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements" | "allergies";
-type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
+type ToggleListKey = "reason" | "goals" | "symptoms" | "conditions" | "family" | "supplements" | "allergies";
+type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "conditionsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
 
 const OTHER_ANSWER_KEYS: Partial<Record<ToggleListKey, OtherAnswerKey>> = {
   reason: "reasonOther",
   goals: "goalsOther",
   symptoms: "symptomsOther",
+  conditions: "conditionsOther",
   family: "familyOther",
   supplements: "supplementsOther",
   allergies: "allergiesOther",
@@ -77,6 +78,9 @@ function sanitizeExclusiveSelections(answers: ProfileAnswers) {
     family: answers.family.includes(EXCLUSIVE_PROFILE_OPTIONS.family)
       ? [EXCLUSIVE_PROFILE_OPTIONS.family]
       : answers.family,
+    conditions: answers.conditions.includes(EXCLUSIVE_PROFILE_OPTIONS.conditions)
+      ? [EXCLUSIVE_PROFILE_OPTIONS.conditions]
+      : answers.conditions,
     supplements: answers.supplements.includes(EXCLUSIVE_PROFILE_OPTIONS.supplements)
       ? [EXCLUSIVE_PROFILE_OPTIONS.supplements]
       : answers.supplements,
