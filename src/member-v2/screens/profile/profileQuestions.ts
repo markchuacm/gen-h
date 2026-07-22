@@ -85,6 +85,14 @@ export const REPORT_CATEGORY_LABELS: Record<ReportUploadCategory, string> = {
 };
 
 export const PRESCRIPTION_MEDICATION_OPTION = "Prescription medication";
+export const MANAGE_EXISTING_CONDITION_REASON = "I want help managing an existing health condition";
+const LEGACY_MANAGE_EXISTING_CONDITION_REASON =
+  "I have an existing health condition, and I would like to manage it";
+
+export function hasConditionManagementReason(reason: string[]) {
+  return reason.includes(MANAGE_EXISTING_CONDITION_REASON) ||
+    reason.includes(LEGACY_MANAGE_EXISTING_CONDITION_REASON);
+}
 
 export const STEPS: StepDef[] = [
   {
@@ -119,7 +127,7 @@ export const STEPS: StepDef[] = [
       "I've done tests, but I don't know what to do with the results",
       "I'm worried about long-term health or family history",
       "I feel off despite “normal” results",
-      "I have an existing health condition, and I would like to manage it",
+      MANAGE_EXISTING_CONDITION_REASON,
       "I want to optimise energy, focus, body composition, or longevity",
       "I want a doctor to review everything together",
     ],
