@@ -1,6 +1,6 @@
 import { FileText } from "lucide-react";
 import profileBriefHeroImage from "../../../../assets/dashboard/profile-brief-hero.png";
-import { OTHER_OPTION, REPORT_CATEGORY_LABELS, STEPS } from "./profileQuestions";
+import { bmiLabel, OTHER_OPTION, REPORT_CATEGORY_LABELS, STEPS } from "./profileQuestions";
 import type { ProfileAnswers, StepId } from "./profileQuestions";
 
 type ProfileSummaryProps = {
@@ -177,6 +177,7 @@ function ProfileSummary({
   const concernLabel = basics.preferredName.trim()
     ? `${basics.preferredName.trim()}'s main concern`
     : "Main concern";
+  const bmi = bmiLabel(basics.heightCm, basics.weightKg);
 
   return (
     <article className="pf-brief" aria-label="Your health profile">
@@ -200,6 +201,7 @@ function ProfileSummary({
           <HeroPill value={basics.sex.toLowerCase()} />
           <HeroPill value={heightLabel(basics.heightCm)} />
           <HeroPill value={weightLabel(basics.weightKg)} />
+          {bmi && <HeroPill value={bmi} />}
         </div>
       </section>
 

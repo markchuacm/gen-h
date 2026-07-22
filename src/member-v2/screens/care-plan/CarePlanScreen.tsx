@@ -265,7 +265,6 @@ function CarePlanScreen({
         </section>
         {!memberId && !carePlanReleased && pendingDialogOpen && (
           <PendingPortalDialog
-            eyebrow="Your care plan"
             title="Your plan is on the way"
             closeLabel="Close pending care plan message"
             onClose={() => setPendingDialogOpen(false)}

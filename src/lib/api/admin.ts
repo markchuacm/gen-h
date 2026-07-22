@@ -76,6 +76,9 @@ export type AdminCaseDetail = {
   currentStage: string | null;
   onboardingStatus: string | null;
   phone: string | null;
+  dateOfBirth: string | null;
+  icPassportNo: string | null;
+  address: string | null;
   invitedAt: string | null;
   tempPasswordExpiresAt: string | null;
   setupCompletedAt: string | null;
@@ -94,6 +97,8 @@ export type AdminCaseDetail = {
     biomarkerCodes: string[];
     status: string;
     orderedAt: string | null;
+    formReleasedAt: string | null;
+    bloodDrawAt: string | null;
     quote: LabOrderQuote | null;
   } | null;
 };
@@ -115,6 +120,40 @@ export async function setFoundingMember(memberId: string, isFoundingMember: bool
   return mutation(`/v1/admin/members/${encodeURIComponent(memberId)}/membership`, "PATCH", {
     isFoundingMember,
   });
+}
+
+/** Release the blood-test request form to the member: stamps the order, saves
+    the blood-draw appointment, advances their stage, and queues the "form ready"
+    email. Call once payment has been confirmed off-platform. */
+export async function releaseBloodForm(
+  memberId: string,
+  bloodDrawAt: string | null,
+): Promise<{ error: string | null }> {
+  try {
+    await apiRequest(`/v1/admin/members/${encodeURIComponent(memberId)}/blood-form/release`, {
+      method: "POST",
+      body: JSON.stringify({ bloodDrawAt }),
+    });
+    return { error: null };
+  } catch (error) {
+    return { error: apiError(error) };
+  }
+}
+
+/** Re-schedule the blood-draw appointment after the form has been released. */
+export async function updateBloodDraw(
+  memberId: string,
+  bloodDrawAt: string | null,
+): Promise<{ error: string | null }> {
+  try {
+    await apiRequest(`/v1/admin/members/${encodeURIComponent(memberId)}/blood-draw`, {
+      method: "PATCH",
+      body: JSON.stringify({ bloodDrawAt }),
+    });
+    return { error: null };
+  } catch (error) {
+    return { error: apiError(error) };
+  }
 }
 
 // ---- Patient invites -----------------------------------------------------

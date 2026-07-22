@@ -40,6 +40,7 @@ export type HeroAction =
   | { kind: "tab"; tab: MemberTab }
   | { kind: "profileFlow" }
   | { kind: "link"; url: string }
+  | { kind: "downloadForm" }
   | { kind: "none" };
 
 export type ConsultCardData = {
@@ -60,9 +61,25 @@ export type BloodDrawCardData = {
   labBranch: string;
   labInitials: string;
   labAddress: string;
-  labHours: string;
+  /** Scheduled draw, filled from the released lab order; null until confirmed. */
+  appointment: string | null;
+  mapsUrl: string;
+  wazeUrl: string;
   primaryCta: string;
 };
+
+// Innoquest HQ — the fixed blood-draw location shown to every member. The full
+// form is used for map links; the card shows a shorter form (Petaling Jaya → PJ)
+// so the address stays on one line.
+export const INNOQUEST_HQ_ADDRESS =
+  "2nd Floor, Wisma Tecna, 18A, Jalan 51a/223, Seksyen 51a, 46100 Petaling Jaya, Selangor";
+export const INNOQUEST_HQ_ADDRESS_SHORT =
+  "2nd Floor, Wisma Tecna, 18A, Jalan 51a/223, Seksyen 51a, 46100 PJ";
+const INNOQUEST_HQ_QUERY = "Innoquest Pathology, Wisma Tecna, Jalan 51a/223, Petaling Jaya, Selangor";
+export const INNOQUEST_HQ_MAPS_URL =
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(INNOQUEST_HQ_QUERY)}`;
+export const INNOQUEST_HQ_WAZE_URL =
+  `https://www.waze.com/ul?q=${encodeURIComponent(INNOQUEST_HQ_QUERY)}&navigate=yes`;
 
 export type ResultsTimelineCardData = {
   type: "resultsTimeline";
@@ -90,6 +107,8 @@ export type JourneyStateConfig = {
   id: JourneyStateId;
   switcherLabel: string;
   stageLabel: string;
+  /** Some later journey states open directly to the shared journey overview. */
+  journeyOnly?: boolean;
   /** Rendered as `${greetingPrefix}, ${firstName}` on the home screen. */
   greetingPrefix: string;
   hero: {
@@ -136,7 +155,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       pill: "Health profile",
       titleBefore: "Complete your ",
       titleEm: "health profile",
-      body: "Help your doctor understand your goals, lifestyle and history before your consult.",
+      body: "Help your doctor understand you before your consult",
       primaryCta: "Continue profile",
       primaryAction: { kind: "profileFlow" },
       secondaryCta: "View consult details",
@@ -164,7 +183,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       pill: "Upcoming consult",
       titleBefore: "We're scheduling ",
       titleEm: "your consult",
-      body: "We're finding the right time for your consult — we'll email you once it's booked.",
+      body: "We're finding the right time for your consult — we'll email you once it's booked",
       primaryAction: { kind: "none" },
       secondaryCta: "View consult details",
       image: heroConsultImage,
@@ -191,9 +210,9 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       pill: "Blood draw",
       titleBefore: "Your blood test form ",
       titleEm: "is ready",
-      body: "Bring this form to your assigned lab.",
+      body: "Bring this form to your assigned lab",
       primaryCta: "Download form",
-      primaryAction: { kind: "none" },
+      primaryAction: { kind: "downloadForm" },
       secondaryCta: "View instructions",
       image: heroBloodFormImage,
     },
@@ -211,10 +230,12 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     contextCard: {
       type: "bloodDraw",
       labName: "Innoquest",
-      labBranch: "TTDI",
+      labBranch: "HQ · Petaling Jaya",
       labInitials: "IQ",
-      labAddress: "24G, Jalan Wan Kadir 3, Taman Tun Dr Ismail, 60000 Kuala Lumpur",
-      labHours: "Mon–Sat, 7:30 AM – 5:00 PM",
+      labAddress: INNOQUEST_HQ_ADDRESS_SHORT,
+      appointment: null,
+      mapsUrl: INNOQUEST_HQ_MAPS_URL,
+      wazeUrl: INNOQUEST_HQ_WAZE_URL,
       primaryCta: "Download form",
     },
   },
@@ -222,12 +243,13 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "RESULTS_PENDING",
     switcherLabel: "Results pending",
     stageLabel: "Step 4 of 5 · Results",
+    journeyOnly: true,
     greetingPrefix: "Welcome back",
     hero: {
       pill: "Results",
       titleBefore: "Your results are ",
       titleEm: "processing",
-      body: "We'll organise them by health area once they're ready.",
+      body: "We'll organise them by health area once they're ready",
       primaryCta: "View past results",
       primaryAction: { kind: "tab", tab: "results" },
       secondaryCta: "View timeline",
@@ -261,12 +283,13 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "RESULTS_READY",
     switcherLabel: "Results ready",
     stageLabel: "Step 4 of 5 · Results",
+    journeyOnly: true,
     greetingPrefix: "Welcome back",
     hero: {
       pill: "Results",
       titleBefore: "Your results ",
       titleEm: "are in",
-      body: "Explore them by health area while your doctor prepares your care plan.",
+      body: "Explore them while your doctor prepares your care plan",
       primaryCta: "View results",
       primaryAction: { kind: "tab", tab: "results" },
       secondaryCta: "View timeline",
@@ -300,15 +323,16 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "CARE_PLAN_READY",
     switcherLabel: "Care plan ready",
     stageLabel: "Step 5 of 5 · Care plan",
+    journeyOnly: true,
     greetingPrefix: "Welcome back",
     hero: {
       pill: "Care plan",
       titleBefore: "Your care plan ",
       titleEm: "is ready",
-      body: "Clear next steps from your doctor, built around your results.",
+      body: "Clear next steps from your doctor, built around your results",
       primaryCta: "View care plan",
       primaryAction: { kind: "tab", tab: "carePlan" },
-      secondaryCta: "View plan summary",
+      secondaryCta: "View timeline",
       image: heroCarePlanImage,
     },
     steps: [
@@ -337,7 +361,7 @@ export const JOURNEY_STATE_IDS = Object.keys(JOURNEY_STATES) as JourneyStateId[]
 /** The fields resolveJourneyConfig needs from a scheduled appointment. */
 export type AppointmentForJourney = {
   doctor_name: string | null;
-  scheduled_at: string;
+  scheduled_at: string | null;
   meeting_url: string | null;
 };
 
@@ -348,22 +372,54 @@ function initialsFrom(name: string): string {
 }
 
 /**
- * The static JOURNEY_STATES config, with the consult-upcoming state filled in
- * from the member's real appointment when one exists. Every other state is
- * returned unchanged. Without an appointment the consult state stays in its
- * "we're scheduling your consult" placeholder form.
+ * The static JOURNEY_STATES config, filled in from the member's real data: the
+ * profile/consult-upcoming states from their teleconsult appointment, and the
+ * blood-draw state from their scheduled Innoquest appointment. Other states
+ * are returned unchanged.
  */
 export function resolveJourneyConfig(
   id: JourneyStateId,
   appointment: AppointmentForJourney | null,
+  bloodDrawAt: string | null = null,
 ): JourneyStateConfig {
   const base = JOURNEY_STATES[id];
-  if (id !== "CONSULT_UPCOMING" || !appointment) return base;
+
+  if (id === "BLOOD_FORM_READY") {
+    if (!bloodDrawAt || base.contextCard.type !== "bloodDraw") return base;
+    const date = formatConsultDate(bloodDrawAt);
+    const time = formatConsultTime(bloodDrawAt);
+    return {
+      ...base,
+      hero: {
+        ...base.hero,
+        body: `Bring your form to Innoquest HQ on ${date} at ${time}`,
+      },
+      contextCard: { ...base.contextCard, appointment: `${date} · ${time}` },
+    };
+  }
+
+  if ((id !== "PROFILE_INCOMPLETE" && id !== "CONSULT_UPCOMING") || !appointment) return base;
 
   const doctorName = appointment.doctor_name?.trim() || "your Verae doctor";
-  const date = formatConsultDate(appointment.scheduled_at);
-  const time = formatConsultTime(appointment.scheduled_at);
+  const date = appointment.scheduled_at ? formatConsultDate(appointment.scheduled_at) : "To be confirmed";
+  const time = appointment.scheduled_at ? formatConsultTime(appointment.scheduled_at) : "—";
   const meetingUrl = appointment.meeting_url;
+
+  const contextCard: ConsultCardData = {
+    type: "consult",
+    doctorName,
+    doctorRole: "Verae physician",
+    doctorInitials: initialsFrom(doctorName),
+    date,
+    time,
+    location: "Online (Google Meet)",
+    primaryCta: "View consult details",
+    meetingUrl,
+  };
+
+  if (id === "PROFILE_INCOMPLETE") {
+    return { ...base, contextCard };
+  }
 
   return {
     ...base,
@@ -372,23 +428,13 @@ export function resolveJourneyConfig(
       titleBefore: "Get ready for ",
       titleEm: "your consult",
       titleAfter: undefined,
-      body: `Meet ${doctorName} on ${date} at ${time}.`,
+      body: `Meet ${doctorName} on ${date} at ${time}`,
       primaryCta: "Join consult",
       primaryAction: meetingUrl ? { kind: "link", url: meetingUrl } : { kind: "none" },
       primaryDisabled: !meetingUrl,
       primaryHint: meetingUrl ? undefined : "Your join link will appear here soon",
       secondaryCta: "View consult details",
     },
-    contextCard: {
-      type: "consult",
-      doctorName,
-      doctorRole: "Verae physician",
-      doctorInitials: initialsFrom(doctorName),
-      date,
-      time,
-      location: "Online (Google Meet)",
-      primaryCta: "Join consult",
-      meetingUrl,
-    },
+    contextCard: { ...contextCard, primaryCta: "Join consult" },
   };
 }

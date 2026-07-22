@@ -23,7 +23,7 @@
   content: "";
   position: absolute;
   z-index: 0;
-  top: 13px;
+  top: 15px;
   left: 8%;
   right: 8%;
   height: 1px;
@@ -34,7 +34,7 @@
   position: relative;
   display: grid;
   justify-items: center;
-  row-gap: 3px;
+  row-gap: 5px;
   text-align: center;
 }
 
@@ -43,19 +43,19 @@
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
   background: #fff;
   box-shadow: var(--shadow-border);
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   font-weight: 560;
 }
 
 .home-rail-marker svg {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
 }
 
 .home-rail-step.is-completed .home-rail-marker {
@@ -73,7 +73,7 @@
 }
 
 .home-rail-label {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 480;
   color: var(--muted);
   line-height: 1.2;
@@ -121,6 +121,12 @@
   max-width: 44ch;
   color: var(--muted);
   font-size: 1.02rem;
+  white-space: pre-line;
+}
+
+.home-hero-copy--blood-draw p {
+  max-width: none;
+  white-space: nowrap;
 }
 
 .home-hero-actions {
@@ -229,6 +235,10 @@
   translate: -100% 0;
 }
 
+.home-detail-track.is-journey-only {
+  grid-template-columns: 100%;
+}
+
 .home-detail-screen {
   min-width: 0;
 }
@@ -241,6 +251,10 @@
 .home-detail-screen--journey {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.home-detail-screen--journey-only {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .home-detail-body {
@@ -293,7 +307,8 @@
   padding: 0;
 }
 
-.home-context h3 {
+.home-context h3,
+.home-journey-title {
   max-width: calc(100% - 56px);
   font-size: 1.32rem;
   line-height: 1.18;
@@ -355,11 +370,27 @@
 .home-context-details dd {
   font-size: 0.95rem;
   text-align: right;
+  text-wrap: pretty;
 }
 
 .home-context .p-btn,
 .home-context .p-btn-ghost {
   justify-content: center;
+}
+
+.home-context-maplinks {
+  display: flex;
+  gap: 10px;
+}
+
+.home-context-maplinks .p-btn-ghost {
+  flex: 1 1 0;
+  gap: 6px;
+}
+
+.home-context-maplinks svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Results-processing mini timeline */
@@ -502,34 +533,34 @@
 
 .home-journey-body {
   display: grid;
-  gap: 20px;
-  padding: 34px 28px 28px 0;
+  gap: 16px;
+  /* Top padding clears the absolutely-positioned close button so the journey
+     card never sits under it. */
+  padding: 64px 28px 28px 8px;
+}
+
+.home-detail-screen--journey-only .home-journey-body {
+  padding-left: 28px;
 }
 
 .home-journey-progress {
   display: grid;
-  align-content: center;
-  gap: 30px;
-  min-height: 210px;
-  padding: 28px 24px;
-  border-radius: 22px;
+  padding: 20px 24px;
+  border-radius: 20px;
   background: rgba(15, 23, 42, 0.025);
 }
 
-.home-journey-progress h3,
 .home-journey-explainer h3 {
-  font-size: 1.24rem;
+  font-size: 1.12rem;
   line-height: 1.2;
 }
 
 .home-journey-explainer {
   display: grid;
-  align-content: center;
-  gap: 12px;
-  min-height: 170px;
-  padding: 26px 28px;
-  border-radius: 22px;
-  background: #f8f6f3;
+  gap: 10px;
+  padding: 22px 24px;
+  border-radius: 20px;
+  background: transparent;
 }
 
 .home-journey-explainer p {
@@ -574,12 +605,17 @@
     font-size: 0.98rem;
   }
 
+  .home-hero-copy--blood-draw p {
+    max-width: 44ch;
+    white-space: normal;
+  }
+
   .home-rail-status {
     display: none;
   }
 
   .home-rail-label {
-    font-size: 0.76rem;
+    font-size: 0.78rem;
   }
 
   .home-hero-actions {
@@ -631,10 +667,13 @@
     padding: 32px 18px 22px 0;
   }
 
+  .home-detail-screen--journey-only .home-journey-body {
+    padding-left: 18px;
+  }
+
   .home-journey-progress {
-    min-height: 190px;
-    gap: 24px;
-    padding: 24px 14px;
+    min-height: 0;
+    padding: 22px 14px;
   }
 
   .home-journey-explainer {
@@ -695,7 +734,169 @@
     padding: 30px 14px 18px 0;
   }
 
+  .home-detail-screen--journey-only .home-journey-body {
+    padding-left: 14px;
+  }
+
   .home-journey-progress {
     padding-inline: 10px;
   }
+
+  .home-rail-label {
+    font-size: 0.72rem;
+  }
+}
+
+/* Blood-form download: status/error + confirm-details modal */
+.home-form-error,
+.home-form-status {
+  margin: 16px auto 0;
+  max-width: 640px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  font-size: 14px;
+}
+
+.home-form-error {
+  color: #9a3412;
+  background: rgba(184, 93, 53, 0.1);
+  border: 1px solid rgba(184, 93, 53, 0.25);
+}
+
+.home-form-status {
+  color: var(--muted);
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.home-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.home-modal {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 28px 26px 24px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow:
+    0 30px 90px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.home-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.home-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.home-modal h3 {
+  margin: 0 40px 6px 0;
+  font-size: 20px;
+}
+
+.home-modal-sub {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.home-modal-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.home-modal-fields label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.home-modal-fields label.is-required span::after {
+  content: " •";
+  color: var(--accent);
+}
+
+.home-modal-fields input,
+.home-modal-fields textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--ink);
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.home-modal-fields input:focus,
+.home-modal-fields textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.home-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* Match the phone widget to the modal's white bordered inputs; the single
+   :focus-within outline replaces the inner input's own focus box. */
+.home-modal-fields .pf-phone {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.home-modal-fields .pf-phone-number {
+  width: auto;
+  border: 0;
+  background: transparent;
+  padding: 12px 14px 12px 2px;
+}
+
+.home-modal-fields .pf-phone-number:focus,
+.home-modal-fields .pf-phone-search input:focus {
+  outline: none;
+  border-color: transparent;
+}
+
+.home-modal-fields .pf-phone-dial,
+.home-modal-fields .pf-phone-number {
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.home-modal-fields input[type="date"] {
+  color-scheme: light;
+  accent-color: var(--accent);
 }

@@ -875,6 +875,41 @@
   height: 15px;
 }
 
+.adm-identity-check {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.adm-identity-check li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.adm-identity-check li span {
+  display: inline-flex;
+  width: 18px;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.adm-identity-check li.is-ok span {
+  color: #1a7f5a;
+}
+
+.adm-identity-check li.is-missing {
+  color: #9a4b2f;
+}
+
+.adm-identity-check li em {
+  font-style: normal;
+  opacity: 0.75;
+}
+
 @media (max-width: 680px) {
   .adm-quote-meta {
     grid-template-columns: 1fr;
@@ -1515,6 +1550,10 @@
 .adm-field select:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 0;
+}
+
+.adm-blooddraw-field {
+  margin: 4px 0 16px;
 }
 
 .adm-invite-reveal {

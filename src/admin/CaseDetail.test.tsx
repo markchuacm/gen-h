@@ -10,6 +10,10 @@ const mocks = vi.hoisted(() => ({
   fetchAdminAppointment: vi.fn(),
   fetchAdminDoctors: vi.fn(),
   setFoundingMember: vi.fn(),
+  releaseBloodForm: vi.fn(),
+  updateBloodDraw: vi.fn(),
+  fetchBloodForm: vi.fn(),
+  openBloodFormPdf: vi.fn(),
   clipboardWrite: vi.fn(),
 }));
 
@@ -21,6 +25,8 @@ vi.mock("../lib/api/admin", () => ({
   fetchAdminCaseDetail: mocks.fetchAdminCaseDetail,
   fetchAdminDoctors: mocks.fetchAdminDoctors,
   fetchAdminLabReports: mocks.fetchAdminLabReports,
+  releaseBloodForm: mocks.releaseBloodForm,
+  updateBloodDraw: mocks.updateBloodDraw,
   resetInvite: vi.fn(),
   scheduleAppointment: vi.fn(),
   setFoundingMember: mocks.setFoundingMember,
@@ -28,6 +34,11 @@ vi.mock("../lib/api/admin", () => ({
   uploadDocumentForMember: vi.fn(),
   STAGE_OPTIONS: ["consult_upcoming", "blood_form_ready"],
   STAGE_LABELS: { consult_upcoming: "Consult upcoming", blood_form_ready: "Blood draw" },
+}));
+
+vi.mock("../lib/bloodForm/api", () => ({
+  fetchBloodForm: mocks.fetchBloodForm,
+  openBloodFormPdf: mocks.openBloodFormPdf,
 }));
 
 vi.mock("../lib/api/healthDocuments", () => ({ createDocumentSignedUrl: vi.fn() }));
@@ -62,6 +73,9 @@ const detail: AdminCaseDetail = {
   currentStage: "blood_form_ready",
   onboardingStatus: "completed",
   phone: "+60123456789",
+  dateOfBirth: "1990-02-15",
+  icPassportNo: "900215145678",
+  address: "12 Jalan Setiabakti, 50490 Kuala Lumpur",
   invitedAt: null,
   tempPasswordExpiresAt: null,
   setupCompletedAt: "2026-07-01T00:00:00.000Z",
@@ -75,6 +89,8 @@ const detail: AdminCaseDetail = {
     biomarkerCodes: Array.from({ length: 97 }, (_, index) => `marker-${index + 1}`),
     status: "ordered",
     orderedAt: quote.quotedAt,
+    formReleasedAt: null,
+    bloodDrawAt: null,
     quote,
   },
 };
@@ -129,5 +145,60 @@ describe("admin saved quote operations", () => {
 
     expect(await screen.findByText("This panel predates saved pricing.")).toBeTruthy();
     expect(screen.getByText(/doctor reviews and saves the panel again/i)).toBeTruthy();
+  });
+});
+
+describe("blood-form release", () => {
+  it("previews the form and releases it once payment is confirmed", async () => {
+    mocks.fetchBloodForm.mockResolvedValue({ data: { patient: {}, order: {}, missingFields: [] }, error: null });
+    mocks.releaseBloodForm.mockResolvedValue({ error: null });
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+    expect(await screen.findByRole("heading", { name: "Blood test request form" })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Preview form" }));
+    await waitFor(() => expect(mocks.fetchBloodForm).toHaveBeenCalledWith("member-1"));
+    await waitFor(() => expect(mocks.openBloodFormPdf).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole("button", { name: /release form/i }));
+    await waitFor(() => expect(mocks.releaseBloodForm).toHaveBeenCalledWith("member-1", null));
+    confirmSpy.mockRestore();
+  });
+
+  it("shows the released timestamp and hides the release button once released", async () => {
+    mocks.fetchAdminCaseDetail.mockResolvedValue({
+      data: { ...detail, labOrder: { ...detail.labOrder!, formReleasedAt: "2026-07-22T02:00:00.000Z" } },
+      error: null,
+    });
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+
+    expect(await screen.findByRole("heading", { name: "Blood test request form" })).toBeTruthy();
+    expect(screen.getAllByText("Released").length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: /release form/i })).toBeNull();
+  });
+
+  it("reschedules the blood draw after release", async () => {
+    mocks.fetchAdminCaseDetail.mockResolvedValue({
+      data: { ...detail, labOrder: { ...detail.labOrder!, formReleasedAt: "2026-07-22T02:00:00.000Z", bloodDrawAt: "2026-07-25T02:00:00.000Z" } },
+      error: null,
+    });
+    mocks.updateBloodDraw.mockResolvedValue({ error: null });
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Save appointment" }));
+    await waitFor(() => expect(mocks.updateBloodDraw).toHaveBeenCalledWith("member-1", expect.any(String)));
+  });
+
+  it("flags missing identity fields that block a clean form", async () => {
+    mocks.fetchAdminCaseDetail.mockResolvedValue({
+      data: { ...detail, icPassportNo: null, address: null },
+      error: null,
+    });
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+
+    expect(await screen.findByRole("heading", { name: "Blood test request form" })).toBeTruthy();
+    const missing = screen.getAllByText("— missing");
+    expect(missing.length).toBe(2);
   });
 });

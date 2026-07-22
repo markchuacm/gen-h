@@ -14,7 +14,7 @@ Saya memahami maklumat yang diperlukan, pihak yang mungkin menerimanya, dan baha
 
 ## 3. Telekonsultasi
 
-Saya bersetuju untuk berunding dengan pengamal perubatan berdaftar melalui video atau saluran jarak jauh selamat lain yang diluluskan. Saya memahami bahawa rawatan jarak jauh tidak dapat menyediakan setiap unsur penilaian bersemuka dan membawa risiko maklumat tidak lengkap, salah faham, kegagalan teknologi serta diagnosis atau rawatan yang tertangguh. Saya bersetuju bahawa doktor boleh menghentikan atau menolak rawatan jarak jauh dan mengesyorkan penilaian bersemuka, segera atau pakar.
+Saya bersetuju untuk berunding, melalui video atau saluran jarak jauh selamat lain yang diluluskan, dengan pengamal perubatan berdaftar yang menyediakan perkhidmatan melalui platform ini. Saya memahami bahawa rawatan jarak jauh tidak dapat menyediakan setiap unsur penilaian bersemuka dan membawa risiko maklumat tidak lengkap, salah faham, kegagalan teknologi serta diagnosis atau rawatan yang tertangguh. Saya bersetuju bahawa doktor boleh menghentikan atau menolak rawatan jarak jauh dan mengesyorkan penilaian bersemuka, segera atau pakar.
 
 Saya akan mengenal pasti diri dengan tepat, menyatakan lokasi fizikal saya, memaklumkan siapa lagi yang hadir dan mengambil bahagian dari tempat yang peribadi dan selamat. Saya memahami bahawa identiti saya, identiti doktor dan identiti peserta lain akan didokumenkan pada setiap konsultasi.
 
@@ -28,7 +28,7 @@ Doktor yang membuat pesanan dan makmal akan membentangkan panel khusus, keperlua
 
 ## 5. Semakan doktor dan sokongan teknologi
 
-Saya memahami bahawa Verae pada masa ini tidak menggunakan AI atau perisian automatik untuk menghasilkan tafsiran klinikal, membuat keputusan klinikal atau melatih model AI menggunakan data ahli. Seorang pengamal perubatan berdaftar akan menyemak keputusan, tafsiran, pelan kesihatan pencegahan yang diperibadikan dan sebarang saranan ubat atau suplemen sebelum dikeluarkan.
+Saya memahami bahawa Verae pada masa ini tidak menggunakan AI atau perisian automatik untuk menghasilkan tafsiran klinikal, membuat keputusan klinikal atau melatih model AI menggunakan data ahli. Seorang pengamal perubatan berdaftar yang menyediakan perkhidmatan melalui platform ini akan menyemak keputusan, tafsiran, pelan kesihatan pencegahan yang diperibadikan dan sebarang saranan ubat atau suplemen sebelum dikeluarkan.
 
 ## 6. Susulan dan tanggungjawab bagi rawatan segera
 
@@ -44,7 +44,7 @@ Saya memahami bahawa rekod klinikal bertulis akan disimpan, tetapi audio atau vi
 
 ## 9. Penarikan balik
 
-Saya boleh menarik balik persetujuan bagi telekonsultasi masa hadapan, pengambilan sampel atau penggunaan data pilihan dengan menghubungi **mark@veraehealth.com**. Penarikan balik tidak akan membatalkan konsultasi, pengambilan, analisis, pendedahan atau pemprosesan lain yang telah diselesaikan secara sah. Ia tidak menghendaki pemadaman rekod yang mesti disimpan atas sebab klinikal, undang-undang, keselamatan, audit atau kawal selia. Verae akan menerangkan akibat praktik, yang mungkin termasuk menamatkan atau mengehadkan perkhidmatan.
+Saya boleh menarik balik persetujuan bagi telekonsultasi masa hadapan, pengambilan sampel atau penggunaan data pilihan dengan menghubungi **support@veraehealth.com**. Penarikan balik tidak akan membatalkan konsultasi, pengambilan, analisis, pendedahan atau pemprosesan lain yang telah diselesaikan secara sah. Ia tidak menghendaki pemadaman rekod yang mesti disimpan atas sebab klinikal, undang-undang, keselamatan, audit atau kawal selia. Verae akan menerangkan akibat praktik, yang mungkin termasuk menamatkan atau mengehadkan perkhidmatan.
 
 ## 10. Tiada jaminan
 

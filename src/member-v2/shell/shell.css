@@ -189,7 +189,8 @@
   white-space: nowrap;
 }
 
-.p-account-signout {
+.p-account-signout,
+.p-account-menu-item {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -205,15 +206,18 @@
   transition-timing-function: var(--ease-ui);
 }
 
-.p-account-signout:hover {
+.p-account-signout:hover,
+.p-account-menu-item:hover {
   background: rgba(15, 23, 42, 0.045);
 }
 
-.p-account-signout:active {
+.p-account-signout:active,
+.p-account-menu-item:active {
   scale: 0.96;
 }
 
-.p-account-signout svg {
+.p-account-signout svg,
+.p-account-menu-item svg {
   width: 17px;
   height: 17px;
   color: var(--muted);
@@ -413,60 +417,38 @@
   position: relative;
   z-index: 1;
   display: grid;
-  justify-items: start;
+  justify-items: center;
   width: min(560px, 100%);
-  padding: 34px;
+  min-height: min(340px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  align-content: center;
+  row-gap: 28px;
+  padding: 32px 40px 28px;
   border-radius: 28px;
   background: #fff;
+  text-align: center;
   box-shadow:
     0 0 0 1px rgba(17, 23, 27, 0.07),
     0 32px 90px rgba(17, 23, 27, 0.22);
   animation: p-pending-dialog-in 360ms var(--ease-spring) both;
 }
 
-.p-pending-close {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(17, 23, 27, 0.045);
-  transition-property: background-color, scale;
-  transition-duration: 150ms;
-  transition-timing-function: var(--member-ease);
-}
-
-.p-pending-close:hover {
-  background: rgba(17, 23, 27, 0.08);
-}
-
-.p-pending-close:active {
-  scale: 0.96;
-}
-
-.p-pending-close svg {
-  width: 19px;
-  height: 19px;
-}
-
 .p-pending-eyebrow {
-  margin-bottom: 12px;
+  margin-bottom: 18px;
 }
 
 .p-pending-dialog h2 {
-  max-width: 12ch;
-  padding-right: 44px;
+  max-width: none;
+  padding-right: 0;
   font-size: clamp(1.8rem, 4vw, 2.45rem);
   line-height: 1.04;
-  text-wrap: balance;
+  white-space: nowrap;
 }
 
 .p-pending-dialog p {
   max-width: 48ch;
-  margin-top: 18px;
+  margin-top: 0;
   color: var(--member-muted);
   font-size: 0.98rem;
   line-height: 1.65;
@@ -476,8 +458,9 @@
 .p-pending-actions {
   display: flex;
   justify-content: flex-end;
-  width: 100%;
-  margin-top: 26px;
+  width: auto;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .p-pending-layer.is-closing .p-pending-backdrop {
@@ -582,8 +565,15 @@
   }
 
   .p-pending-dialog {
-    padding: 28px 24px 24px;
+    min-height: min(320px, calc(100vh - 24px));
+    max-height: calc(100vh - 24px);
+    row-gap: 22px;
+    padding: 32px 24px 24px;
     border-radius: 24px;
+  }
+
+  .p-pending-dialog h2 {
+    white-space: normal;
   }
 
   .p-page.dashboard-content--results {
@@ -595,4 +585,158 @@
   .p-results-heading {
     height: 28px;
   }
+}
+
+/* Account details modal (top-nav → Account details) */
+.p-account-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.28);
+  backdrop-filter: blur(10px);
+}
+
+.p-account-modal {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  padding: 28px 26px 24px;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow:
+    0 30px 90px rgba(15, 23, 42, 0.22),
+    0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.p-account-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.05);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.p-account-modal-close svg {
+  width: 18px;
+  height: 18px;
+}
+
+.p-account-modal h2 {
+  margin: 0 40px 20px 0;
+  font-size: 1.25rem;
+  letter-spacing: -0.01em;
+}
+
+.p-account-modal-sub {
+  margin: 0 0 20px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.p-account-modal-loading {
+  color: var(--muted);
+  padding: 16px 0;
+}
+
+.p-account-modal-fields {
+  display: grid;
+  gap: 14px;
+}
+
+.p-account-modal-fields label {
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.p-account-modal-error {
+  margin: 14px 0 0;
+  color: #9a3412;
+  font-size: 14px;
+}
+
+.p-account-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+/* Self-contained field styling so the modal renders correctly whether or not
+   the lazy profile.css bundle has loaded. */
+.p-account-modal-fields input,
+.p-account-modal-fields textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font: inherit;
+  /* Match the phone widget's dial/number so every field reads at one size. */
+  font-size: 0.95rem;
+  font-weight: 400;
+  color: var(--ink);
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.p-account-modal-fields textarea {
+  resize: vertical;
+  min-height: 48px;
+  line-height: 1.4;
+}
+
+.p-account-modal-fields input:focus,
+.p-account-modal-fields textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+/* Match the phone widget to the modal's white bordered inputs, and stop its
+   inner input inheriting the bordered-input focus box — the widget shows a
+   single outline via :focus-within instead. */
+.p-account-modal-fields .pf-phone {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.p-account-modal-fields .pf-phone-number {
+  width: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  padding: 12px 14px 12px 2px;
+}
+
+.p-account-modal-fields .pf-phone-number:focus,
+.p-account-modal-fields .pf-phone-search input:focus {
+  outline: none;
+  border-color: transparent;
+}
+
+/* Dial prefix and typed number share the field's size and weight. */
+.p-account-modal-fields .pf-phone-dial,
+.p-account-modal-fields .pf-phone-number {
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+/* Native date input: brand-coloured picker, matching the page. */
+.p-account-modal-fields input[type="date"] {
+  color-scheme: light;
+  accent-color: var(--accent);
 }

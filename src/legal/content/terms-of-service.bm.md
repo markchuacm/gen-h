@@ -4,7 +4,7 @@
 
 Terma ini membentuk suatu perjanjian antara anda dengan **GEN H HOLDINGS SDN. BHD. (No. Syarikat 202601020381 (1682478-D))**, yang menjalankan perniagaan sebagai Verae Health. Terma ini mengawal penggunaan portal Verae oleh anda serta perkhidmatan pentadbiran, penyelarasan makmal dan kesihatan pencegahan yang diterangkan di bawah.
 
-Verae ialah platform teknologi dan perkhidmatan yang menghubungkan ahli dengan pengamal perubatan berdaftar yang bebas. Setiap doktor bertanggungjawab terhadap pertimbangan profesional, penjagaan klinikal, preskripsi dan saranan mereka sendiri. Hubungan doktor–pesakit terbentuk antara anda dengan doktor berkenaan apabila doktor menerima dan memberikan konsultasi. Verae bukan entiti yang mempreskripsi atau mendispens ubat.
+Verae ialah platform teknologi dan perkhidmatan yang menghubungkan ahli dengan pengamal perubatan berdaftar yang menyediakan perkhidmatan melalui platform ini. Setiap doktor bertanggungjawab terhadap pertimbangan profesional, penjagaan klinikal, preskripsi dan saranan mereka sendiri. Hubungan doktor–pesakit terbentuk antara anda dengan doktor berkenaan apabila doktor menerima dan memberikan konsultasi. Verae bukan entiti yang mempreskripsi atau mendispens ubat.
 
 Tiada apa-apa dalam Terma ini yang mengecualikan kewajipan seseorang profesional penjagaan kesihatan terhadap anda atau hak dan remedi yang tidak boleh dikecualikan secara sah di bawah undang-undang Malaysia.
 
@@ -24,7 +24,7 @@ Verae atau doktor anda boleh meminta pengesahan identiti, umur, lokasi dan keses
 Bergantung pada keahlian atau pakej yang anda beli, perkhidmatan ini boleh merangkumi:
 
 - soal selidik kesihatan dan gaya hidup serta muat naik rekod yang berkaitan;
-- satu atau lebih telekonsultasi video dengan pengamal perubatan berdaftar;
+- satu atau lebih telekonsultasi video dengan pengamal perubatan berdaftar yang menyediakan perkhidmatan melalui platform ini;
 - penyelarasan pengambilan dan ujian darah oleh makmal rakan kongsi;
 - penerimaan dan paparan keputusan makmal secara selamat;
 - penerangan yang disemak oleh doktor tentang biopenanda terpilih dan corak yang berkaitan dengan kesedaran kesihatan pencegahan;
@@ -161,7 +161,7 @@ Verae tidak menggunakan pengecualian menyeluruh “gunakan atas risiko sendiri�
 
 Anda bertanggungjawab terhadap kerugian, tuntutan dan kos munasabah yang ditanggung oleh Verae atau pihak ketiga setakat yang disebabkan secara langsung oleh penipuan anda, penyalahgunaan portal secara sengaja, penggunaan perkhidmatan secara menyalahi undang-undang, pelanggaran hak orang lain, pendedahan tanpa kebenaran terhadap maklumat sulit orang lain atau pelanggaran material Terma ini.
 
-Indemniti ini tidak terpakai setakat tuntutan atau kerugian disebabkan oleh kecuaian, penipuan, salah laku sengaja, pelanggaran kerahsiaan atau kewajipan perlindungan data, kelakuan mengelirukan atau pelanggaran kewajipan profesional oleh Verae, atau sebarang tindakan atau peninggalan doktor atau makmal bebas yang menjadi tanggungjawab penyedia tersebut. Ia tidak mengehadkan sebarang hak pengguna atau liabiliti yang tidak boleh dikecualikan secara sah.
+Indemniti ini tidak terpakai setakat tuntutan atau kerugian disebabkan oleh kecuaian, penipuan, salah laku sengaja, pelanggaran kerahsiaan atau kewajipan perlindungan data, kelakuan mengelirukan atau pelanggaran kewajipan profesional oleh Verae, atau sebarang tindakan atau peninggalan doktor atau penyedia makmal yang menjadi tanggungjawab penyedia tersebut. Ia tidak mengehadkan sebarang hak pengguna atau liabiliti yang tidak boleh dikecualikan secara sah.
 
 Verae tidak menghendaki ahli menanggung rugi Verae bagi hasil klinikal, kecederaan perubatan, keputusan preskripsi atau perkhidmatan makmal semata-mata kerana ahli menggunakan perkhidmatan.
 

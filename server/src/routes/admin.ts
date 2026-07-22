@@ -6,6 +6,7 @@ import { actor, requireRoles } from "../auth/guards.js";
 import { auth, authPool } from "../auth/auth.js";
 import { env } from "../config.js";
 import { withActor } from "../db/pools.js";
+import { getBoss } from "../jobs/boss.js";
 import { scheduleConsultEmails } from "../services/appointments.js";
 import {
   clearDeveloperModeCookie,
@@ -142,6 +143,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
                 m.height_cm as "heightCm", m.weight_kg as "weightKg", m.goals, m.medications,
                 m.conditions, m.preferred_name as "preferredName", m.current_stage as "currentStage",
                 m.onboarding_status as "onboardingStatus", m.phone,
+                m.date_of_birth as "dateOfBirth", m.ic_passport_no as "icPassportNo", m.address,
                 m.is_founding_member as "isFoundingMember",
                 p.invited_at as "invitedAt", p.temp_password_expires_at as "tempPasswordExpiresAt",
                 p.setup_completed_at as "setupCompletedAt"
@@ -170,6 +172,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         ),
         client.query(
           `select biomarker_codes as "biomarkerCodes", status, ordered_at as "orderedAt",
+                  form_released_at as "formReleasedAt", blood_draw_at as "bloodDrawAt",
                   quote_pricing_version as "pricingVersion", quote_currency as currency,
                   quote_catalog_count as "catalogCount", quote_selected_count as "selectedCount",
                   quote_base_amount_minor as "baseAmountMinor",
@@ -207,6 +210,8 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
             biomarkerCodes: order.biomarkerCodes,
             status: order.status,
             orderedAt: order.orderedAt,
+            formReleasedAt: order.formReleasedAt,
+            bloodDrawAt: order.bloodDrawAt,
             quote,
           } : null,
         },
@@ -229,6 +234,77 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         return reply.code(404).send({ error: "Member not found", code: "NOT_FOUND", requestId: request.id });
       }
       return { data: { isFoundingMember: body.isFoundingMember } };
+    },
+  );
+
+  // Release the blood-test request form to the member. The admin does this after
+  // confirming the appointment and payment off-platform. It stamps the order,
+  // advances the member's stage to blood_form_ready, and queues the "form ready"
+  // email (dashboard link only — the PDF is never attached).
+  app.post<{ Params: { memberId: string } }>(
+    "/v1/admin/members/:memberId/blood-form/release",
+    { preHandler: adminOnly },
+    async (request, reply) => {
+      const current = actor(request);
+      const body = z.object({ bloodDrawAt: z.iso.datetime().nullable().optional() }).parse(request.body ?? {});
+      const released = await withActor(current, async (client) => {
+        await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [request.params.memberId]);
+        const order = await client.query<{ id: string; form_released_at: string | null }>(
+          `select id, form_released_at from app.lab_orders
+           where member_id = $1 and status = 'ordered'
+           order by created_at desc limit 1 for update`,
+          [request.params.memberId],
+        );
+        if (!order.rows[0]) return { ok: false as const, reason: "no_order" as const };
+        if (order.rows[0].form_released_at) return { ok: false as const, reason: "already" as const };
+        // The blood-draw appointment is published together with the release, so
+        // the member never sees a tentative slot before payment is confirmed.
+        await client.query(
+          `update app.lab_orders set form_released_at = now(), form_released_by = $2,
+             blood_draw_at = $3, updated_at = now()
+           where id = $1`,
+          [order.rows[0].id, current.userId, body.bloodDrawAt ?? null],
+        );
+        await client.query(
+          `update app.member_profiles set current_stage = 'blood_form_ready'
+           where member_id = $1 and current_stage in ('consult_upcoming', 'profile_incomplete')`,
+          [request.params.memberId],
+        );
+        return { ok: true as const };
+      });
+      if (!released.ok) {
+        if (released.reason === "no_order") {
+          return reply.code(409).send({ error: "No ordered blood panel to release", code: "NO_ORDER", requestId: request.id });
+        }
+        return reply.code(409).send({ error: "The form has already been released", code: "ALREADY_RELEASED", requestId: request.id });
+      }
+      const boss = await getBoss();
+      await boss.send(
+        "send-blood-form-email",
+        { memberId: request.params.memberId },
+        { singletonKey: `blood-form:${request.params.memberId}` },
+      );
+      return { data: { released: true } };
+    },
+  );
+
+  // Re-schedule the blood-draw appointment after the form has been released.
+  app.patch<{ Params: { memberId: string } }>(
+    "/v1/admin/members/:memberId/blood-draw",
+    { preHandler: adminOnly },
+    async (request, reply) => {
+      const current = actor(request);
+      const body = z.object({ bloodDrawAt: z.iso.datetime().nullable() }).parse(request.body);
+      const updated = await withActor(current, async (client) => client.query(
+        `update app.lab_orders set blood_draw_at = $2, updated_at = now()
+         where member_id = $1 and status = 'ordered' and form_released_at is not null
+         returning id`,
+        [request.params.memberId, body.bloodDrawAt],
+      ));
+      if (!updated.rows[0]) {
+        return reply.code(409).send({ error: "No released blood order to schedule", code: "NO_RELEASED_ORDER", requestId: request.id });
+      }
+      return { data: { bloodDrawAt: body.bloodDrawAt } };
     },
   );
 

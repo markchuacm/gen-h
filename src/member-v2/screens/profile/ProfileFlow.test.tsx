@@ -35,9 +35,36 @@ function renderFlow(
 }
 
 describe("ProfileFlow refinements", () => {
+  it("opens on the identity step and blocks continuing until it is complete", () => {
+    const { rerender } = renderFlow(DEFAULT_ANSWERS, 0);
+    expect(document.activeElement).toBe(screen.getByLabelText("Full name (as per IC / Passport)"));
+    expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(true);
+
+    rerender(
+      <ProfileFlow
+        answers={{
+          ...DEFAULT_ANSWERS,
+          identity: { fullName: "Amina Burhanuddin", icPassportNo: "900101145566", dateOfBirth: "1990-01-01", address: "12 Jalan Setiabakti", phone: "" },
+        }}
+        preferredNamePlaceholder="Alex"
+        uploadErrors={[]}
+        startAt={0}
+        onPatch={vi.fn()}
+        onToggle={vi.fn()}
+        onToggleReport={vi.fn()}
+        onAddReports={vi.fn()}
+        onRemoveReport={vi.fn()}
+        onReachStep={vi.fn()}
+        onComplete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
   it("keeps the Other field mounted so opening and closing can transition smoothly", () => {
     const openAnswers = { ...DEFAULT_ANSWERS, reason: ["Other"] };
-    const view = renderFlow(openAnswers, 1);
+    const view = renderFlow(openAnswers, 2);
     const input = screen.getByLabelText("Other why i'm here") as HTMLInputElement;
     const reveal = input.closest(".pf-other-reveal");
 
@@ -49,7 +76,7 @@ describe("ProfileFlow refinements", () => {
         answers={{ ...openAnswers, reason: [] }}
         preferredNamePlaceholder="Alex"
         uploadErrors={[]}
-        startAt={1}
+        startAt={2}
         onPatch={vi.fn()}
         onToggle={vi.fn()}
         onToggleReport={vi.fn()}
@@ -66,7 +93,7 @@ describe("ProfileFlow refinements", () => {
   });
 
   it("puts the number-key guidance in Question 2 subtext", () => {
-    renderFlow(DEFAULT_ANSWERS, 1);
+    renderFlow(DEFAULT_ANSWERS, 2);
     expect(
       screen.getByText("Choose everything that fits, by pressing the number on keyboard"),
     ).toBeTruthy();
@@ -76,38 +103,38 @@ describe("ProfileFlow refinements", () => {
   it("requires detail when Other is the only Question 2 answer", () => {
     const emptyOther = renderFlow(
       { ...DEFAULT_ANSWERS, reason: ["Other"], reasonOther: "" },
-      1,
+      2,
     );
     expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(true);
 
     emptyOther.unmount();
     renderFlow(
       { ...DEFAULT_ANSWERS, reason: ["Other"], reasonOther: "Another reason" },
-      1,
+      2,
     );
     expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("renumbers the shortened Question 3 and Question 4 option lists", () => {
-    const questionThree = renderFlow(DEFAULT_ANSWERS, 2);
+    const questionThree = renderFlow(DEFAULT_ANSWERS, 3);
     expect(screen.queryByText("Cardiovascular prevention")).toBeNull();
     expect(screen.getByRole("button", { name: "9 Longevity / preventive" })).toBeTruthy();
 
     questionThree.unmount();
-    renderFlow(DEFAULT_ANSWERS, 3);
+    renderFlow(DEFAULT_ANSWERS, 4);
     expect(screen.queryByText("Waking unrefreshed")).toBeNull();
     expect(
       screen.getByRole("button", { name: "9 Nothing major — mostly prevention" }),
     ).toBeTruthy();
   });
 
-  it("focuses the preferred-name field when the form opens", () => {
-    renderFlow(DEFAULT_ANSWERS, 0);
+  it("focuses the preferred-name field when the basics step opens", () => {
+    renderFlow(DEFAULT_ANSWERS, 1);
     expect(document.activeElement).toBe(screen.getByLabelText("Preferred name"));
   });
 
   it("uses gender-specific alcohol options on Question 6", () => {
-    const view = renderFlow(DEFAULT_ANSWERS, 5);
+    const view = renderFlow(DEFAULT_ANSWERS, 6);
     expect(screen.getByRole("button", { name: "2 14 or less drinks a week" })).toBeTruthy();
     expect(screen.queryByText("7 or less drinks a week")).toBeNull();
 
@@ -116,7 +143,7 @@ describe("ProfileFlow refinements", () => {
         answers={{ ...DEFAULT_ANSWERS, basics: { ...DEFAULT_ANSWERS.basics, sex: "Female" } }}
         preferredNamePlaceholder="Alex"
         uploadErrors={[]}
-        startAt={5}
+        startAt={6}
         onPatch={vi.fn()}
         onToggle={vi.fn()}
         onToggleReport={vi.fn()}
@@ -134,7 +161,7 @@ describe("ProfileFlow refinements", () => {
 
   it("numbers Question 6 from 1–9 and supports those keyboard shortcuts", () => {
     const onPatch = vi.fn();
-    renderFlow(DEFAULT_ANSWERS, 5, vi.fn(), onPatch);
+    renderFlow(DEFAULT_ANSWERS, 6, vi.fn(), onPatch);
 
     expect(screen.getByRole("button", { name: "1 Rarely / never" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "4 Never" })).toBeTruthy();
@@ -151,7 +178,7 @@ describe("ProfileFlow refinements", () => {
       ...DEFAULT_ANSWERS,
       habits: { ...DEFAULT_ANSWERS.habits, smoking: "Occasional / social user" as const },
     };
-    renderFlow(answers, 5, vi.fn(), onPatch);
+    renderFlow(answers, 6, vi.fn(), onPatch);
 
     expect(screen.getByRole("button", { name: "8 Cigarettes / Cigars" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "9 Vapes / E-cigarettes" })).toBeTruthy();
@@ -162,7 +189,7 @@ describe("ProfileFlow refinements", () => {
   });
 
   it("reveals product types smoothly for anyone who has smoked or vaped", () => {
-    const view = renderFlow(DEFAULT_ANSWERS, 5);
+    const view = renderFlow(DEFAULT_ANSWERS, 6);
     const product = view.getByText("Cigarettes / Cigars", { selector: "button" }) as HTMLButtonElement;
     const reveal = product.closest(".pf-habit-product-reveal");
     expect(reveal?.classList.contains("is-open")).toBe(false);
@@ -176,7 +203,7 @@ describe("ProfileFlow refinements", () => {
         }}
         preferredNamePlaceholder="Alex"
         uploadErrors={[]}
-        startAt={5}
+        startAt={6}
         onPatch={vi.fn()}
         onToggle={vi.fn()}
         onToggleReport={vi.fn()}
@@ -195,12 +222,12 @@ describe("ProfileFlow refinements", () => {
   });
 
   it("uses the allergies-to-medication wording on Question 9", () => {
-    renderFlow(DEFAULT_ANSWERS, 8);
+    renderFlow(DEFAULT_ANSWERS, 9);
     expect(screen.getByText("allergies to medication?")).toBeTruthy();
   });
 
   it("gives the Question 8 Other field relevant placeholder copy", () => {
-    renderFlow({ ...DEFAULT_ANSWERS, supplements: ["Other"] }, 7);
+    renderFlow({ ...DEFAULT_ANSWERS, supplements: ["Other"] }, 8);
     const input = screen.getByLabelText("Other supplements & medications");
     expect(input.getAttribute("placeholder")).toBe(
       "Tell us about any other supplements or medications",
@@ -213,7 +240,7 @@ describe("ProfileFlow refinements", () => {
         ...DEFAULT_ANSWERS,
         supplements: ["Prescription medication", "Other"],
       },
-      7,
+      8,
     );
 
     const prescriptionInput = screen.getByLabelText("Prescription medications and doses");
@@ -224,23 +251,23 @@ describe("ProfileFlow refinements", () => {
     expect((screen.getByLabelText("Other supplements & medications") as HTMLInputElement).disabled).toBe(false);
   });
 
-  it("starts the daily-average sleep scale below four hours", () => {
+  it("labels the daily-average sleep scale below four hours", () => {
     renderFlow(
       {
         ...DEFAULT_ANSWERS,
         lifestyle: { ...DEFAULT_ANSWERS.lifestyle, sleepHours: 3.5 },
       },
-      4,
+      5,
     );
 
-    const slider = screen.getByRole("slider", { name: "Daily average" });
+    const slider = screen.getByRole("slider", { name: "Sleep - daily average" });
     expect(slider.getAttribute("min")).toBe("3.5");
     expect(slider.getAttribute("max")).toBe("10.5");
     expect(screen.getByText("<4 h")).toBeTruthy();
   });
 
   it("uses boundary choices for age, height and weight", () => {
-    renderFlow(DEFAULT_ANSWERS, 0);
+    renderFlow(DEFAULT_ANSWERS, 1);
 
     expect(screen.getByRole("slider", { name: "Age" }).getAttribute("max")).toBe("81");
     expect(screen.getByRole("slider", { name: "Height" }).getAttribute("min")).toBe("139");
@@ -252,7 +279,7 @@ describe("ProfileFlow refinements", () => {
   it("renders Question 10 with useful card subtext but no file-format copy or selected states", () => {
     renderFlow(
       { ...DEFAULT_ANSWERS, reportSelections: ["health_screening"] },
-      9,
+      10,
     );
 
     const healthUpload = screen.getByRole("button", { name: "Upload health screenings" });
@@ -281,7 +308,7 @@ describe("ProfileFlow refinements", () => {
           },
         ],
       },
-      9,
+      10,
       onRemoveReport,
     );
 
@@ -311,7 +338,7 @@ describe("ProfileFlow refinements", () => {
         },
       ],
     };
-    const view = renderFlow(uploaded, 9);
+    const view = renderFlow(uploaded, 10);
     const shell = view.container.querySelector(".pf-upload-files-shell");
 
     view.rerender(
@@ -319,7 +346,7 @@ describe("ProfileFlow refinements", () => {
         answers={{ ...uploaded, uploadedReports: [] }}
         preferredNamePlaceholder="Alex"
         uploadErrors={[]}
-        startAt={9}
+        startAt={10}
         onPatch={vi.fn()}
         onToggle={vi.fn()}
         onToggleReport={vi.fn()}
