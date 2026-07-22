@@ -48,6 +48,22 @@ describe("profile draft persistence", () => {
     expect(result.current.state.pendingSync).toBe(false);
   });
 
+  it("persists completion of the condition-management branch in onboarding metadata", async () => {
+    const { result } = renderHook(() => useProfileAnswers("member-a"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    act(() => result.current.setConditionBranchCompleted(true));
+    await act(async () => expect(await result.current.flush()).toBe(true));
+
+    expect(upsertOnboardingResponses).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        meta: expect.objectContaining({ conditionBranchCompleted: true }),
+      }),
+      "member-a",
+    );
+    expect(result.current.state.conditionBranchCompleted).toBe(true);
+  });
+
   it("retains and retries a failed per-member local draft on remount", async () => {
     upsertOnboardingResponses.mockResolvedValueOnce({ error: "offline" });
     const first = renderHook(() => useProfileAnswers("member-a"));

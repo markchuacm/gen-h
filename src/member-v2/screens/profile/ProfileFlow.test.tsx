@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ProfileFlow from "./ProfileFlow";
-import { DEFAULT_ANSWERS } from "./profileQuestions";
+import { DEFAULT_ANSWERS, MANAGE_EXISTING_CONDITION_REASON } from "./profileQuestions";
 import type { ProfileAnswers } from "./profileQuestions";
 
 afterEach(() => {
@@ -15,6 +15,7 @@ function renderFlow(
   startAt: number,
   onRemoveReport = vi.fn(),
   onPatch = vi.fn(),
+  onReachStep = vi.fn(),
 ) {
   return render(
     <ProfileFlow
@@ -27,7 +28,7 @@ function renderFlow(
       onToggleReport={vi.fn()}
       onAddReports={vi.fn()}
       onRemoveReport={onRemoveReport}
-      onReachStep={vi.fn()}
+      onReachStep={onReachStep}
       onComplete={vi.fn()}
       onClose={vi.fn()}
     />,
@@ -103,9 +104,41 @@ describe("ProfileFlow refinements", () => {
   it("adds health-condition management as option 4 and shifts later options", () => {
     renderFlow(DEFAULT_ANSWERS, 2);
 
-    expect(screen.getByRole("button", { name: "4 I have an existing health condition, and I would like to manage it" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: `4 ${MANAGE_EXISTING_CONDITION_REASON}` })).toBeTruthy();
     expect(screen.getByRole("button", { name: "5 I want to optimise energy, focus, body composition, or longevity" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "6 I want a doctor to review everything together" })).toBeTruthy();
+  });
+
+  it("keeps the same next step regardless of the selected reason", () => {
+    const onReachStep = vi.fn();
+    renderFlow(
+      { ...DEFAULT_ANSWERS, reason: [MANAGE_EXISTING_CONDITION_REASON] },
+      2,
+      undefined,
+      undefined,
+      onReachStep,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("4 of 12")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "What would you most like to improve over the next 12 months?" })).toBeTruthy();
+    expect(onReachStep).toHaveBeenLastCalledWith(3);
+  });
+
+  it("keeps the normal sequence when the management option is not selected", () => {
+    const onReachStep = vi.fn();
+    renderFlow(
+      { ...DEFAULT_ANSWERS, reason: ["I've done tests, but I don't know what to do with the results"] },
+      2,
+      undefined,
+      undefined,
+      onReachStep,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("4 of 12")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "What would you most like to improve over the next 12 months?" })).toBeTruthy();
+    expect(onReachStep).toHaveBeenLastCalledWith(3);
   });
 
   it("requires detail when Other is the only Question 2 answer", () => {
