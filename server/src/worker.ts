@@ -1,6 +1,7 @@
 import { closeDatabase } from "./db/pools.js";
 import { getBoss, stopBoss } from "./jobs/boss.js";
 import type { ConsultEmailJob } from "./services/appointments.js";
+import { sendBloodFormEmail } from "./workers/blood-form-email.js";
 import { sendConsultEmail } from "./workers/consult-email.js";
 import { scanDocument } from "./workers/document-scanner.js";
 import { processLabEvent } from "./workers/lab-processor.js";
@@ -14,6 +15,9 @@ await boss.work<{ documentId: string }>("scan-document", { batchSize: 2, localCo
 });
 await boss.work<ConsultEmailJob>("send-consult-email", { batchSize: 5, localConcurrency: 2 }, async (jobs) => {
   for (const job of jobs) await sendConsultEmail(job.data);
+});
+await boss.work<{ memberId: string }>("send-blood-form-email", { batchSize: 5, localConcurrency: 2 }, async (jobs) => {
+  for (const job of jobs) await sendBloodFormEmail(job.data.memberId);
 });
 
 const shutdown = async () => {

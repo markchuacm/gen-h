@@ -27,6 +27,7 @@ function renderNav(onNav = vi.fn()) {
         onNav={onNav}
         journeyState="RESULTS_READY"
         onJourneyStateChange={vi.fn()}
+        onOpenAccountDetails={vi.fn()}
       />,
     ),
   };

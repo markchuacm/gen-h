@@ -8,15 +8,18 @@ import {
   fetchAdminCaseDetail,
   fetchAdminDoctors,
   fetchAdminLabReports,
+  releaseBloodForm,
   resetInvite,
   scheduleAppointment,
   setFoundingMember,
+  updateBloodDraw,
   setStage,
   STAGE_LABELS,
   STAGE_OPTIONS,
   uploadDocumentForMember,
 } from "../lib/api/admin";
 import type { AdminAppointment, AdminCaseDetail, AdminDoctorRow, AdminLabReport } from "../lib/api/admin";
+import { fetchBloodForm, openBloodFormPdf } from "../lib/bloodForm/api";
 import InviteReveal from "./InviteReveal";
 import { formatConsultDate, formatConsultTime } from "../lib/api/appointments";
 import { createDocumentSignedUrl } from "../lib/api/healthDocuments";
@@ -93,6 +96,8 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const [busy, setBusy] = useState(false);
   const [invite, setInvite] = useState<{ tempPassword: string } | null>(null);
   const [copied, setCopied] = useState<"amount" | "summary" | null>(null);
+  const [bloodForm, setBloodForm] = useState<"idle" | "previewing" | "releasing" | "scheduling">("idle");
+  const [bloodDrawInput, setBloodDrawInput] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [docType, setDocType] = useState(DOC_TYPES[0].value);
 
@@ -116,6 +121,12 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
     void reload();
     fetchAdminDoctors().then(({ data }) => setDoctors(data));
   }, [reload]);
+
+  // Mirror the saved blood-draw appointment into the datetime-local input.
+  const bloodDrawAt = detail?.labOrder?.bloodDrawAt ?? null;
+  useEffect(() => {
+    setBloodDrawInput(bloodDrawAt ? isoToKlInput(bloodDrawAt) : "");
+  }, [bloodDrawAt]);
 
   const resultsStatus: "none" | "draft" | "released" = reports.some((r) => r.status === "released")
     ? "released"
@@ -174,6 +185,34 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
     } catch {
       setError("Couldn't copy to the clipboard. Please copy the quote manually.");
     }
+  };
+
+  const onPreviewForm = async () => {
+    setBloodForm("previewing");
+    setError(null);
+    const { data, error: err } = await fetchBloodForm(memberId);
+    if (err || !data) setError(err ?? "No blood panel to preview yet.");
+    else await openBloodFormPdf(data);
+    setBloodForm("idle");
+  };
+
+  const onReleaseForm = async () => {
+    if (!window.confirm("Confirm payment has been received and release the request form to the member? They'll be emailed a link to their dashboard, and their blood-draw appointment will be published.")) return;
+    setBloodForm("releasing");
+    setError(null);
+    const { error: err } = await releaseBloodForm(memberId, bloodDrawInput ? klInputToIso(bloodDrawInput) : null);
+    if (err) setError(err);
+    else await reload();
+    setBloodForm("idle");
+  };
+
+  const onSaveBloodDraw = async () => {
+    setBloodForm("scheduling");
+    setError(null);
+    const { error: err } = await updateBloodDraw(memberId, bloodDrawInput ? klInputToIso(bloodDrawInput) : null);
+    if (err) setError(err);
+    else await reload();
+    setBloodForm("idle");
   };
 
   const onAssign = async (doctorId: string) => {
@@ -249,6 +288,19 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const hasOnboarding = Object.keys(detail.onboarding).length > 0;
   const answers = hasOnboarding ? toAnswers(detail.onboarding) : null;
   const concerns = answers ? lifestyleConcerns(answers) : new Set<string>();
+
+  // Mandatory Innoquest request-form fields; the member owns these and can only
+  // complete the last three, so an admin can see at a glance what's blocking a
+  // clean form before releasing it.
+  const identityFields: [string, boolean][] = [
+    ["Full name", !!detail.memberName?.trim()],
+    ["IC / passport number", !!detail.icPassportNo?.trim()],
+    ["Date of birth", !!detail.dateOfBirth],
+    ["Address", !!detail.address?.trim()],
+  ];
+  const identityComplete = identityFields.every(([, ok]) => ok);
+  const formReleased = !!detail.labOrder?.formReleasedAt;
+  const canRelease = detail.labOrder?.status === "ordered" && !formReleased;
 
   const vitals: [string, string][] = [];
   if (detail.age != null) vitals.push(["Age", boundaryValue(detail.age, 18, 80)]);
@@ -437,6 +489,93 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
                 {copied === "summary" ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
                 {copied === "summary" ? "Summary copied" : "Copy member summary"}
               </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="adm-card adm-bloodform-card">
+        <div className="adm-card-head">
+          <div>
+            <h2>Blood test request form</h2>
+            <p className="adm-muted">Preview the autofilled Innoquest form, then release it once payment is confirmed.</p>
+          </div>
+          {formReleased && (
+            <span className="adm-quote-status"><Check strokeWidth={2} aria-hidden="true" /> Released</span>
+          )}
+        </div>
+
+        {!detail.labOrder ? (
+          <p className="adm-muted">The doctor hasn't submitted a blood panel yet.</p>
+        ) : (
+          <>
+            <ul className="adm-identity-check">
+              {identityFields.map(([label, ok]) => (
+                <li key={label} className={ok ? "is-ok" : "is-missing"}>
+                  <span aria-hidden="true">{ok ? "✓" : "•"}</span>
+                  {label}
+                  {!ok && <em> — missing</em>}
+                </li>
+              ))}
+            </ul>
+            {!identityComplete && (
+              <p className="adm-hint">
+                The member must complete their details from their portal before the form will be fully filled.
+                You can still preview and release; blank fields stay blank.
+              </p>
+            )}
+
+            <div className="adm-field adm-blooddraw-field">
+              <label htmlFor="adm-blood-draw">Blood-draw appointment (Innoquest, KL time)</label>
+              <input
+                id="adm-blood-draw"
+                type="datetime-local"
+                value={bloodDrawInput}
+                onChange={(event) => setBloodDrawInput(event.target.value)}
+              />
+              <p className="adm-hint">
+                {formReleased
+                  ? "The member sees this appointment on their dashboard. Update it here to reschedule."
+                  : "Set the appointment now — it's published to the member when you release the form."}
+              </p>
+            </div>
+
+            <div className="adm-quote-actions">
+              <button
+                type="button"
+                className="adm-btn-ghost"
+                disabled={bloodForm !== "idle"}
+                onClick={() => void onPreviewForm()}
+              >
+                {bloodForm === "previewing" ? "Preparing…" : "Preview form"}
+              </button>
+              {formReleased ? (
+                <>
+                  <span className="adm-muted">
+                    Released {new Date(detail.labOrder.formReleasedAt!).toLocaleString("en-MY", {
+                      dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Kuala_Lumpur",
+                    })}
+                  </span>
+                  <button
+                    type="button"
+                    className="adm-btn"
+                    disabled={bloodForm !== "idle"}
+                    onClick={() => void onSaveBloodDraw()}
+                  >
+                    {bloodForm === "scheduling" ? "Saving…" : "Save appointment"}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="adm-btn"
+                  disabled={!canRelease || bloodForm !== "idle"}
+                  title={canRelease ? undefined : "Available once the doctor has submitted the panel"}
+                  onClick={() => void onReleaseForm()}
+                >
+                  {bloodForm === "releasing" ? "Releasing…" : "Payment received — release form"}
+                </button>
+              )}
             </div>
           </>
         )}

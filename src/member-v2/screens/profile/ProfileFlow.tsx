@@ -35,6 +35,7 @@ import type {
   UploadedReport,
   UploadedReportKind,
 } from "./profileQuestions";
+import { dobFromIc, firstNameFromFull, PhoneField } from "./identityFields";
 
 export type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements" | "allergies";
 type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
@@ -545,6 +546,87 @@ function StepInputs({
     );
   }
 
+  if (step.kind === "identity") {
+    const { identity } = answers;
+    const setId = (patch: Partial<ProfileAnswers["identity"]>) =>
+      onPatch({ identity: { ...identity, ...patch } });
+    const onIcChange = (value: string) => {
+      // Auto-fill the date of birth from the IC (first six digits are YYMMDD).
+      const derived = dobFromIc(value);
+      setId(derived ? { icPassportNo: value, dateOfBirth: derived } : { icPassportNo: value });
+    };
+    return (
+      <div className="pf-controls pf-id-controls">
+        <div className="pf-control">
+          <div className="pf-control-head">
+            <label htmlFor="pf-id-name">Full name (as per IC / Passport)</label>
+          </div>
+          <input
+            id="pf-id-name"
+            className="pf-other-input"
+            type="text"
+            value={identity.fullName}
+            placeholder={preferredNamePlaceholder}
+            autoFocus
+            onChange={(event) => {
+              // The preferred name defaults to the first word of the full name,
+              // in normal caps; the basics step can still override it.
+              const fullName = event.target.value;
+              onPatch({
+                identity: { ...identity, fullName },
+                basics: { ...answers.basics, preferredName: firstNameFromFull(fullName) },
+              });
+            }}
+          />
+        </div>
+        <div className="pf-id-duo">
+          <div className="pf-control">
+            <div className="pf-control-head">
+              <label htmlFor="pf-id-ic">IC / passport number</label>
+            </div>
+            <input
+              id="pf-id-ic"
+              className="pf-other-input"
+              type="text"
+              value={identity.icPassportNo}
+              onChange={(event) => onIcChange(event.target.value)}
+            />
+          </div>
+          <div className="pf-control">
+            <div className="pf-control-head">
+              <label htmlFor="pf-id-dob">Date of birth</label>
+            </div>
+            <input
+              id="pf-id-dob"
+              className="pf-other-input pf-date-input"
+              type="date"
+              value={identity.dateOfBirth}
+              onChange={(event) => setId({ dateOfBirth: event.target.value })}
+            />
+          </div>
+        </div>
+        <div className="pf-control">
+          <div className="pf-control-head">
+            <label htmlFor="pf-id-phone">Phone</label>
+          </div>
+          <PhoneField id="pf-id-phone" value={identity.phone} onChange={(phone) => setId({ phone })} />
+        </div>
+        <div className="pf-control">
+          <div className="pf-control-head">
+            <label htmlFor="pf-id-address">Address</label>
+          </div>
+          <textarea
+            id="pf-id-address"
+            className="pf-other-input pf-id-address-input"
+            rows={2}
+            value={identity.address}
+            onChange={(event) => setId({ address: event.target.value })}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (step.kind === "basics") {
     const { basics } = answers;
     return (
@@ -798,6 +880,10 @@ function ProfileFlow({
   const step = STEPS[stepIndex];
 
   const canContinue = useMemo(() => {
+    if (step.kind === "identity") {
+      const { fullName, icPassportNo, dateOfBirth, address } = answers.identity;
+      return Boolean(fullName.trim() && icPassportNo.trim() && dateOfBirth && address.trim());
+    }
     if (step.kind === "reports") {
       return answers.reportSelections.includes("no_tests") || answers.uploadedReports.length > 0;
     }

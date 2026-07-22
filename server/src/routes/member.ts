@@ -5,6 +5,7 @@ import { authPool } from "../auth/auth.js";
 import { withActor } from "../db/pools.js";
 import { isInviteExpired } from "../services/invites.js";
 import { calculateLabOrderQuote, validateLabOrderCodes } from "../services/lab-order-pricing.js";
+import { loadBloodFormPayload } from "../services/blood-form.js";
 
 type LabOrderDbRow = {
   member_id: string;
@@ -21,6 +22,8 @@ type LabOrderDbRow = {
   quote_is_founding_member: boolean | null;
   quote_total_amount_minor: number | null;
   quoted_at: string | null;
+  form_released_at: string | null;
+  blood_draw_at: string | null;
 };
 
 function labOrderResponse(row: LabOrderDbRow) {
@@ -41,6 +44,10 @@ function labOrderResponse(row: LabOrderDbRow) {
     biomarker_codes: row.biomarker_codes,
     status: row.status,
     ordered_at: row.ordered_at,
+    form_released_at: row.form_released_at,
+    // Only surfaced to the member once the form is released; the admin can
+    // schedule it earlier without the member seeing a tentative slot.
+    blood_draw_at: row.form_released_at ? row.blood_draw_at : null,
     quote,
   };
 }
@@ -48,6 +55,22 @@ function labOrderResponse(row: LabOrderDbRow) {
 const onboardingEntriesSchema = z.object({
   memberId: z.string().min(1),
   entries: z.record(z.string().min(1).max(100), z.unknown()),
+});
+
+// Every field optional so the same endpoint serves both the "confirm your
+// details before downloading" prompt and piecemeal edits from the profile
+// screen. date_of_birth is validated as a calendar date (yyyy-mm-dd).
+const updateIdentitySchema = z.object({
+  fullName: z.string().trim().min(1).max(200).optional(),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "must be yyyy-mm-dd")
+    .refine((v) => !Number.isNaN(Date.parse(v)), "must be a valid date")
+    .nullable()
+    .optional(),
+  icPassportNo: z.string().trim().max(40).nullable().optional(),
+  address: z.string().trim().max(500).nullable().optional(),
+  phone: z.string().trim().max(40).nullable().optional(),
 });
 
 const completeOnboardingSchema = z.object({
@@ -143,9 +166,13 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     const memberId = request.query.memberId ?? current.userId;
     const data = await withActor(current, async (client) => {
       const result = await client.query(
-        `select member_id, preferred_name, age, sex, height_cm, weight_kg,
-                onboarding_status, current_stage, profile_confirmed_at
-         from app.member_profiles where member_id = $1`,
+        `select m.member_id, m.preferred_name, m.age, m.sex, m.height_cm, m.weight_kg,
+                m.onboarding_status, m.current_stage, m.profile_confirmed_at,
+                to_char(m.date_of_birth, 'YYYY-MM-DD') as date_of_birth, m.ic_passport_no, m.address, m.phone,
+                p.full_name
+         from app.member_profiles m
+         join app.profiles p on p.id = m.member_id
+         where m.member_id = $1`,
         [memberId],
       );
       return result.rows[0] ?? null;
@@ -154,6 +181,38 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Member not found", code: "NOT_FOUND", requestId: request.id });
     }
     return { data };
+  });
+
+  // Members self-edit the identity details the Innoquest form needs (their name
+  // must match their IC exactly). full_name lives on app.profiles, which members
+  // cannot update directly, so this flows through a security-definer function
+  // scoped to the caller's own rows and the identity columns only.
+  app.patch("/v1/member/profile", { preHandler: requireRoles("member") }, async (request) => {
+    const current = actor(request);
+    const body = updateIdentitySchema.parse(request.body);
+    return withActor(current, async (client) => {
+      await client.query(
+        "select app.update_own_member_identity($1, $2, $3, $4, $5)",
+        [
+          body.fullName ?? null,
+          body.dateOfBirth ?? null,
+          body.icPassportNo ?? null,
+          body.address ?? null,
+          body.phone ?? null,
+        ],
+      );
+      const result = await client.query(
+        `select m.member_id, m.preferred_name, m.age, m.sex, m.height_cm, m.weight_kg,
+                m.onboarding_status, m.current_stage, m.profile_confirmed_at,
+                to_char(m.date_of_birth, 'YYYY-MM-DD') as date_of_birth, m.ic_passport_no, m.address, m.phone,
+                p.full_name
+         from app.member_profiles m
+         join app.profiles p on p.id = m.member_id
+         where m.member_id = $1`,
+        [current.userId],
+      );
+      return { data: result.rows[0] ?? null };
+    });
   });
 
   app.get<{ Querystring: { memberId?: string } }>("/v1/member/appointment", { preHandler: requireActor }, async (request) => {
@@ -223,7 +282,7 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     const memberId = request.query.memberId ?? current.userId;
     return withActor(current, async (client) => {
       const result = await client.query<LabOrderDbRow>(
-        `select member_id, biomarker_codes, status, ordered_at,
+        `select member_id, biomarker_codes, status, ordered_at, form_released_at, blood_draw_at,
                 quote_pricing_version, quote_currency, quote_catalog_count, quote_selected_count,
                 quote_base_amount_minor, quote_personalization_discount_minor,
                 quote_founding_discount_minor, quote_is_founding_member,
@@ -283,7 +342,7 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
         quote.isFoundingMember,
         quote.totalAmountMinor,
       ];
-      const returning = `member_id, biomarker_codes, status, ordered_at,
+      const returning = `member_id, biomarker_codes, status, ordered_at, form_released_at, blood_draw_at,
         quote_pricing_version, quote_currency, quote_catalog_count, quote_selected_count,
         quote_base_amount_minor, quote_personalization_discount_minor,
         quote_founding_discount_minor, quote_is_founding_member,
@@ -311,12 +370,28 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
           [body.memberId, canonicalCodes, current.userId, ...quoteValues],
         );
       }
-      await client.query(
-        `update app.member_profiles set current_stage = 'blood_form_ready'
-         where member_id = $1 and current_stage = 'consult_upcoming'`,
-        [body.memberId],
-      );
+      // The member does NOT advance to the blood-draw stage here. The doctor's
+      // submit only records the ordered panel; an admin later confirms the
+      // appointment and payment and releases the request form, which is what
+      // flips the stage to blood_form_ready (see admin blood-form/release).
       return { data: labOrderResponse(saved.rows[0]!) };
+    });
+  });
+
+  // The filled Innoquest request form's data. Members may only fetch it once the
+  // admin has released the form; admins (building the pre-release preview) may
+  // fetch it at any time by passing memberId.
+  app.get<{ Querystring: { memberId?: string } }>("/v1/member/blood-form", { preHandler: requireActor }, async (request) => {
+    const current = actor(request);
+    const memberId = request.query.memberId ?? current.userId;
+    return withActor(current, async (client) => {
+      const payload = await loadBloodFormPayload(client, memberId);
+      if (!payload) return { data: null };
+      if (current.role !== "admin" && payload.order.formReleasedAt == null) {
+        // Not yet released — hide it from the member so the download stays gated.
+        return { data: null };
+      }
+      return { data: payload };
     });
   });
 

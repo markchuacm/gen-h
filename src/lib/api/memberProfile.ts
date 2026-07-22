@@ -18,7 +18,37 @@ export type MemberProfileRow = {
   onboarding_status: "not_started" | "in_progress" | "completed";
   current_stage: MemberStage;
   profile_confirmed_at: string | null;
+  full_name: string | null;
+  date_of_birth: string | null;
+  ic_passport_no: string | null;
+  address: string | null;
+  phone: string | null;
 };
+
+/** Identity details the member can self-edit (name to match their IC, plus the
+    fields the Innoquest request form requires). Any subset may be sent. */
+export type MemberIdentityInput = {
+  fullName?: string;
+  dateOfBirth?: string | null;
+  icPassportNo?: string | null;
+  address?: string | null;
+  phone?: string | null;
+};
+
+export async function updateMemberIdentity(input: MemberIdentityInput): Promise<{
+  data: MemberProfileRow | null;
+  error: string | null;
+}> {
+  try {
+    const { data } = await apiRequest<{ data: MemberProfileRow | null }>("/v1/member/profile", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
+}
 
 /** The member's assigned doctor's public identity (name/avatar). Readable via
     the is_my_doctor profile policy. */

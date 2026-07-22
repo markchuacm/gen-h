@@ -539,7 +539,8 @@ export function PanelQuote({
 
           <p className="pb-quote-next" id="pb-quote-next">
             <strong>What happens next</strong>
-            A Verae support member will be in touch after this teleconsult to guide you on next steps.
+            The Verae team will confirm the member's blood-draw appointment and payment, then release
+            their autofilled Innoquest request form to their dashboard.
           </p>
         </div>
 

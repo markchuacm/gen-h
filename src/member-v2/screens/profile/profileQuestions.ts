@@ -2,6 +2,7 @@
 // earlier member intake. The UX is new and fully client-side.
 
 export type StepId =
+  | "identity"
   | "reports"
   | "allergies"
   | "basics"
@@ -15,7 +16,7 @@ export type StepId =
 
 export type StepDef = {
   id: StepId;
-  kind: "reports" | "basics" | "chips" | "lifestyle" | "habits" | "supplements";
+  kind: "identity" | "reports" | "basics" | "chips" | "lifestyle" | "habits" | "supplements";
   prompt: string;
   promptEm?: string;
   helper?: string;
@@ -84,9 +85,17 @@ export const PRESCRIPTION_MEDICATION_OPTION = "Prescription medication";
 
 export const STEPS: StepDef[] = [
   {
+    id: "identity",
+    kind: "identity",
+    prompt: "Let's start with your ",
+    promptEm: "details",
+    whyWeAsk: "These are required on your lab request form, which the lab matches against your IC.",
+    summaryLabel: "Personal details",
+  },
+  {
     id: "basics",
     kind: "basics",
-    prompt: "First, the ",
+    prompt: "Next, the ",
     promptEm: "basics",
     whyWeAsk:
       "Your name helps us address you correctly; age, gender and body measurements anchor every reference range your doctor uses.",
@@ -301,6 +310,10 @@ export const EXCLUSIVE_PROFILE_OPTIONS = {
 export type ProfileAnswers = {
   reportSelections: ReportSelection[];
   uploadedReports: UploadedReport[];
+  // Identity fields for the Innoquest request form. The source of truth is
+  // app.member_profiles / app.profiles; these are mirrored into the onboarding
+  // draft so the flow can edit them, and pushed back on save.
+  identity: { fullName: string; icPassportNo: string; dateOfBirth: string; address: string; phone: string };
   basics: { preferredName: string; age: number; sex: "Male" | "Female"; heightCm: number; weightKg: number };
   reason: string[];
   reasonOther: string;
@@ -366,6 +379,7 @@ export function normalizeHabits(
 export const DEFAULT_ANSWERS: ProfileAnswers = {
   reportSelections: [],
   uploadedReports: [],
+  identity: { fullName: "", icPassportNo: "", dateOfBirth: "", address: "", phone: "" },
   basics: { preferredName: "", age: 36, sex: "Male", heightCm: 173, weightKg: 76 },
   reason: [],
   reasonOther: "",

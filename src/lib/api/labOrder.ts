@@ -18,6 +18,10 @@ export type LabOrderRow = {
   biomarker_codes: string[];
   status: "draft" | "ordered" | "collected" | "completed" | "cancelled";
   ordered_at: string | null;
+  form_released_at: string | null;
+  /** The scheduled blood-draw appointment, visible only once the form has been
+      released to the member. */
+  blood_draw_at: string | null;
   quote: LabOrderQuote | null;
 };
 
