@@ -12,6 +12,7 @@ import type { Biomarker } from "../member-v2/screens/results/types";
 
 // "No concern" answers that shouldn't read as risk flags.
 export const CLEAR_ANSWERS = new Set<string>([
+  EXCLUSIVE_PROFILE_OPTIONS.conditions,
   EXCLUSIVE_PROFILE_OPTIONS.family,
   EXCLUSIVE_PROFILE_OPTIONS.supplements,
   EXCLUSIVE_PROFILE_OPTIONS.allergies,
@@ -52,6 +53,8 @@ export function toAnswers(onboarding: Record<string, unknown>): ProfileAnswers {
     goalsOther: typeof onboarding.goalsOther === "string" ? onboarding.goalsOther : "",
     symptoms: asStringList(onboarding.symptoms),
     symptomsOther: typeof onboarding.symptomsOther === "string" ? onboarding.symptomsOther : "",
+    conditions: asStringList(onboarding.conditions),
+    conditionsOther: typeof onboarding.conditionsOther === "string" ? onboarding.conditionsOther : "",
     family: asStringList(onboarding.family),
     familyOther: typeof onboarding.familyOther === "string" ? onboarding.familyOther : "",
     supplements: asStringList(onboarding.supplements),

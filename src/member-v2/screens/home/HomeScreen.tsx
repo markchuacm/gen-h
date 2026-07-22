@@ -20,6 +20,7 @@ import type {
 } from "../../journey/journeyState";
 import { fetchBloodForm, downloadBloodFormPdf, type BloodFormPayload } from "../../../lib/bloodForm/api";
 import { updateMemberIdentity } from "../../../lib/api/memberProfile";
+import DatePicker from "../../components/DatePicker";
 import { dobFromIc, PhoneField } from "../profile/identityFields";
 import "./home.css";
 
@@ -528,7 +529,12 @@ function ConfirmDetailsModal({
           </label>
           <label className={missing.has("dateOfBirth") ? "is-required" : ""}>
             <span>Date of birth</span>
-            <input type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+            <DatePicker
+              id="confirm-date-of-birth"
+              className="pf-other-input"
+              value={dateOfBirth}
+              onChange={setDateOfBirth}
+            />
           </label>
           <label className={missing.has("address") ? "is-required" : ""}>
             <span>Address</span>

@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import DatePicker from "../../components/DatePicker";
 import {
   alcoholOptionForSex,
   alcoholOptionsForSex,
@@ -37,13 +38,14 @@ import type {
 } from "./profileQuestions";
 import { dobFromIc, firstNameFromFull, PhoneField } from "./identityFields";
 
-export type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements" | "allergies";
-type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
+export type ToggleListKey = "reason" | "goals" | "symptoms" | "conditions" | "family" | "supplements" | "allergies";
+type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "conditionsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
 
 const OTHER_ANSWER_KEYS: Record<ToggleListKey, OtherAnswerKey> = {
   reason: "reasonOther",
   goals: "goalsOther",
   symptoms: "symptomsOther",
+  conditions: "conditionsOther",
   family: "familyOther",
   supplements: "supplementsOther",
   allergies: "allergiesOther",
@@ -91,6 +93,7 @@ function ChipGrid({
   numbered,
   numberStart = 1,
   hasOther = false,
+  otherBeforeLast = false,
   disabled = false,
   ariaLabel,
 }: {
@@ -100,10 +103,15 @@ function ChipGrid({
   numbered?: boolean;
   numberStart?: number;
   hasOther?: boolean;
+  otherBeforeLast?: boolean;
   disabled?: boolean;
   ariaLabel?: string;
 }) {
-  const displayOptions = hasOther ? [...options, OTHER_OPTION] : options;
+  const displayOptions = hasOther
+    ? otherBeforeLast && options.length > 0
+      ? [...options.slice(0, -1), OTHER_OPTION, options[options.length - 1]]
+      : [...options, OTHER_OPTION]
+    : options;
 
   return (
     <div className="pf-chips" role="group" aria-label={ariaLabel}>
@@ -596,12 +604,11 @@ function StepInputs({
             <div className="pf-control-head">
               <label htmlFor="pf-id-dob">Date of birth</label>
             </div>
-            <input
+            <DatePicker
               id="pf-id-dob"
-              className="pf-other-input pf-date-input"
-              type="date"
               value={identity.dateOfBirth}
-              onChange={(event) => setId({ dateOfBirth: event.target.value })}
+              className="pf-other-input pf-date-input"
+              onChange={(dateOfBirth) => setId({ dateOfBirth })}
             />
           </div>
         </div>
@@ -803,7 +810,7 @@ function StepInputs({
     );
   }
 
-  // Multi-select chips (reason / goals / symptoms / family / supplements / allergies).
+  // Multi-select chips (reason / goals / symptoms / conditions / family / supplements / allergies).
   const key = step.kind === "supplements" ? "supplements" : (step.id as ToggleListKey);
   const otherAnswerKey = OTHER_ANSWER_KEYS[key];
   const showOtherInput = Boolean(step.allowsOther && answers[key].includes(OTHER_OPTION));
@@ -815,6 +822,7 @@ function StepInputs({
       <ChipGrid
         numbered
         hasOther={step.allowsOther}
+        otherBeforeLast={step.otherBeforeLast}
         options={step.options ?? []}
         selected={answers[key]}
         onToggle={(option) => onToggle(key, option)}

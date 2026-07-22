@@ -126,4 +126,14 @@ describe("profile draft persistence", () => {
 
     expect(result.current.state.answers.allergies).toEqual(["Not that I'm aware of"]);
   });
+
+  it("treats no medical conditions as exclusive", async () => {
+    const { result } = renderHook(() => useProfileAnswers("member-a"));
+    await waitFor(() => expect(result.current.hydrated).toBe(true));
+
+    act(() => result.current.toggleListItem("conditions", "Diabetes"));
+    act(() => result.current.toggleListItem("conditions", "None"));
+
+    expect(result.current.state.answers.conditions).toEqual(["None"]);
+  });
 });

@@ -844,17 +844,8 @@ textarea.pf-id-address-input {
   line-height: 1.4;
 }
 
-/* Native date input: match the page's type and use the brand accent for the
-   picker's highlighted day instead of the browser's default blue. */
 .pf-date-input {
-  color-scheme: light;
-  accent-color: var(--accent);
   min-width: 0;
-}
-
-.pf-date-input::-webkit-calendar-picker-indicator {
-  opacity: 0.5;
-  cursor: pointer;
 }
 
 .pf-choice-controls {
