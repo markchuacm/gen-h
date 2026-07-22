@@ -150,7 +150,10 @@
 
 .pf-stage {
   display: grid;
-  align-content: center;
+  /* `safe` keeps the top reachable when a tall step (e.g. the identity step on
+     short viewports) overflows — plain `center` would clip the heading and make
+     it unscrollable. */
+  align-content: safe center;
   justify-items: start;
   gap: 20px;
   min-height: 0;
@@ -810,6 +813,48 @@
 .pf-other-input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 0;
+}
+
+/* Identity step: condensed so the heading and footer stay visible on short
+   viewports. Tighter row gaps and slightly shorter fields, with IC and DOB
+   sharing one row. */
+.pf-id-controls {
+  gap: 14px;
+}
+
+.pf-id-controls .pf-control {
+  gap: 6px;
+}
+
+.pf-id-controls .pf-other-input,
+.pf-id-controls .pf-phone-number {
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.pf-id-duo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+textarea.pf-id-address-input {
+  resize: vertical;
+  min-height: 44px;
+  line-height: 1.4;
+}
+
+/* Native date input: match the page's type and use the brand accent for the
+   picker's highlighted day instead of the browser's default blue. */
+.pf-date-input {
+  color-scheme: light;
+  accent-color: var(--accent);
+  min-width: 0;
+}
+
+.pf-date-input::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
 }
 
 .pf-choice-controls {

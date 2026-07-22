@@ -40,6 +40,7 @@ export type HeroAction =
   | { kind: "tab"; tab: MemberTab }
   | { kind: "profileFlow" }
   | { kind: "link"; url: string }
+  | { kind: "downloadForm" }
   | { kind: "none" };
 
 export type ConsultCardData = {
@@ -60,9 +61,25 @@ export type BloodDrawCardData = {
   labBranch: string;
   labInitials: string;
   labAddress: string;
-  labHours: string;
+  /** Scheduled draw, filled from the released lab order; null until confirmed. */
+  appointment: string | null;
+  mapsUrl: string;
+  wazeUrl: string;
   primaryCta: string;
 };
+
+// Innoquest HQ — the fixed blood-draw location shown to every member. The full
+// form is used for map links; the card shows a shorter form (Petaling Jaya → PJ)
+// so the address stays on one line.
+export const INNOQUEST_HQ_ADDRESS =
+  "2nd Floor, Wisma Tecna, 18A, Jalan 51a/223, Seksyen 51a, 46100 Petaling Jaya, Selangor";
+export const INNOQUEST_HQ_ADDRESS_SHORT =
+  "2nd Floor, Wisma Tecna, 18A, Jalan 51a/223, Seksyen 51a, 46100 PJ";
+const INNOQUEST_HQ_QUERY = "Innoquest Pathology, Wisma Tecna, Jalan 51a/223, Petaling Jaya, Selangor";
+export const INNOQUEST_HQ_MAPS_URL =
+  `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(INNOQUEST_HQ_QUERY)}`;
+export const INNOQUEST_HQ_WAZE_URL =
+  `https://www.waze.com/ul?q=${encodeURIComponent(INNOQUEST_HQ_QUERY)}&navigate=yes`;
 
 export type ResultsTimelineCardData = {
   type: "resultsTimeline";
@@ -193,7 +210,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       titleEm: "is ready",
       body: "Bring this form to your assigned lab.",
       primaryCta: "Download form",
-      primaryAction: { kind: "none" },
+      primaryAction: { kind: "downloadForm" },
       secondaryCta: "View instructions",
       image: heroBloodFormImage,
     },
@@ -211,10 +228,12 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     contextCard: {
       type: "bloodDraw",
       labName: "Innoquest",
-      labBranch: "TTDI",
+      labBranch: "HQ · Petaling Jaya",
       labInitials: "IQ",
-      labAddress: "24G, Jalan Wan Kadir 3, Taman Tun Dr Ismail, 60000 Kuala Lumpur",
-      labHours: "Mon–Sat, 7:30 AM – 5:00 PM",
+      labAddress: INNOQUEST_HQ_ADDRESS_SHORT,
+      appointment: null,
+      mapsUrl: INNOQUEST_HQ_MAPS_URL,
+      wazeUrl: INNOQUEST_HQ_WAZE_URL,
       primaryCta: "Download form",
     },
   },
@@ -348,16 +367,32 @@ function initialsFrom(name: string): string {
 }
 
 /**
- * The static JOURNEY_STATES config, with the consult-upcoming state filled in
- * from the member's real appointment when one exists. Every other state is
- * returned unchanged. Without an appointment the consult state stays in its
- * "we're scheduling your consult" placeholder form.
+ * The static JOURNEY_STATES config, filled in from the member's real data: the
+ * consult-upcoming state from their teleconsult appointment, and the blood-draw
+ * state from their scheduled Innoquest appointment. Other states are returned
+ * unchanged.
  */
 export function resolveJourneyConfig(
   id: JourneyStateId,
   appointment: AppointmentForJourney | null,
+  bloodDrawAt: string | null = null,
 ): JourneyStateConfig {
   const base = JOURNEY_STATES[id];
+
+  if (id === "BLOOD_FORM_READY") {
+    if (!bloodDrawAt || base.contextCard.type !== "bloodDraw") return base;
+    const date = formatConsultDate(bloodDrawAt);
+    const time = formatConsultTime(bloodDrawAt);
+    return {
+      ...base,
+      hero: {
+        ...base.hero,
+        body: `Your blood draw is booked for ${date} at ${time}. Bring your request form to Innoquest.`,
+      },
+      contextCard: { ...base.contextCard, appointment: `${date} · ${time}` },
+    };
+  }
+
   if (id !== "CONSULT_UPCOMING" || !appointment) return base;
 
   const doctorName = appointment.doctor_name?.trim() || "your Verae doctor";

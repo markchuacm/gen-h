@@ -1,8 +1,10 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import TopNav from "./shell/TopNav";
+import AccountDetailsModal from "./shell/AccountDetailsModal";
 import { fetchMemberProfile } from "../lib/api/memberProfile";
 import { fetchMemberAppointment } from "../lib/api/appointments";
 import type { MemberAppointment } from "../lib/api/appointments";
+import { fetchLabOrder } from "../lib/api/labOrder";
 import { resolveJourneyConfig, STAGE_TO_JOURNEY } from "./journey/journeyState";
 import type { JourneyStateId, MemberTab } from "./journey/journeyState";
 import HomeScreen from "./screens/home/HomeScreen";
@@ -24,7 +26,9 @@ function MemberApp() {
   const [activeTab, setActiveTab] = useState<MemberTab>("home");
   const [journeyState, setJourneyState] = useState<JourneyStateId | null>(null);
   const [appointment, setAppointment] = useState<MemberAppointment | null>(null);
+  const [bloodDrawAt, setBloodDrawAt] = useState<string | null>(null);
   const [profileFlowOpen, setProfileFlowOpen] = useState(false);
+  const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
   const hasAutoOpenedProfile = useRef(false);
   const hasPresentedInitialTab = useRef(false);
 
@@ -34,12 +38,13 @@ function MemberApp() {
   // flow instead of Home, until they complete it.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([fetchMemberProfile(), fetchMemberAppointment()]).then(([profileResult, appointmentResult]) => {
+    Promise.all([fetchMemberProfile(), fetchMemberAppointment(), fetchLabOrder()]).then(([profileResult, appointmentResult, labOrderResult]) => {
       if (cancelled) return;
       const data = profileResult.data;
       const stage = STAGE_TO_JOURNEY[data?.current_stage ?? ""] ?? "PROFILE_INCOMPLETE";
       setJourneyState(stage);
       setAppointment(appointmentResult.data);
+      setBloodDrawAt(labOrderResult.data?.blood_draw_at ?? null);
       if (stage === "PROFILE_INCOMPLETE" && !hasAutoOpenedProfile.current) {
         hasAutoOpenedProfile.current = true;
         setActiveTab("profile");
@@ -78,7 +83,7 @@ function MemberApp() {
 
   // Journey stage still loading from the DB.
   if (!journeyState) return null;
-  const config = resolveJourneyConfig(journeyState, appointment);
+  const config = resolveJourneyConfig(journeyState, appointment, bloodDrawAt);
 
   return (
     <>
@@ -87,6 +92,7 @@ function MemberApp() {
         onNav={setActiveTab}
         journeyState={journeyState}
         onJourneyStateChange={setJourneyState}
+        onOpenAccountDetails={() => setAccountDetailsOpen(true)}
       />
       <div
         className={`p-tab-panel${hasPresentedInitialTab.current ? " is-entering" : ""}`}
@@ -120,6 +126,7 @@ function MemberApp() {
           )}
         </Suspense>
       </div>
+      {accountDetailsOpen && <AccountDetailsModal onClose={() => setAccountDetailsOpen(false)} />}
     </>
   );
 }

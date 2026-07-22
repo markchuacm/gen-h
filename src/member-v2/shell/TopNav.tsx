@@ -17,9 +17,10 @@ type TopNavProps = {
   onNav: (tab: MemberTab) => void;
   journeyState: JourneyStateId;
   onJourneyStateChange: (state: JourneyStateId) => void;
+  onOpenAccountDetails: () => void;
 };
 
-function TopNav({ activeTab, onNav, journeyState, onJourneyStateChange }: TopNavProps) {
+function TopNav({ activeTab, onNav, journeyState, onJourneyStateChange, onOpenAccountDetails }: TopNavProps) {
   const { profile, session, signOut } = useAuth();
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -88,6 +89,18 @@ function TopNav({ activeTab, onNav, journeyState, onJourneyStateChange }: TopNav
           {accountMenuOpen && (
             <div id="member-account-menu" className="p-account-menu" role="menu">
               <span className="p-account-menu-email">{email}</span>
+              <button
+                type="button"
+                className="p-account-menu-item"
+                role="menuitem"
+                onClick={() => {
+                  setAccountMenuOpen(false);
+                  onOpenAccountDetails();
+                }}
+              >
+                <UserRound aria-hidden="true" />
+                <span>Account details</span>
+              </button>
               <button
                 type="button"
                 className="p-account-signout"
