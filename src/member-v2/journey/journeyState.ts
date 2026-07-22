@@ -107,6 +107,8 @@ export type JourneyStateConfig = {
   id: JourneyStateId;
   switcherLabel: string;
   stageLabel: string;
+  /** Some later journey states open directly to the shared journey overview. */
+  journeyOnly?: boolean;
   /** Rendered as `${greetingPrefix}, ${firstName}` on the home screen. */
   greetingPrefix: string;
   hero: {
@@ -153,7 +155,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       pill: "Health profile",
       titleBefore: "Complete your ",
       titleEm: "health profile",
-      body: "Help your doctor understand your goals, lifestyle and history before your consult.",
+      body: "Help your doctor understand you before your consult",
       primaryCta: "Continue profile",
       primaryAction: { kind: "profileFlow" },
       secondaryCta: "View consult details",
@@ -181,7 +183,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       pill: "Upcoming consult",
       titleBefore: "We're scheduling ",
       titleEm: "your consult",
-      body: "We're finding the right time for your consult — we'll email you once it's booked.",
+      body: "We're finding the right time for your consult — we'll email you once it's booked",
       primaryAction: { kind: "none" },
       secondaryCta: "View consult details",
       image: heroConsultImage,
@@ -208,7 +210,7 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
       pill: "Blood draw",
       titleBefore: "Your blood test form ",
       titleEm: "is ready",
-      body: "Bring this form to your assigned lab.",
+      body: "Bring this form to your assigned lab",
       primaryCta: "Download form",
       primaryAction: { kind: "downloadForm" },
       secondaryCta: "View instructions",
@@ -241,12 +243,13 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "RESULTS_PENDING",
     switcherLabel: "Results pending",
     stageLabel: "Step 4 of 5 · Results",
+    journeyOnly: true,
     greetingPrefix: "Welcome back",
     hero: {
       pill: "Results",
       titleBefore: "Your results are ",
       titleEm: "processing",
-      body: "We'll organise them by health area once they're ready.",
+      body: "We'll organise them by health area once they're ready",
       primaryCta: "View past results",
       primaryAction: { kind: "tab", tab: "results" },
       secondaryCta: "View timeline",
@@ -280,12 +283,13 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "RESULTS_READY",
     switcherLabel: "Results ready",
     stageLabel: "Step 4 of 5 · Results",
+    journeyOnly: true,
     greetingPrefix: "Welcome back",
     hero: {
       pill: "Results",
       titleBefore: "Your results ",
       titleEm: "are in",
-      body: "Explore them by health area while your doctor prepares your care plan.",
+      body: "Explore them while your doctor prepares your care plan",
       primaryCta: "View results",
       primaryAction: { kind: "tab", tab: "results" },
       secondaryCta: "View timeline",
@@ -319,15 +323,16 @@ export const JOURNEY_STATES: Record<JourneyStateId, JourneyStateConfig> = {
     id: "CARE_PLAN_READY",
     switcherLabel: "Care plan ready",
     stageLabel: "Step 5 of 5 · Care plan",
+    journeyOnly: true,
     greetingPrefix: "Welcome back",
     hero: {
       pill: "Care plan",
       titleBefore: "Your care plan ",
       titleEm: "is ready",
-      body: "Clear next steps from your doctor, built around your results.",
+      body: "Clear next steps from your doctor, built around your results",
       primaryCta: "View care plan",
       primaryAction: { kind: "tab", tab: "carePlan" },
-      secondaryCta: "View plan summary",
+      secondaryCta: "View timeline",
       image: heroCarePlanImage,
     },
     steps: [
@@ -356,7 +361,7 @@ export const JOURNEY_STATE_IDS = Object.keys(JOURNEY_STATES) as JourneyStateId[]
 /** The fields resolveJourneyConfig needs from a scheduled appointment. */
 export type AppointmentForJourney = {
   doctor_name: string | null;
-  scheduled_at: string;
+  scheduled_at: string | null;
   meeting_url: string | null;
 };
 
@@ -368,9 +373,9 @@ function initialsFrom(name: string): string {
 
 /**
  * The static JOURNEY_STATES config, filled in from the member's real data: the
- * consult-upcoming state from their teleconsult appointment, and the blood-draw
- * state from their scheduled Innoquest appointment. Other states are returned
- * unchanged.
+ * profile/consult-upcoming states from their teleconsult appointment, and the
+ * blood-draw state from their scheduled Innoquest appointment. Other states
+ * are returned unchanged.
  */
 export function resolveJourneyConfig(
   id: JourneyStateId,
@@ -387,18 +392,34 @@ export function resolveJourneyConfig(
       ...base,
       hero: {
         ...base.hero,
-        body: `Your blood draw is booked for ${date} at ${time}. Bring your request form to Innoquest.`,
+        body: `Bring your form to Innoquest HQ on ${date} at ${time}`,
       },
       contextCard: { ...base.contextCard, appointment: `${date} · ${time}` },
     };
   }
 
-  if (id !== "CONSULT_UPCOMING" || !appointment) return base;
+  if ((id !== "PROFILE_INCOMPLETE" && id !== "CONSULT_UPCOMING") || !appointment) return base;
 
   const doctorName = appointment.doctor_name?.trim() || "your Verae doctor";
-  const date = formatConsultDate(appointment.scheduled_at);
-  const time = formatConsultTime(appointment.scheduled_at);
+  const date = appointment.scheduled_at ? formatConsultDate(appointment.scheduled_at) : "To be confirmed";
+  const time = appointment.scheduled_at ? formatConsultTime(appointment.scheduled_at) : "—";
   const meetingUrl = appointment.meeting_url;
+
+  const contextCard: ConsultCardData = {
+    type: "consult",
+    doctorName,
+    doctorRole: "Verae physician",
+    doctorInitials: initialsFrom(doctorName),
+    date,
+    time,
+    location: "Online (Google Meet)",
+    primaryCta: "View consult details",
+    meetingUrl,
+  };
+
+  if (id === "PROFILE_INCOMPLETE") {
+    return { ...base, contextCard };
+  }
 
   return {
     ...base,
@@ -407,23 +428,13 @@ export function resolveJourneyConfig(
       titleBefore: "Get ready for ",
       titleEm: "your consult",
       titleAfter: undefined,
-      body: `Meet ${doctorName} on ${date} at ${time}.`,
+      body: `Meet ${doctorName} on ${date} at ${time}`,
       primaryCta: "Join consult",
       primaryAction: meetingUrl ? { kind: "link", url: meetingUrl } : { kind: "none" },
       primaryDisabled: !meetingUrl,
       primaryHint: meetingUrl ? undefined : "Your join link will appear here soon",
       secondaryCta: "View consult details",
     },
-    contextCard: {
-      type: "consult",
-      doctorName,
-      doctorRole: "Verae physician",
-      doctorInitials: initialsFrom(doctorName),
-      date,
-      time,
-      location: "Online (Google Meet)",
-      primaryCta: "Join consult",
-      meetingUrl,
-    },
+    contextCard: { ...contextCard, primaryCta: "Join consult" },
   };
 }

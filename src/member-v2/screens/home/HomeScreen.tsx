@@ -31,7 +31,7 @@ type HomeScreenProps = {
 
 function JourneyRail({ steps }: { steps: Step[] }) {
   return (
-    <ol className="home-rail" aria-label="Your Verae journey">
+    <ol className="home-rail" aria-label="Your Verae Journey stages">
       {steps.map((step, index) => (
         <li
           key={step.label}
@@ -60,8 +60,7 @@ function HeroCard({
 }) {
   return (
     <section className="home-hero" aria-labelledby="home-hero-title">
-      <div className="home-hero-copy">
-        <span className="p-chip">{hero.pill}</span>
+      <div className={`home-hero-copy ${hero.pill === "Blood draw" ? "home-hero-copy--blood-draw" : ""}`}>
         <h2 id="home-hero-title">
           {hero.titleBefore}
           {hero.titleEm && <em>{hero.titleEm}</em>}
@@ -294,7 +293,8 @@ function DetailDialog({
   onNav: (tab: MemberTab) => void;
   onDownloadForm: () => void;
 }) {
-  const [screen, setScreen] = useState<"details" | "journey">("details");
+  const journeyOnly = config.journeyOnly === true;
+  const [screen, setScreen] = useState<"details" | "journey">(journeyOnly ? "journey" : "details");
 
   return (
     <div className="home-detail-backdrop" role="presentation" onClick={onClose}>
@@ -316,48 +316,58 @@ function DetailDialog({
           </button>
         </header>
         <div className="home-detail-viewport">
-          <div className={`home-detail-track ${screen === "journey" ? "is-journey" : ""}`}>
-            <div
-              className="home-detail-screen home-detail-screen--details"
-              aria-hidden={screen !== "details"}
-              {...(screen !== "details" ? { inert: "" } : {})}
-            >
-              <div className="home-detail-body">
-                <DetailsContent data={config.contextCard} onNav={onNav} onClose={onClose} onDownloadForm={onDownloadForm} />
-                <aside className="home-detail-tip">
-                  <strong>{config.tip.title}</strong>
-                  <p>{config.tip.body}</p>
-                </aside>
-              </div>
-              <button
-                className="home-detail-screen-nav home-detail-screen-next"
-                type="button"
-                aria-label="View your Verae journey"
-                onClick={() => setScreen("journey")}
+          <div
+            className={`home-detail-track ${screen === "journey" && !journeyOnly ? "is-journey" : ""} ${
+              journeyOnly ? "is-journey-only" : ""
+            }`}
+          >
+            {!journeyOnly && (
+              <div
+                className="home-detail-screen home-detail-screen--details"
+                aria-hidden={screen !== "details"}
+                {...(screen !== "details" ? { inert: "" } : {})}
               >
-                <ChevronRight strokeWidth={1.8} aria-hidden="true" />
-              </button>
-            </div>
+                <div className="home-detail-body">
+                  <DetailsContent data={config.contextCard} onNav={onNav} onClose={onClose} onDownloadForm={onDownloadForm} />
+                  <aside className="home-detail-tip">
+                    <strong>{config.tip.title}</strong>
+                    <p>{config.tip.body}</p>
+                  </aside>
+                </div>
+                <button
+                  className="home-detail-screen-nav home-detail-screen-next"
+                  type="button"
+                  aria-label="View your Verae journey"
+                  onClick={() => setScreen("journey")}
+                >
+                  <ChevronRight strokeWidth={1.8} aria-hidden="true" />
+                </button>
+              </div>
+            )}
             <div
-              className="home-detail-screen home-detail-screen--journey"
+              className={`home-detail-screen home-detail-screen--journey ${
+                journeyOnly ? "home-detail-screen--journey-only" : ""
+              }`}
               aria-hidden={screen !== "journey"}
               {...(screen !== "journey" ? { inert: "" } : {})}
             >
-              <button
-                className="home-detail-screen-nav home-detail-screen-back"
-                type="button"
-                aria-label="Back to details"
-                onClick={() => setScreen("details")}
-              >
-                <ChevronLeft strokeWidth={1.8} aria-hidden="true" />
-              </button>
+              {!journeyOnly && (
+                <button
+                  className="home-detail-screen-nav home-detail-screen-back"
+                  type="button"
+                  aria-label="Back to details"
+                  onClick={() => setScreen("details")}
+                >
+                  <ChevronLeft strokeWidth={1.8} aria-hidden="true" />
+                </button>
+              )}
               <div className="home-journey-body">
-                <section className="home-journey-progress" aria-labelledby="home-journey-title">
-                  <h3 id="home-journey-title">Your Verae journey</h3>
+                <h3 className="home-journey-title">Your Verae Journey</h3>
+                <section className="home-journey-progress" aria-label="Journey stages">
                   <JourneyRail steps={config.steps} />
                 </section>
                 <section className="home-journey-explainer" aria-labelledby="home-journey-explainer-title">
-                  <h3 id="home-journey-explainer-title">How the Verae health consult works</h3>
+                  <h3 id="home-journey-explainer-title">How it works</h3>
                   <p>
                     Your journey starts with a health profile and pre-test consultation, where your
                     doctor learns what matters to you and selects the right tests. After your blood

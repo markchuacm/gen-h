@@ -58,18 +58,27 @@ describe("HomeScreen detail journey", () => {
     const config = JOURNEY_STATES[stateId];
     render(<HomeScreen config={config} onNav={vi.fn()} onStartProfile={vi.fn()} />);
 
+    expect(document.querySelector(".p-chip")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: config.hero.secondaryCta! }));
-    fireEvent.click(screen.getByRole("button", { name: "View your Verae journey" }));
+    if (!config.journeyOnly) {
+      fireEvent.click(screen.getByRole("button", { name: "View your Verae journey" }));
+    }
 
-    expect(screen.getByRole("list", { name: "Your Verae journey" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "How the Verae health consult works" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Your Verae Journey" })).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Your Verae Journey stages" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "How it works" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Back to details" }));
-    expect(
-      within(screen.getByRole("dialog")).getByRole("heading", {
-        name: /consult|blood draw|sample|care plan/i,
-      }),
-    ).toBeTruthy();
+    if (config.journeyOnly) {
+      expect(screen.queryByRole("heading", { name: "Where your sample is" })).toBeNull();
+      expect(screen.queryByRole("heading", { name: "Your care plan, at a glance" })).toBeNull();
+    } else {
+      fireEvent.click(screen.getByRole("button", { name: "Back to details" }));
+      expect(
+        within(screen.getByRole("dialog")).getByRole("heading", {
+          name: /consult|blood draw|sample|care plan/i,
+        }),
+      ).toBeTruthy();
+    }
   });
 });
 

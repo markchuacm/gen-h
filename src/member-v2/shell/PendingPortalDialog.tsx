@@ -1,11 +1,10 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 type PendingPortalDialogProps = {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   children: React.ReactNode;
   closeLabel: string;
@@ -56,15 +55,7 @@ function PendingPortalDialog({
         aria-labelledby={titleId}
         aria-describedby={copyId}
       >
-        <button
-          className="p-pending-close"
-          type="button"
-          aria-label={closeLabel}
-          onClick={requestClose}
-        >
-          <X strokeWidth={1.8} aria-hidden="true" />
-        </button>
-        <span className="p-eyebrow p-pending-eyebrow">{eyebrow}</span>
+        {eyebrow && <span className="p-eyebrow p-pending-eyebrow">{eyebrow}</span>}
         <h2 id={titleId}>{title}</h2>
         <p id={copyId}>{children}</p>
         <div className="p-pending-actions">

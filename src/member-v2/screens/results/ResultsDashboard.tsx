@@ -1002,7 +1002,6 @@ export default function ResultsDashboard({ memberId }: { memberId?: string } = {
       )}
       {!memberId && !hasResults && pendingDialogOpen && (
         <PendingPortalDialog
-          eyebrow="Your results"
           title="Your results are pending"
           closeLabel="Close pending results message"
           onClose={() => setPendingDialogOpen(false)}

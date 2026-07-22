@@ -4,8 +4,8 @@ export type MemberAppointment = {
   id: string;
   doctor_id: string;
   doctor_name: string | null;
-  scheduled_at: string;
-  duration_minutes: number;
+  scheduled_at: string | null;
+  duration_minutes: number | null;
   meeting_url: string | null;
   status: "scheduled" | "cancelled" | "completed";
 };

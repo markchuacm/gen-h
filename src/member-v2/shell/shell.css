@@ -417,60 +417,38 @@
   position: relative;
   z-index: 1;
   display: grid;
-  justify-items: start;
+  justify-items: center;
   width: min(560px, 100%);
-  padding: 34px;
+  min-height: min(420px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  align-content: center;
+  row-gap: 28px;
+  padding: 44px 48px 40px;
   border-radius: 28px;
   background: #fff;
+  text-align: center;
   box-shadow:
     0 0 0 1px rgba(17, 23, 27, 0.07),
     0 32px 90px rgba(17, 23, 27, 0.22);
   animation: p-pending-dialog-in 360ms var(--ease-spring) both;
 }
 
-.p-pending-close {
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  display: grid;
-  width: 44px;
-  height: 44px;
-  place-items: center;
-  border-radius: 999px;
-  background: rgba(17, 23, 27, 0.045);
-  transition-property: background-color, scale;
-  transition-duration: 150ms;
-  transition-timing-function: var(--member-ease);
-}
-
-.p-pending-close:hover {
-  background: rgba(17, 23, 27, 0.08);
-}
-
-.p-pending-close:active {
-  scale: 0.96;
-}
-
-.p-pending-close svg {
-  width: 19px;
-  height: 19px;
-}
-
 .p-pending-eyebrow {
-  margin-bottom: 12px;
+  margin-bottom: 18px;
 }
 
 .p-pending-dialog h2 {
-  max-width: 12ch;
-  padding-right: 44px;
+  max-width: none;
+  padding-right: 0;
   font-size: clamp(1.8rem, 4vw, 2.45rem);
   line-height: 1.04;
-  text-wrap: balance;
+  white-space: nowrap;
 }
 
 .p-pending-dialog p {
   max-width: 48ch;
-  margin-top: 18px;
+  margin-top: 0;
   color: var(--member-muted);
   font-size: 0.98rem;
   line-height: 1.65;
@@ -480,8 +458,9 @@
 .p-pending-actions {
   display: flex;
   justify-content: flex-end;
-  width: 100%;
-  margin-top: 26px;
+  width: auto;
+  margin-top: 0;
+  padding-top: 0;
 }
 
 .p-pending-layer.is-closing .p-pending-backdrop {
@@ -586,8 +565,15 @@
   }
 
   .p-pending-dialog {
-    padding: 28px 24px 24px;
+    min-height: min(380px, calc(100vh - 24px));
+    max-height: calc(100vh - 24px);
+    row-gap: 24px;
+    padding: 40px 24px 32px;
     border-radius: 24px;
+  }
+
+  .p-pending-dialog h2 {
+    white-space: normal;
   }
 
   .p-page.dashboard-content--results {
@@ -647,7 +633,7 @@
 }
 
 .p-account-modal h2 {
-  margin: 0 40px 4px 0;
+  margin: 0 40px 20px 0;
   font-size: 1.25rem;
   letter-spacing: -0.01em;
 }

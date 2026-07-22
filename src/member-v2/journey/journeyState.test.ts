@@ -26,7 +26,7 @@ describe("BLOOD_FORM_READY blood-draw card", () => {
     expect(card.type).toBe("bloodDraw");
     if (card.type !== "bloodDraw") return;
     expect(card.appointment).toBeTruthy();
-    expect(config.hero.body).toMatch(/blood draw is booked/i);
+    expect(config.hero.body).toBe("Bring your form to Innoquest HQ on 1 August 2026 (Sat) at 10:00 AM");
   });
 
   it("leaves the appointment empty until one is scheduled", () => {
@@ -34,5 +34,36 @@ describe("BLOOD_FORM_READY blood-draw card", () => {
     const card = config.contextCard;
     if (card.type !== "bloodDraw") return;
     expect(card.appointment).toBeNull();
+  });
+});
+
+describe("PROFILE_INCOMPLETE consult card", () => {
+  it("shows the assigned doctor when a consult appointment exists", () => {
+    const config = resolveJourneyConfig("PROFILE_INCOMPLETE", {
+      doctor_name: "Dr. Lim Wen Qi",
+      scheduled_at: "2026-08-01T02:00:00.000Z",
+      meeting_url: null,
+    });
+    const card = config.contextCard;
+    expect(card.type).toBe("consult");
+    if (card.type !== "consult") return;
+    expect(card.doctorName).toBe("Dr. Lim Wen Qi");
+    expect(card.doctorInitials).toBe("LW");
+    expect(card.date).toBe("1 August 2026 (Sat)");
+    expect(card.time).toBe("10:00 AM");
+  });
+
+  it("shows the assigned doctor before the consult is scheduled", () => {
+    const config = resolveJourneyConfig("PROFILE_INCOMPLETE", {
+      doctor_name: "Dr. Lim Wen Qi",
+      scheduled_at: null,
+      meeting_url: null,
+    });
+    const card = config.contextCard;
+    expect(card.type).toBe("consult");
+    if (card.type !== "consult") return;
+    expect(card.doctorName).toBe("Dr. Lim Wen Qi");
+    expect(card.date).toBe("To be confirmed");
+    expect(card.time).toBe("—");
   });
 });

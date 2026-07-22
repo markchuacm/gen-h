@@ -23,7 +23,7 @@
   content: "";
   position: absolute;
   z-index: 0;
-  top: 13px;
+  top: 15px;
   left: 8%;
   right: 8%;
   height: 1px;
@@ -34,7 +34,7 @@
   position: relative;
   display: grid;
   justify-items: center;
-  row-gap: 3px;
+  row-gap: 5px;
   text-align: center;
 }
 
@@ -43,19 +43,19 @@
   z-index: 1;
   display: grid;
   place-items: center;
-  width: 22px;
-  height: 22px;
+  width: 26px;
+  height: 26px;
   border-radius: 999px;
   background: #fff;
   box-shadow: var(--shadow-border);
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: 0.72rem;
   font-weight: 560;
 }
 
 .home-rail-marker svg {
-  width: 11px;
-  height: 11px;
+  width: 13px;
+  height: 13px;
 }
 
 .home-rail-step.is-completed .home-rail-marker {
@@ -73,7 +73,7 @@
 }
 
 .home-rail-label {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 480;
   color: var(--muted);
   line-height: 1.2;
@@ -121,6 +121,12 @@
   max-width: 44ch;
   color: var(--muted);
   font-size: 1.02rem;
+  white-space: pre-line;
+}
+
+.home-hero-copy--blood-draw p {
+  max-width: none;
+  white-space: nowrap;
 }
 
 .home-hero-actions {
@@ -229,6 +235,10 @@
   translate: -100% 0;
 }
 
+.home-detail-track.is-journey-only {
+  grid-template-columns: 100%;
+}
+
 .home-detail-screen {
   min-width: 0;
 }
@@ -241,6 +251,10 @@
 .home-detail-screen--journey {
   display: grid;
   grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.home-detail-screen--journey-only {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .home-detail-body {
@@ -293,7 +307,8 @@
   padding: 0;
 }
 
-.home-context h3 {
+.home-context h3,
+.home-journey-title {
   max-width: calc(100% - 56px);
   font-size: 1.32rem;
   line-height: 1.18;
@@ -524,15 +539,17 @@
   padding: 64px 28px 28px 8px;
 }
 
+.home-detail-screen--journey-only .home-journey-body {
+  padding-left: 28px;
+}
+
 .home-journey-progress {
   display: grid;
-  gap: 22px;
-  padding: 22px 24px;
+  padding: 20px 24px;
   border-radius: 20px;
   background: rgba(15, 23, 42, 0.025);
 }
 
-.home-journey-progress h3,
 .home-journey-explainer h3 {
   font-size: 1.12rem;
   line-height: 1.2;
@@ -543,7 +560,7 @@
   gap: 10px;
   padding: 22px 24px;
   border-radius: 20px;
-  background: #f8f6f3;
+  background: transparent;
 }
 
 .home-journey-explainer p {
@@ -588,12 +605,17 @@
     font-size: 0.98rem;
   }
 
+  .home-hero-copy--blood-draw p {
+    max-width: 44ch;
+    white-space: normal;
+  }
+
   .home-rail-status {
     display: none;
   }
 
   .home-rail-label {
-    font-size: 0.76rem;
+    font-size: 0.78rem;
   }
 
   .home-hero-actions {
@@ -645,10 +667,13 @@
     padding: 32px 18px 22px 0;
   }
 
+  .home-detail-screen--journey-only .home-journey-body {
+    padding-left: 18px;
+  }
+
   .home-journey-progress {
-    min-height: 190px;
-    gap: 24px;
-    padding: 24px 14px;
+    min-height: 0;
+    padding: 22px 14px;
   }
 
   .home-journey-explainer {
@@ -709,8 +734,16 @@
     padding: 30px 14px 18px 0;
   }
 
+  .home-detail-screen--journey-only .home-journey-body {
+    padding-left: 14px;
+  }
+
   .home-journey-progress {
     padding-inline: 10px;
+  }
+
+  .home-rail-label {
+    font-size: 0.72rem;
   }
 }
 

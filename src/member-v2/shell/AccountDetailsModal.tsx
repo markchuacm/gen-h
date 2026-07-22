@@ -75,9 +75,6 @@ function AccountDetailsModal({ onClose }: { onClose: () => void }) {
           <X strokeWidth={2} />
         </button>
         <h2 id="account-details-title">Account details</h2>
-        <p className="p-account-modal-sub">
-          Used on your blood test request form. Your name must match your IC exactly.
-        </p>
         {loading ? (
           <p role="status" className="p-account-modal-loading">Loading…</p>
         ) : (
