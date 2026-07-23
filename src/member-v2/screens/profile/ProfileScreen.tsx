@@ -3,6 +3,7 @@ import ProfileFlow from "./ProfileFlow";
 import ProfileCompleteDialog from "./ProfileCompleteDialog";
 import ProfileSummary, { stepIndexOf } from "./ProfileSummary";
 import type { ProfileAnswers, StepId } from "./profileQuestions";
+import { firstNameFromFull } from "./identityFields";
 import { useProfileAnswers } from "./useProfileAnswers";
 import { useAuth } from "../../../auth/AuthProvider";
 import { fetchMemberProfile, updateMemberIdentity } from "../../../lib/api/memberProfile";
@@ -54,6 +55,18 @@ function ProfileScreen({
     if (!hydrated || identitySeeded.current) return;
     identitySeeded.current = true;
     const id = state.answers.identity;
+    // Seed the full name (and the first-name-derived preferred name) from the
+    // name used at sign-up immediately, rather than waiting on the profile
+    // fetch below — a returning member sees both fields filled in right away.
+    if (!id.fullName && signedFullName) {
+      setAnswers({
+        identity: { ...id, fullName: signedFullName },
+        basics: {
+          ...state.answers.basics,
+          preferredName: state.answers.basics.preferredName || firstNameFromFull(signedFullName),
+        },
+      });
+    }
     void fetchMemberProfile().then(({ data }) => {
       if (!data) return;
       // Fill only blanks so an in-progress draft is never overwritten.

@@ -578,7 +578,6 @@ function StepInputs({
             type="text"
             value={identity.fullName}
             placeholder={preferredNamePlaceholder}
-            autoFocus
             onChange={(event) => {
               // The preferred name defaults to the first word of the full name,
               // in normal caps; the basics step can still override it.
@@ -638,7 +637,12 @@ function StepInputs({
   }
 
   if (step.kind === "basics") {
-    const { basics } = answers;
+    const { basics, identity } = answers;
+    // The identity step's full name is only ever a raw placeholder there
+    // (Full name as per IC), so once it's typed or seeded from the member's
+    // account it should still surface here as a first-name suggestion, not
+    // the whole name.
+    const preferredNameDefault = firstNameFromFull(identity.fullName || preferredNamePlaceholder || "");
     return (
       <div className="pf-controls">
         <div className="pf-control">
@@ -650,8 +654,7 @@ function StepInputs({
             className="pf-other-input pf-preferred-name-input"
             type="text"
             value={basics.preferredName}
-            placeholder={preferredNamePlaceholder}
-            autoFocus
+            placeholder={preferredNameDefault || preferredNamePlaceholder}
             onChange={(event) =>
               onPatch({ basics: { ...basics, preferredName: event.target.value } })
             }

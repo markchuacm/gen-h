@@ -13,6 +13,7 @@ import {
   DEFAULT_ANSWERS,
   EXCLUSIVE_PROFILE_OPTIONS,
   normalizeHabits,
+  normalizeReasonSelections,
   OTHER_OPTION,
   PRESCRIPTION_MEDICATION_OPTION,
 } from "./profileQuestions";
@@ -38,8 +39,6 @@ export type ProfileState = {
   /** Index of the next unanswered step; equals STEP_COUNT once finished. */
   lastStep: number;
   completedAt: string | null;
-  /** True after the condition-management branch has been completed once. */
-  conditionBranchCompleted: boolean;
   /** True only while the per-member local draft has not been acknowledged by the API. */
   pendingSync: boolean;
 };
@@ -48,7 +47,6 @@ const INITIAL_STATE: ProfileState = {
   answers: DEFAULT_ANSWERS,
   lastStep: 0,
   completedAt: null,
-  conditionBranchCompleted: false,
   pendingSync: false,
 };
 
@@ -78,6 +76,7 @@ function applyExclusiveSelection(key: ToggleListKey, list: string[], option: str
 function sanitizeExclusiveSelections(answers: ProfileAnswers) {
   return {
     ...answers,
+    reason: normalizeReasonSelections(answers.reason),
     family: answers.family.includes(EXCLUSIVE_PROFILE_OPTIONS.family)
       ? [EXCLUSIVE_PROFILE_OPTIONS.family]
       : answers.family,
@@ -128,7 +127,6 @@ function load(memberId: string): ProfileState {
       ...INITIAL_STATE,
       ...parsed,
       lastStep: parsed.lastStep ?? 0,
-      conditionBranchCompleted: parsed.conditionBranchCompleted ?? false,
       answers,
       pendingSync: parsed.pendingSync ?? false,
     };
@@ -180,7 +178,7 @@ export function useProfileAnswers(memberId: string) {
       }
       setState((current) => {
         const { meta, ...sections } = data as Partial<ProfileAnswers> & {
-          meta?: { lastStep?: number; completedAt?: string | null; conditionBranchCompleted?: boolean };
+          meta?: { lastStep?: number; completedAt?: string | null };
         };
         const answers = sanitizeExclusiveSelections({
           ...current.answers,
@@ -193,7 +191,6 @@ export function useProfileAnswers(memberId: string) {
           answers,
           lastStep: meta?.lastStep ?? current.lastStep,
           completedAt: meta?.completedAt ?? current.completedAt,
-          conditionBranchCompleted: meta?.conditionBranchCompleted ?? current.conditionBranchCompleted,
           pendingSync: false,
         };
         localStorage.setItem(storageKey(memberId), JSON.stringify(next));
@@ -221,7 +218,6 @@ export function useProfileAnswers(memberId: string) {
         meta: {
           lastStep: next.lastStep,
           completedAt: next.completedAt,
-          conditionBranchCompleted: next.conditionBranchCompleted,
         },
       },
       memberId,
@@ -465,11 +461,6 @@ export function useProfileAnswers(memberId: string) {
     [save],
   );
 
-  const setConditionBranchCompleted = useCallback(
-    (completed: boolean) => save((current) => ({ ...current, conditionBranchCompleted: completed })),
-    [save],
-  );
-
   const markCompleted = useCallback(async (preferredNameFallback = "") => {
     const basics = {
       ...stateRef.current.answers.basics,
@@ -510,7 +501,6 @@ export function useProfileAnswers(memberId: string) {
     addUploadedReports,
     removeUploadedReport,
     setLastStep,
-    setConditionBranchCompleted,
     markCompleted,
     reset,
   };

@@ -87,6 +87,11 @@
   outline: none;
 }
 
+.pf-phone-number::placeholder {
+  color: rgba(71, 85, 105, 0.22);
+  opacity: 1;
+}
+
 /* ── Country dropdown ─────────────────────────────────────────────────────── */
 
 .pf-phone-menu {
@@ -135,6 +140,11 @@
 
 .pf-phone-search input:focus {
   outline: none;
+}
+
+.pf-phone-search input::placeholder {
+  color: rgba(71, 85, 105, 0.22);
+  opacity: 1;
 }
 
 .pf-phone-list {

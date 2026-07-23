@@ -1324,15 +1324,17 @@
   font-size: 0.95rem;
 }
 
+/* Every placeholder in the flow — identity fields, preferred name, the "Other"
+   reveal inputs — reads as the same faint hint, never mistaken for a filled
+   value. */
 .pf-other-input::placeholder {
-  color: var(--muted);
+  color: rgba(71, 85, 105, 0.22);
+  opacity: 1;
 }
 
 .pf-preferred-name-input::placeholder,
 .pf-other-detail-input::placeholder {
-  color: rgba(71, 85, 105, 0.42);
   font-size: 0.9rem;
-  opacity: 1;
 }
 
 .pf-other-input:focus-visible {
@@ -1340,23 +1342,8 @@
   outline-offset: 0;
 }
 
-/* Identity step: condensed so the heading and footer stay visible on short
-   viewports. Tighter row gaps and slightly shorter fields, with IC and DOB
-   sharing one row. */
-.pf-id-controls {
-  gap: 14px;
-}
-
-.pf-id-controls .pf-control {
-  gap: 6px;
-}
-
-.pf-id-controls .pf-other-input,
-.pf-id-controls .pf-phone-number {
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-
+/* Identity step: same row rhythm as every other step (.pf-controls), just
+   with IC and DOB sharing one row. */
 .pf-id-duo {
   display: grid;
   grid-template-columns: 1fr 1fr;
