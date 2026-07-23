@@ -309,6 +309,9 @@ button.cp-marker-chip {
 .cp-rows {
   display: grid;
   gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .cp-row {
@@ -631,6 +634,10 @@ button.cp-marker-chip {
 /* ── Co-authored released plan ──────────────────────────────────────────── */
 
 .cp-coauthored {
+  --cp-amber: #c9973d;
+  --cp-amber-soft: rgba(201, 151, 61, 0.12);
+  --cp-red: #cd6353;
+  --cp-red-soft: rgba(205, 99, 83, 0.11);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -643,12 +650,8 @@ button.cp-marker-chip {
   text-wrap: pretty;
 }
 
-.cp-coauthored button:active {
-  scale: 0.96;
-}
-
 .cp-coauthored :is(button, summary):focus-visible {
-  outline: 3px solid rgba(70, 115, 100, 0.34);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -674,23 +677,20 @@ button.cp-marker-chip {
   justify-content: center;
   justify-self: start;
   gap: 8px;
-  min-height: 42px;
-  margin-top: 10px;
-  padding: 0 16px;
-  border: 1px solid rgba(42, 65, 58, 0.18);
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 0 22px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
+  box-shadow: inset 0 0 0 1px var(--line);
   color: var(--ink);
-  font: inherit;
-  font-weight: 700;
+  font-size: 0.95rem;
+  font-weight: 520;
   cursor: pointer;
-  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+  transition: background-color 180ms var(--ease-ui);
 }
 
 .cp-download-plan:hover {
-  border-color: rgba(42, 65, 58, 0.38);
-  background: #fff;
-  transform: translateY(-1px);
+  background: rgba(15, 23, 42, 0.04);
 }
 
 .cp-download-plan svg {
@@ -712,7 +712,7 @@ button.cp-marker-chip {
   align-items: center;
   min-width: 100px;
   min-height: 64px;
-  padding: 9px 14px;
+  padding: 9px 16px;
   border-radius: 18px;
   background: var(--accent-tint);
   color: var(--accent-dark);
@@ -720,9 +720,9 @@ button.cp-marker-chip {
 }
 
 .cp-progress-ring strong {
-  font-family: var(--font-display, inherit);
-  font-size: 1.8rem;
-  font-weight: 580;
+  font-size: 1.7rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
 }
 
 .cp-progress-ring span {
@@ -734,9 +734,9 @@ button.cp-marker-chip {
   margin: -28px 0 30px;
   padding: 10px 14px;
   border-radius: 12px;
-  background: rgba(185, 28, 28, 0.07);
-  color: #991b1b;
-  font-size: 0.82rem;
+  background: var(--danger-tint);
+  color: var(--danger-dark);
+  font-size: 0.88rem;
 }
 
 .cp-coauthored-section {
@@ -764,11 +764,9 @@ button.cp-marker-chip {
   display: grid;
   grid-template-columns: minmax(220px, 0.38fr) minmax(0, 1fr);
   overflow: hidden;
-  border-radius: 32px;
+  border-radius: 24px;
   background: #fff;
-  box-shadow:
-    0 0 0 1px rgba(15, 23, 42, 0.055),
-    0 18px 54px rgba(15, 23, 42, 0.07);
+  box-shadow: var(--shadow-border);
 }
 
 .cp-coauthored-image {
@@ -781,11 +779,9 @@ button.cp-marker-chip {
 .cp-coauthored-image img {
   width: 100%;
   height: 100%;
-  min-height: 560px;
+  min-height: 460px;
   object-fit: cover;
-  filter: saturate(0.72) contrast(0.98);
-  outline: 1px solid rgba(0, 0, 0, 0.1);
-  outline-offset: -1px;
+  filter: saturate(0.62);
 }
 
 .cp-coauthored-image > span {
@@ -794,14 +790,13 @@ button.cp-marker-chip {
   left: 22px;
   display: grid;
   place-items: center;
-  width: 46px;
-  height: 46px;
+  width: 36px;
+  height: 36px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: var(--ink);
-  box-shadow: 0 8px 28px rgba(15, 23, 42, 0.16);
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.78rem;
+  font-weight: 560;
   font-variant-numeric: tabular-nums;
 }
 
@@ -818,11 +813,7 @@ button.cp-marker-chip {
 }
 
 .cp-coauthored-copy h2 {
-  font-family: var(--font-display, inherit);
-  font-size: clamp(1.8rem, 3vw, 2.8rem);
-  font-weight: 520;
-  line-height: 1.05;
-  letter-spacing: -0.035em;
+  font-size: clamp(1.7rem, 2.6vw, 2.2rem);
 }
 
 .cp-coauthored-copy > p {
@@ -838,49 +829,41 @@ button.cp-marker-chip {
 }
 
 .cp-evidence-chip {
-  display: grid;
-  grid-template-columns: auto auto;
+  display: inline-flex;
   align-items: baseline;
-  gap: 2px 9px;
-  min-height: 50px;
-  padding: 9px 12px;
-  border-radius: 14px;
-  background: rgba(217, 119, 6, 0.07);
-  color: #92400e;
-  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.1);
+  gap: 8px;
+  min-height: 34px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--cp-amber-soft);
+  color: var(--cp-amber);
   text-align: left;
+  font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
-  transition:
-    background-color 180ms var(--ease-ui),
-    box-shadow 180ms var(--ease-ui),
-    scale 120ms var(--ease-ui);
+  transition: background-color 180ms var(--ease-ui);
 }
 
 .cp-evidence-chip:hover {
-  background: rgba(217, 119, 6, 0.11);
-  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.18);
+  background: color-mix(in srgb, var(--cp-amber) 18%, transparent);
 }
 
 .cp-evidence-chip.is-needs_attention {
-  background: rgba(185, 28, 28, 0.07);
-  color: #991b1b;
-  box-shadow: inset 0 0 0 1px rgba(185, 28, 28, 0.1);
+  background: var(--cp-red-soft);
+  color: var(--cp-red);
 }
 
-.cp-evidence-chip > span {
-  font-size: 0.75rem;
-  font-weight: 650;
+.cp-evidence-chip.is-needs_attention:hover {
+  background: color-mix(in srgb, var(--cp-red) 18%, transparent);
 }
 
+.cp-evidence-chip > span,
 .cp-evidence-chip strong {
-  font-size: 0.78rem;
+  font-weight: 560;
 }
 
 .cp-evidence-chip em {
-  grid-column: 1 / -1;
-  font-size: 0.64rem;
   font-style: normal;
-  opacity: 0.74;
+  opacity: 0.72;
 }
 
 .cp-prevention-basis {
@@ -888,12 +871,12 @@ button.cp-marker-chip {
   align-items: center;
   justify-self: start;
   gap: 8px;
-  min-height: 42px;
-  padding: 9px 12px;
-  border-radius: 13px;
+  min-height: 34px;
+  padding: 5px 14px;
+  border-radius: 999px;
   background: var(--accent-tint);
   color: var(--accent-dark);
-  font-size: 0.78rem;
+  font-size: 0.8rem;
 }
 
 .cp-prevention-basis svg {
@@ -935,36 +918,42 @@ button.cp-marker-chip {
 .cp-coauthored-action .cp-row-copy {
   display: grid;
   justify-items: start;
-  gap: 3px;
+  gap: 5px;
   text-align: left;
+}
+
+/* The focus area already carries the photography; a per-action thumbnail
+   only crowds the row here. */
+.cp-coauthored-action .cp-row-thumb {
+  display: none;
+}
+
+.cp-coauthored-action .cp-row-main {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 16px 20px;
+}
+
+.cp-coauthored-action .cp-row-detail {
+  padding: 0 20px 18px 76px;
 }
 
 .cp-category {
   display: inline-flex;
-  min-height: 21px;
-  padding: 2px 7px;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 9px;
   border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
-  color: #1d4ed8;
-  font-size: 0.58rem !important;
-  font-weight: 740;
-  letter-spacing: 0.05em;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--muted);
+  font-size: 0.66rem !important;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.cp-category.is-nutrition {
-  background: rgba(22, 101, 52, 0.08);
-  color: #166534;
-}
-
 .cp-category.is-supplements {
-  background: rgba(124, 58, 237, 0.08);
-  color: #6d28d9;
-}
-
-.cp-category.is-sleep {
-  background: rgba(67, 56, 202, 0.08);
-  color: #4338ca;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
 }
 
 .cp-coauthored-review {
@@ -974,14 +963,14 @@ button.cp-marker-chip {
 .cp-review-ready {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 42px;
-  padding: 8px 12px;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 16px;
   border-radius: 999px;
   background: var(--accent-tint);
   color: var(--accent-dark);
-  font-size: 0.78rem;
-  font-weight: 650;
+  font-size: 0.82rem;
+  font-weight: 520;
 }
 
 .cp-review-ready svg {
@@ -994,7 +983,7 @@ button.cp-marker-chip {
   }
 
   .cp-coauthored-image img {
-    min-height: 500px;
+    min-height: 420px;
   }
 }
 
@@ -1015,7 +1004,6 @@ button.cp-marker-chip {
 
   .cp-coauthored-area {
     grid-template-columns: 1fr;
-    border-radius: 25px;
   }
 
   .cp-coauthored-image {
@@ -1047,7 +1035,7 @@ button.cp-marker-chip {
   }
 
   .cp-evidence-chip {
-    width: 100%;
+    max-width: 100%;
   }
 }
 

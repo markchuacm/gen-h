@@ -444,7 +444,7 @@ function CarePlanEditor({
         <section className="guided-empty-card">
           <span className="guided-empty-icon"><Sparkles aria-hidden="true" /></span>
           <span className="p-eyebrow">CARE PLAN DRAFT</span>
-          <h1>A clinically guided draft, ready before the call.</h1>
+          <h1 className="p-h1">A clinically guided draft, ready before the call.</h1>
           <p>
             Verae will group the results that need attention, connect them to the
             member's profile, and prepare three focus areas with approved actions.
@@ -665,7 +665,7 @@ function PreparationMode({
       <section className="guided-prep-hero">
         <div>
           <span className="p-eyebrow">PRIVATE PREPARATION</span>
-          <h1>A strong starting point for <em>{firstName}</em>.</h1>
+          <h1 className="p-h1">A strong starting point for <em>{firstName}</em>.</h1>
           <p>
             Review the clinical story and suggestions now. Nothing is selected
             until you and {firstName} decide together on the call.
@@ -1047,7 +1047,7 @@ function ReviewMode({
     <section className="guided-review">
       <header className="guided-review-head">
         <span className="p-eyebrow">AGREED CARE PLAN</span>
-        <h1>{title}</h1>
+        <h1 className="p-h1">{title}</h1>
         <p>
           Review the words you chose together. The member will see this same
           focus-area story when the plan is released.
