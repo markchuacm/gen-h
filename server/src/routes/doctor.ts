@@ -2,6 +2,35 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { actor, requireRoles } from "../auth/guards.js";
 import { withActor } from "../db/pools.js";
+import { getBoss } from "../jobs/boss.js";
+import { validateCarePlanForRelease } from "../services/care-plan-validation.js";
+
+const actionSchema = z.object({
+  id: z.string(),
+  title: z.string().max(250),
+  lifestyleCategory: z.enum(["Nutrition", "Exercise", "Supplements", "Sleep"]),
+  instruction: z.string().max(2000),
+  rationale: z.string().max(4000),
+  moreGuidance: z.string().max(8000),
+  sourceTemplateId: z.string().max(250).optional(),
+  clinicianConfirmed: z.boolean().optional(),
+});
+
+const proposedActionSchema = actionSchema.omit({ clinicianConfirmed: true }).extend({
+  templateId: z.string().max(250),
+  doctorRecommended: z.boolean().default(false),
+  safetyNote: z.string().max(2000).optional(),
+});
+
+const evidenceSchema = z.object({
+  biomarkerCode: z.string().max(100),
+  displayName: z.string().max(250),
+  value: z.union([z.number(), z.string(), z.null()]),
+  unit: z.string().max(100).nullable(),
+  status: z.enum(["optimal", "at_risk", "needs_attention"]),
+  reportId: z.string().uuid(),
+  collectedAt: z.string().nullable(),
+});
 
 const planSectionSchema = z.object({
   id: z.string().optional(),
@@ -11,14 +40,14 @@ const planSectionSchema = z.object({
   markers: z.array(z.string().max(100)).max(100),
   doctor_note: z.string().max(8000),
   image_key: z.string().max(250).nullable(),
-  actions: z.array(z.object({
-    id: z.string(),
-    title: z.string(),
-    lifestyleCategory: z.enum(["Nutrition", "Exercise", "Supplements", "Sleep"]),
-    instruction: z.string(),
-    rationale: z.string(),
-    moreGuidance: z.string(),
-  })).max(100),
+  actions: z.array(actionSchema).max(100),
+  template_key: z.string().max(250).nullable().optional(),
+  basis_type: z.enum(["results", "prevention", "manual", "legacy"]).optional(),
+  section_state: z.enum(["active", "deferred"]).optional(),
+  defer_reason: z.string().max(2000).nullable().optional(),
+  evidence_snapshot: z.array(evidenceSchema).max(100).optional(),
+  profile_basis: z.array(z.string().max(1000)).max(20).optional(),
+  proposed_actions: z.array(proposedActionSchema).max(100).optional(),
 });
 
 export async function doctorRoutes(app: FastifyInstance): Promise<void> {
@@ -136,6 +165,8 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
     return withActor(current, async (client) => {
       const result = await client.query(
         `select p.id, p.title, p.summary, p.status, p.version,
+          p.ruleset_version, p.generation_mode, p.generation_status,
+          p.source_report_ids, p.review_date::text as review_date, p.evidence_stale, p.draft_revision,
           coalesce(jsonb_agg(to_jsonb(s) order by s.sort_order) filter (where s.id is not null), '[]'::jsonb) as care_plan_sections
          from app.care_plans p left join app.care_plan_sections s on s.care_plan_id = p.id
          where p.member_id = $1 group by p.id
@@ -161,8 +192,11 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
         [body.memberId],
       );
       const result = await client.query(
-        `insert into app.care_plans (member_id, doctor_id, title, status, version)
-         values ($1, $2, $3, 'draft', $4) returning id`,
+        `insert into app.care_plans
+          (member_id, doctor_id, title, status, version, generation_mode,
+           generation_status, review_date)
+         values ($1, $2, $3, 'draft', $4, 'manual', 'ready', current_date + 84)
+         returning id`,
         [body.memberId, current.userId, body.title, nextVersion.rows[0]?.version ?? 1],
       );
       return { ...result.rows[0], created: true };
@@ -187,18 +221,25 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
       if (existing.rows[0]) return { kind: "ok" as const, id: existing.rows[0].id, created: false };
       const created = await client.query<{ id: string }>(
         `insert into app.care_plans
-          (member_id, doctor_id, title, summary, status, version, supersedes_plan_id)
+          (member_id, doctor_id, title, summary, status, version, supersedes_plan_id,
+           ruleset_version, generation_mode, generation_status, source_report_ids,
+           review_date, evidence_stale)
          select source.member_id, $2, source.title, source.summary, 'draft',
                 (select coalesce(max(version), 0) + 1 from app.care_plans where member_id = source.member_id),
-                source.id
+                source.id, source.ruleset_version, source.generation_mode, 'ready',
+                source.source_report_ids, source.review_date, false
            from app.care_plans source where source.id = $1 returning id`,
         [request.params.planId, current.userId],
       );
       const versionId = created.rows[0]!.id;
       await client.query(
         `insert into app.care_plan_sections
-          (care_plan_id, sort_order, title, summary, markers, doctor_note, image_key, actions)
-         select $2, sort_order, title, summary, markers, doctor_note, image_key, actions
+          (care_plan_id, sort_order, title, summary, markers, doctor_note,
+           image_key, actions, template_key, basis_type, section_state,
+           defer_reason, evidence_snapshot, profile_basis, proposed_actions)
+         select $2, sort_order, title, summary, markers, doctor_note,
+                image_key, actions, template_key, basis_type, section_state,
+                defer_reason, evidence_snapshot, profile_basis, proposed_actions
            from app.care_plan_sections where care_plan_id = $1 order by sort_order`,
         [request.params.planId, versionId],
       );
@@ -211,32 +252,84 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
 
   app.put<{ Params: { planId: string } }>("/v1/doctor/care-plans/:planId/sections", { preHandler: doctorOnly }, async (request, reply) => {
     const current = actor(request);
-    const body = z.object({ sections: z.array(planSectionSchema).max(50) }).parse(request.body);
+    const body = z.object({
+      sections: z.array(planSectionSchema).max(50),
+      expectedRevision: z.number().int().min(0).optional(),
+      title: z.string().max(250).optional(),
+      reviewDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    }).parse(request.body);
     const saved = await withActor(current, async (client) => {
-      const editable = await client.query("select 1 from app.care_plans where id = $1 and status = 'draft' for update", [request.params.planId]);
-      if (!editable.rows[0]) return false;
+      const editable = await client.query<{ draft_revision: number }>(
+        "select draft_revision from app.care_plans where id = $1 and status = 'draft' for update",
+        [request.params.planId],
+      );
+      if (!editable.rows[0]) return { kind: "immutable" as const };
+      if (body.expectedRevision !== undefined && editable.rows[0].draft_revision !== body.expectedRevision) {
+        return { kind: "conflict" as const, revision: editable.rows[0].draft_revision };
+      }
       await client.query("delete from app.care_plan_sections where care_plan_id = $1", [request.params.planId]);
       for (const section of body.sections) {
         await client.query(
           `insert into app.care_plan_sections
-            (care_plan_id, sort_order, title, summary, markers, doctor_note, image_key, actions)
-           values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
-          [request.params.planId, section.sort_order, section.title, section.summary, section.markers, section.doctor_note, section.image_key, JSON.stringify(section.actions)],
+            (care_plan_id, sort_order, title, summary, markers, doctor_note,
+             image_key, actions, template_key, basis_type, section_state,
+             defer_reason, evidence_snapshot, profile_basis, proposed_actions)
+           values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11,
+                   $12, $13::jsonb, $14::jsonb, $15::jsonb)`,
+          [
+            request.params.planId,
+            section.sort_order,
+            section.title,
+            section.summary,
+            section.markers,
+            section.doctor_note,
+            section.image_key,
+            JSON.stringify(section.actions),
+            section.template_key ?? null,
+            section.basis_type ?? "legacy",
+            section.section_state ?? "active",
+            section.defer_reason ?? null,
+            JSON.stringify(section.evidence_snapshot ?? []),
+            JSON.stringify(section.profile_basis ?? []),
+            JSON.stringify(section.proposed_actions ?? []),
+          ],
         );
       }
-      return true;
+      const updated = await client.query<{ draft_revision: number }>(
+        `update app.care_plans
+         set title = coalesce($2, title), review_date = coalesce($3::date, review_date),
+             doctor_edited_at = now(), draft_revision = draft_revision + 1,
+             updated_at = now()
+         where id = $1 returning draft_revision`,
+        [request.params.planId, body.title ?? null, body.reviewDate ?? null],
+      );
+      return { kind: "saved" as const, revision: updated.rows[0]!.draft_revision };
     });
-    if (!saved) return reply.code(409).send({ error: "Released care plans are immutable", code: "RELEASED_IMMUTABLE", requestId: request.id });
-    return { ok: true };
+    if (saved.kind === "immutable") return reply.code(409).send({ error: "Released care plans are immutable", code: "RELEASED_IMMUTABLE", requestId: request.id });
+    if (saved.kind === "conflict") return reply.code(409).send({
+      error: "This draft changed in another session. Reload before saving again.",
+      code: "DRAFT_CONFLICT",
+      requestId: request.id,
+      revision: saved.revision,
+    });
+    return { ok: true, revision: saved.revision };
   });
 
   app.patch<{ Params: { planId: string } }>("/v1/doctor/care-plans/:planId", { preHandler: doctorOnly }, async (request, reply) => {
     const current = actor(request);
-    const body = z.object({ title: z.string().max(250).optional(), summary: z.string().max(8000).optional() }).parse(request.body);
+    const body = z.object({
+      title: z.string().max(250).optional(),
+      summary: z.string().max(8000).optional(),
+      reviewDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+    }).parse(request.body);
     const updated = await withActor(current, async (client) => {
       const result = await client.query(
-        "update app.care_plans set title = coalesce($2, title), summary = coalesce($3, summary) where id = $1 and status = 'draft' returning id",
-        [request.params.planId, body.title ?? null, body.summary ?? null],
+        `update app.care_plans
+         set title = coalesce($2, title), summary = coalesce($3, summary),
+             review_date = coalesce($4::date, review_date),
+             doctor_edited_at = now(), draft_revision = draft_revision + 1
+         where id = $1 and status = 'draft' returning id`,
+        [request.params.planId, body.title ?? null, body.summary ?? null, body.reviewDate ?? null],
       );
       return result.rowCount === 1;
     });
@@ -244,9 +337,46 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
     return { ok: true };
   });
 
-  app.post<{ Params: { planId: string } }>("/v1/doctor/care-plans/:planId/release", { preHandler: doctorOnly }, async (request) => {
+  app.post<{ Params: { planId: string } }>("/v1/doctor/care-plans/:planId/release", { preHandler: doctorOnly }, async (request, reply) => {
     const current = actor(request);
-    return withActor(current, async (client) => {
+    const outcome = await withActor(current, async (client) => {
+      const plan = await client.query<{ evidence_stale: boolean; status: string }>(
+        "select evidence_stale, status from app.care_plans where id = $1 for update",
+        [request.params.planId],
+      );
+      const sections = await client.query<{
+        id: string;
+        title: string | null;
+        basis_type: "results" | "prevention" | "manual" | "legacy";
+        section_state: "active" | "deferred";
+        defer_reason: string | null;
+        actions: Array<{
+          id: string;
+          title: string;
+          instruction: string;
+          lifestyleCategory: string;
+          clinicianConfirmed?: boolean;
+        }>;
+      }>(
+        `select id, title, basis_type, section_state, defer_reason, actions
+         from app.care_plan_sections where care_plan_id = $1 order by sort_order`,
+        [request.params.planId],
+      );
+      const issues = validateCarePlanForRelease({
+        exists: Boolean(plan.rows[0]),
+        status: plan.rows[0]?.status ?? null,
+        evidenceStale: Boolean(plan.rows[0]?.evidence_stale),
+        sections: sections.rows.map((section) => ({
+          title: section.title,
+          basisType: section.basis_type,
+          state: section.section_state,
+          deferReason: section.defer_reason,
+          actions: section.actions,
+        })),
+      });
+      if (issues.length > 0) {
+        return { released: false, validationIssues: issues };
+      }
       const released = await client.query<{ member_id: string }>(
         `update app.care_plans set status = 'released', released_at = now()
          where id = $1 and status = 'draft' returning member_id`,
@@ -262,7 +392,81 @@ export async function doctorRoutes(app: FastifyInstance): Promise<void> {
         );
         await client.query("update app.member_profiles set current_stage = 'care_plan_ready' where member_id = $1", [released.rows[0].member_id]);
       }
-      return { released: released.rowCount === 1 };
+      return { released: released.rowCount === 1, validationIssues: [] };
     });
+    if (outcome.validationIssues.length > 0) {
+      return reply.code(422).send({
+        error: "Complete the care plan before releasing it.",
+        code: "CARE_PLAN_INCOMPLETE",
+        requestId: request.id,
+        issues: outcome.validationIssues,
+      });
+    }
+    return { released: outcome.released };
   });
+
+  app.post<{ Params: { memberId: string } }>(
+    "/v1/doctor/care-plans/:memberId/reconcile",
+    { preHandler: doctorOnly },
+    async (request, reply) => {
+      const current = actor(request);
+      const reconciled = await withActor(current, async (client) => {
+        const result = await client.query(
+          `update app.care_plans
+           set evidence_stale = false, generation_status = 'ready',
+               doctor_edited_at = now(), draft_revision = draft_revision + 1,
+               updated_at = now()
+           where member_id = $1 and status = 'draft' and evidence_stale = true
+           returning id, draft_revision`,
+          [request.params.memberId],
+        );
+        return result.rows[0] ?? null;
+      });
+      if (!reconciled) {
+        return reply.code(409).send({
+          error: "No stale care-plan draft is available to reconcile.",
+          code: "NOT_STALE",
+          requestId: request.id,
+        });
+      }
+      return { data: reconciled };
+    },
+  );
+
+  app.post<{ Params: { memberId: string } }>(
+    "/v1/doctor/care-plans/:memberId/regenerate",
+    { preHandler: doctorOnly },
+    async (request, reply) => {
+      const current = actor(request);
+      const outcome = await withActor(current, async (client) => {
+        const report = await client.query<{ id: string }>(
+          `select id from app.lab_reports
+           where member_id = $1 and status = 'released'
+           order by released_at desc nulls last limit 1`,
+          [request.params.memberId],
+        );
+        if (!report.rows[0]) return null;
+        await client.query(
+          `update app.care_plans
+           set doctor_edited_at = null, generation_status = 'pending',
+               evidence_stale = false
+           where member_id = $1 and status = 'draft'`,
+          [request.params.memberId],
+        );
+        return report.rows[0].id;
+      });
+      if (!outcome) return reply.code(409).send({
+        error: "Released results are required before generating a care plan.",
+        code: "RESULTS_REQUIRED",
+        requestId: request.id,
+      });
+      const boss = await getBoss();
+      await boss.send(
+        "generate-care-plan",
+        { memberId: request.params.memberId, reportId: outcome },
+        { singletonKey: `${request.params.memberId}:${outcome}:manual:${Date.now()}` },
+      );
+      return reply.code(202).send({ queued: true });
+    },
+  );
 }

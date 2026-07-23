@@ -426,17 +426,82 @@ export async function memberRoutes(app: FastifyInstance): Promise<void> {
     const memberId = request.query.memberId ?? current.userId;
     return withActor(current, async (client) => {
       const plans = await client.query(
-        `select p.id, p.member_id, p.doctor_id, p.title, p.summary, p.status, p.released_at,
+        `select p.id, p.member_id, p.doctor_id, p.title, p.summary, p.status,
+                p.version, p.released_at, p.review_date::text as review_date, p.ruleset_version,
           coalesce(jsonb_agg(jsonb_build_object(
             'id', s.id, 'care_plan_id', s.care_plan_id, 'sort_order', s.sort_order,
             'title', s.title, 'summary', s.summary, 'markers', s.markers,
-            'doctor_note', s.doctor_note, 'image_key', s.image_key, 'actions', s.actions
-          ) order by s.sort_order) filter (where s.id is not null), '[]'::jsonb) as care_plan_sections
+            'doctor_note', s.doctor_note, 'image_key', s.image_key, 'actions', s.actions,
+            'template_key', s.template_key, 'basis_type', s.basis_type,
+            'evidence_snapshot', s.evidence_snapshot, 'profile_basis', s.profile_basis
+          ) order by s.sort_order)
+            filter (where s.id is not null and s.section_state = 'active'),
+            '[]'::jsonb) as care_plan_sections
          from app.care_plans p left join app.care_plan_sections s on s.care_plan_id = p.id
-         where p.member_id = $1 group by p.id order by p.created_at desc limit 1`,
-        [memberId],
+         where p.member_id = $1 and ($2::boolean or p.status = 'released')
+         group by p.id order by p.created_at desc limit 1`,
+        [memberId, current.role !== "member"],
       );
       return { data: plans.rows[0] ?? null };
     });
   });
+
+  app.get<{ Params: { planId: string } }>(
+    "/v1/member/care-plans/:planId/progress",
+    { preHandler: requireRoles("member") },
+    async (request) => {
+      const current = actor(request);
+      return withActor(current, async (client) => {
+        const rows = await client.query<{ action_id: string; completed: boolean }>(
+          `select action_id, completed
+           from app.care_plan_action_progress
+           where care_plan_id = $1 and member_id = $2`,
+          [request.params.planId, current.userId],
+        );
+        return {
+          data: Object.fromEntries(rows.rows.map((row) => [row.action_id, row.completed])),
+        };
+      });
+    },
+  );
+
+  app.put<{ Params: { planId: string; actionId: string } }>(
+    "/v1/member/care-plans/:planId/actions/:actionId/progress",
+    { preHandler: requireRoles("member") },
+    async (request, reply) => {
+      const current = actor(request);
+      const body = z.object({ completed: z.boolean() }).parse(request.body);
+      const saved = await withActor(current, async (client) => {
+        const sections = await client.query<{ actions: Array<{ id: string }> }>(
+          `select s.actions
+           from app.care_plan_sections s
+           join app.care_plans p on p.id = s.care_plan_id
+           where p.id = $1 and p.member_id = $2 and p.status = 'released'
+             and s.section_state = 'active'`,
+          [request.params.planId, current.userId],
+        );
+        const actionExists = sections.rows.some((section) =>
+          section.actions.some((item) => item.id === request.params.actionId),
+        );
+        if (!actionExists) return false;
+        await client.query(
+          `insert into app.care_plan_action_progress
+            (care_plan_id, member_id, action_id, completed)
+           values ($1, $2, $3, $4)
+           on conflict (care_plan_id, action_id) do update
+             set completed = excluded.completed, updated_at = now()`,
+          [request.params.planId, current.userId, request.params.actionId, body.completed],
+        );
+        return true;
+      });
+      if (!saved) {
+        return reply.code(404).send({
+          error: "Care-plan action not found",
+          code: "NOT_FOUND",
+          requestId: request.id,
+        });
+      }
+      return { ok: true };
+    },
+  );
 }

@@ -638,15 +638,31 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
 
   app.post<{ Params: { reportId: string } }>("/v1/admin/reports/:reportId/release", { preHandler: adminOnly }, async (request) => {
     const current = actor(request);
-    return withActor(current, async (client) => {
+    const outcome = await withActor(current, async (client) => {
       const released = await client.query<{ member_id: string }>(
         `update app.lab_reports set status='released', released_at=now()
          where id=$1 and status in ('draft','review_pending') returning member_id`,
         [request.params.reportId],
       );
       if (released.rows[0]) await client.query("update app.member_profiles set current_stage='results_ready' where member_id=$1", [released.rows[0].member_id]);
-      return { released: released.rowCount === 1 };
+      return { released: released.rowCount === 1, memberId: released.rows[0]?.member_id ?? null };
     });
+    if (outcome.memberId) {
+      try {
+        const boss = await getBoss();
+        await boss.send(
+          "generate-care-plan",
+          { memberId: outcome.memberId, reportId: request.params.reportId },
+          { singletonKey: `${outcome.memberId}:${request.params.reportId}` },
+        );
+      } catch (error) {
+        // Results release is the clinical source of truth and must not be
+        // rolled back or reported as failed because draft generation could not
+        // be queued. The doctor endpoint can also regenerate on demand.
+        request.log.error({ err: error, memberId: outcome.memberId }, "care-plan generation enqueue failed");
+      }
+    }
+    return { released: outcome.released };
   });
 
   app.post("/v1/admin/doctors", { preHandler: adminOnly }, async (request, reply) => {
@@ -725,7 +741,7 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
   app.put("/v1/admin/assignments", { preHandler: adminOnly }, async (request) => {
     const current = actor(request);
     const body = z.object({ memberId: z.string(), doctorId: z.string() }).parse(request.body);
-    return withActor(current, async (client) => {
+    const outcome = await withActor(current, async (client) => {
       await client.query("update app.doctor_assignments set status='inactive', ended_at=now() where member_id=$1 and status='active'", [body.memberId]);
       await client.query(
         "insert into app.doctor_assignments (member_id, doctor_id, assigned_by) values ($1,$2,$3)",
@@ -736,8 +752,23 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
         "update app.appointments set doctor_id = $2 where member_id = $1 and status = 'scheduled'",
         [body.memberId, body.doctorId],
       );
-      return { ok: true };
+      const report = await client.query<{ id: string }>(
+        `select id from app.lab_reports
+         where member_id = $1 and status = 'released'
+         order by released_at desc nulls last limit 1`,
+        [body.memberId],
+      );
+      return { ok: true, reportId: report.rows[0]?.id ?? null };
     });
+    if (outcome.reportId) {
+      const boss = await getBoss();
+      await boss.send(
+        "generate-care-plan",
+        { memberId: body.memberId, reportId: outcome.reportId },
+        { singletonKey: `${body.memberId}:${outcome.reportId}:assignment:${Date.now()}` },
+      );
+    }
+    return { ok: true };
   });
 
   app.delete<{ Params: { memberId: string } }>("/v1/admin/assignments/:memberId", { preHandler: adminOnly }, async (request) => {

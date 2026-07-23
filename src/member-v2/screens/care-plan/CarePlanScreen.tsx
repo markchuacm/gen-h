@@ -1,29 +1,29 @@
+import { Check, CheckCircle2, ChevronDown, Download, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronDown, X } from "lucide-react";
-import { lifestyleCategoryOrder } from "./carePlanData";
-import type { CarePlanAction, FocusArea, LifestyleCategory } from "./carePlanData";
-import { CATEGORY_THUMBNAILS, defaultDoctorAvatar, resolveSectionImage } from "./carePlanAssets";
-import { fetchCarePlan } from "../../../lib/api/carePlan";
+import {
+  fetchCarePlan,
+  fetchCarePlanProgress,
+  setCarePlanActionProgress,
+} from "../../../lib/api/carePlan";
 import type { CarePlanRow } from "../../../lib/api/carePlan";
 import { fetchDoctorProfile } from "../../../lib/api/memberProfile";
 import type { MemberTab } from "../../journey/journeyState";
 import PendingPortalDialog from "../../shell/PendingPortalDialog";
+import { CATEGORY_THUMBNAILS, defaultDoctorAvatar, resolveSectionImage } from "./carePlanAssets";
+import type { CarePlanAction, FocusArea } from "./carePlanData";
 import "./care-plan.css";
 
-const DONE_STORAGE_KEY = "genh-v2-protocol-done";
+const LEGACY_DONE_STORAGE_KEY = "genh-v2-protocol-done";
+type DoctorIdentity = { doctorName: string; avatarUrl: string };
 
-function loadDone(): Record<string, boolean> {
+function legacyDone(): Record<string, boolean> {
   try {
-    return JSON.parse(localStorage.getItem(DONE_STORAGE_KEY) ?? "{}");
+    return JSON.parse(localStorage.getItem(LEGACY_DONE_STORAGE_KEY) ?? "{}");
   } catch {
     return {};
   }
 }
 
-type DoctorIdentity = { doctorName: string; avatarUrl: string };
-
-/** Map DB plan rows into the FocusArea shape the screen renders. Images are
-    resolved here (frontend-owned); doctor identity comes from the profile. */
 function toFocusAreas(plan: CarePlanRow, doctor: DoctorIdentity): FocusArea[] {
   return plan.care_plan_sections.map((section) => ({
     id: section.id,
@@ -32,6 +32,8 @@ function toFocusAreas(plan: CarePlanRow, doctor: DoctorIdentity): FocusArea[] {
     detailImageUrl: resolveSectionImage(section.image_key, section.sort_order),
     summary: section.summary ?? "",
     markers: section.markers ?? [],
+    evidence: section.evidence_snapshot ?? [],
+    profileBasis: section.profile_basis ?? [],
     doctorNote: {
       doctorName: doctor.doctorName,
       avatarUrl: doctor.avatarUrl,
@@ -46,17 +48,15 @@ function toFocusAreas(plan: CarePlanRow, doctor: DoctorIdentity): FocusArea[] {
 }
 
 function DoctorNote({ area }: { area: FocusArea }) {
-  const firstSentenceEnd = area.doctorNote.note.indexOf(". ") + 1;
-  const opener = area.doctorNote.note.slice(0, firstSentenceEnd);
-  const rest = area.doctorNote.note.slice(firstSentenceEnd);
+  if (!area.doctorNote.note.trim()) return null;
+  const boundary = area.doctorNote.note.indexOf(". ");
+  const opener = boundary >= 0 ? area.doctorNote.note.slice(0, boundary + 1) : area.doctorNote.note;
+  const rest = boundary >= 0 ? area.doctorNote.note.slice(boundary + 1) : "";
   return (
-    <figure className="cp-doctor-note">
+    <figure className="cp-doctor-note cp-coauthored-note">
       <img src={area.doctorNote.avatarUrl} alt="" />
       <div>
-        <blockquote>
-          <em>{opener}</em>
-          {rest}
-        </blockquote>
+        <blockquote><em>{opener}</em>{rest}</blockquote>
         <cite>{area.doctorNote.doctorName}</cite>
       </div>
     </figure>
@@ -67,52 +67,39 @@ function ActionRow({
   action,
   done,
   open,
-  areaTitle,
   onToggleDone,
   onToggleOpen,
 }: {
   action: CarePlanAction;
   done: boolean;
   open: boolean;
-  /** When set, renders the focus-area chip on the row. */
-  areaTitle?: string;
   onToggleDone: () => void;
   onToggleOpen: () => void;
 }) {
   return (
-    <li className={`cp-row ${done ? "is-done" : ""} ${open ? "is-open" : ""}`}>
+    <li className={`cp-row cp-coauthored-action ${done ? "is-done" : ""} ${open ? "is-open" : ""}`}>
       <div className="cp-row-main">
         <button
           className="cp-check"
           type="button"
           role="checkbox"
           aria-checked={done}
-          aria-label={`Mark "${action.title}" as done`}
+          aria-label={`Mark "${action.title}" as ${done ? "not done" : "done"}`}
           onClick={onToggleDone}
         >
           <Check strokeWidth={3} />
         </button>
         <img className="cp-row-thumb" src={action.thumbnailUrl} alt="" />
-        <button
-          type="button"
-          className="cp-row-copy"
-          onClick={onToggleOpen}
-          aria-expanded={open}
-          style={{ display: "block", textAlign: "left" }}
-        >
+        <button type="button" className="cp-row-copy" onClick={onToggleOpen} aria-expanded={open}>
+          <span className={`cp-category is-${action.lifestyleCategory.toLowerCase()}`}>{action.lifestyleCategory}</span>
           <strong>{action.title}</strong>
           <span>{action.instruction}</span>
         </button>
-        <span className="cp-row-side">
-          {areaTitle && <span className="cp-marker-chip">{areaTitle}</span>}
-          <ChevronDown strokeWidth={1.8} aria-hidden="true" />
-        </span>
+        <span className="cp-row-side"><ChevronDown strokeWidth={1.8} aria-hidden="true" /></span>
       </div>
       {open && (
         <div className="cp-row-detail">
-          <p>
-            <strong>Why this works.</strong> {action.rationale}
-          </p>
+          <p><strong>Why this works.</strong> {action.rationale}</p>
           <p>{action.moreGuidance}</p>
         </div>
       )}
@@ -120,62 +107,41 @@ function ActionRow({
   );
 }
 
-function FocusAreaPanel({
+function Evidence({
   area,
-  done,
-  onToggleDone,
-  onClose,
+  onResults,
 }: {
   area: FocusArea;
-  done: Record<string, boolean>;
-  onToggleDone: (id: string) => void;
-  onClose: () => void;
+  onResults: () => void;
 }) {
-  const [openAction, setOpenAction] = useState<string | null>(null);
-
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <>
-      <div className="cp-panel-layer" onClick={onClose} aria-hidden="true" />
-      <aside className="cp-panel" role="dialog" aria-label={area.title}>
-        <div className="cp-panel-image">
-          <img src={area.detailImageUrl} alt="" />
-          <button className="cp-panel-close" type="button" aria-label="Close" onClick={onClose}>
-            <X strokeWidth={1.8} />
+  if (area.evidence?.length) {
+    return (
+      <div className="cp-coauthored-evidence" aria-label="Results behind this focus area">
+        {area.evidence.map((item) => (
+          <button
+            type="button"
+            key={item.biomarkerCode}
+            className={`cp-evidence-chip is-${item.status}`}
+            onClick={onResults}
+            title={`See ${item.displayName} in your results`}
+          >
+            <span>{item.displayName}</span>
+            <strong>{item.value ?? "—"}{item.unit ? ` ${item.unit}` : ""}</strong>
+            <em>{item.status === "needs_attention" ? "Needs attention" : "At risk"}</em>
           </button>
-        </div>
-        <div className="cp-panel-body">
-          <h3>{area.title}</h3>
-          <p className="cp-panel-summary">{area.summary}</p>
-          <DoctorNote area={area} />
-          <div className="cp-panel-actions">
-            <h4>Your actions</h4>
-            <ul className="cp-rows">
-              {area.actions.map((action) => (
-                <ActionRow
-                  key={action.id}
-                  action={action}
-                  done={!!done[action.id]}
-                  open={openAction === action.id}
-                  onToggleDone={() => onToggleDone(action.id)}
-                  onToggleOpen={() =>
-                    setOpenAction((current) => (current === action.id ? null : action.id))
-                  }
-                />
-              ))}
-            </ul>
-          </div>
-        </div>
-      </aside>
-    </>
-  );
+        ))}
+      </div>
+    );
+  }
+  if (area.profileBasis?.length) {
+    return (
+      <div className="cp-prevention-basis">
+        <Sparkles aria-hidden="true" />
+        <span>Built around what you shared in your health profile and consultation.</span>
+      </div>
+    );
+  }
+  return null;
 }
 
 function CarePlanScreen({
@@ -183,16 +149,16 @@ function CarePlanScreen({
   memberId,
 }: {
   onNav: (tab: MemberTab) => void;
-  /** Set when a doctor is previewing an assigned member's plan. */
   memberId?: string;
 }) {
-  const [done, setDone] = useState<Record<string, boolean>>(loadDone);
-  const [openArea, setOpenArea] = useState<FocusArea | null>(null);
+  const [done, setDone] = useState<Record<string, boolean>>({});
   const [openAction, setOpenAction] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [carePlanReleased, setCarePlanReleased] = useState(false);
   const [pendingDialogOpen, setPendingDialogOpen] = useState(true);
   const [focusAreas, setFocusAreas] = useState<FocusArea[]>([]);
+  const [plan, setPlan] = useState<CarePlanRow | null>(null);
+  const [progressError, setProgressError] = useState<string | null>(null);
   const [doctor, setDoctor] = useState<DoctorIdentity>({
     doctorName: "Your Verae doctor",
     avatarUrl: defaultDoctorAvatar,
@@ -200,25 +166,35 @@ function CarePlanScreen({
 
   useEffect(() => {
     let cancelled = false;
-    fetchCarePlan(memberId).then(async ({ data: plan }) => {
-      if (cancelled || !plan) {
+    fetchCarePlan(memberId).then(async ({ data: loadedPlan }) => {
+      if (cancelled || !loadedPlan) {
         if (!cancelled) setLoading(false);
         return;
       }
-      if (plan.status !== "released") {
+      if (loadedPlan.status !== "released") {
         setCarePlanReleased(false);
         setLoading(false);
         return;
       }
-      const doctorProfile = await fetchDoctorProfile(plan.doctor_id);
+      const [doctorProfile, progress] = await Promise.all([
+        fetchDoctorProfile(loadedPlan.doctor_id),
+        memberId
+          ? Promise.resolve({ data: {}, error: null })
+          : fetchCarePlanProgress(loadedPlan.id),
+      ]);
+      if (cancelled) return;
       const identity: DoctorIdentity = {
         doctorName: doctorProfile.data?.full_name ?? "Your Verae doctor",
         avatarUrl: doctorProfile.data?.avatar_url ?? defaultDoctorAvatar,
       };
-      if (cancelled) return;
+      setPlan(loadedPlan);
       setCarePlanReleased(true);
       setDoctor(identity);
-      setFocusAreas(toFocusAreas(plan, identity));
+      setFocusAreas(toFocusAreas(loadedPlan, identity));
+      setDone(progress.error ? legacyDone() : progress.data);
+      if (progress.error) {
+        setProgressError("Your latest check-offs couldn't be loaded. Changes on this device are shown for now.");
+      }
       setLoading(false);
     });
     return () => {
@@ -227,24 +203,20 @@ function CarePlanScreen({
   }, [memberId]);
 
   const allActions = useMemo(() => focusAreas.flatMap((area) => area.actions), [focusAreas]);
-  const areaTitleById = useMemo(
-    () => new Map(focusAreas.map((area) => [area.id, area.title])),
-    [focusAreas],
-  );
-  const planMarkers = useMemo(
-    () => [...new Set(focusAreas.flatMap((area) => area.markers))],
-    [focusAreas],
-  );
+  const doneCount = allActions.filter((action) => done[action.id]).length;
 
   const toggleDone = (id: string) => {
-    setDone((current) => {
-      const next = { ...current, [id]: !current[id] };
-      localStorage.setItem(DONE_STORAGE_KEY, JSON.stringify(next));
-      return next;
+    if (!plan) return;
+    const nextValue = !done[id];
+    setProgressError(null);
+    setDone((current) => ({ ...current, [id]: nextValue }));
+    if (memberId) return;
+    void setCarePlanActionProgress(plan.id, id, nextValue).then((result) => {
+      if (!result.error) return;
+      setDone((current) => ({ ...current, [id]: !nextValue }));
+      setProgressError("We couldn't save that check-off. Please try again.");
     });
   };
-
-  const doneCount = allActions.filter((action) => done[action.id]).length;
 
   if (loading) return null;
 
@@ -253,14 +225,12 @@ function CarePlanScreen({
       <main className="p-page">
         <header className="cp-head">
           <span className="p-eyebrow">YOUR CARE PLAN</span>
-          <h1 className="p-h1">
-            Your plan is <em>on the way</em>
-          </h1>
+          <h1 className="p-h1">Your plan is <em>on the way</em></h1>
         </header>
         <section className="p-card cp-attribution">
           <div className="cp-attribution-copy">
             <strong>Your doctor is preparing your care plan</strong>
-            <p>Once it's released, your focus areas and weekly actions will appear here.</p>
+            <p>Once it is released, your agreed focus areas and actions will appear here.</p>
           </div>
         </section>
         {!memberId && !carePlanReleased && pendingDialogOpen && (
@@ -269,139 +239,105 @@ function CarePlanScreen({
             closeLabel="Close pending care plan message"
             onClose={() => setPendingDialogOpen(false)}
           >
-            If you've already gone for your blood draw, the lab &amp; your doctor are currently processing the result to
-            develop your personalized Verae care plan.
+            Your lab and doctor are reviewing the results and preparing a personalised care plan for your consultation.
           </PendingPortalDialog>
         )}
       </main>
     );
   }
 
+  const reviewLabel = plan?.review_date
+    ? new Date(`${plan.review_date}T00:00:00`).toLocaleDateString("en-MY", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+    : "about 12 weeks";
+
   return (
-    <main className="p-page">
-      <header className="cp-head">
-        <span className="p-eyebrow">YOUR CARE PLAN</span>
-        <h1 className="p-h1">
-          Your plan for the next <em>12 weeks</em>
-        </h1>
+    <main className="p-page cp-coauthored">
+      <header className="cp-head cp-coauthored-head">
+        <span className="p-eyebrow">YOUR AGREED CARE PLAN</span>
+        <h1 className="p-h1">{plan?.title ?? <>Your plan for the next <em>12 weeks</em></>}</h1>
+        <p>The priorities and actions you chose together with your doctor.</p>
+        <button type="button" className="cp-download-plan" onClick={() => window.print()}>
+          <Download aria-hidden="true" /> Download plan
+        </button>
       </header>
 
-      <section className="p-card cp-attribution">
+      <section className="p-card cp-attribution cp-coauthored-attribution">
         <img src={doctor.avatarUrl} alt={doctor.doctorName} />
         <div className="cp-attribution-copy">
-          <strong>Prepared by {doctor.doctorName}</strong>
-          <p>Based on your results and consult · Next review in 12 weeks</p>
-          <div className="cp-markers" aria-label="Markers this plan works on">
-            {planMarkers.map((marker) => (
-              <button
-                key={marker}
-                className="cp-marker-chip"
-                type="button"
-                onClick={() => onNav("results")}
-                title={`See ${marker} in your results`}
-              >
-                {marker}
-              </button>
-            ))}
-          </div>
+          <strong>Co-authored with {doctor.doctorName}</strong>
+          <p>Based on your results, health profile and consultation · Review {reviewLabel}</p>
+        </div>
+        <div
+          className="cp-progress-ring"
+          role="status"
+          aria-live="polite"
+          aria-label={`${doneCount} of ${allActions.length} actions checked off`}
+        >
+          <strong>{doneCount}</strong>
+          <span>of {allActions.length}<br />done</span>
         </div>
       </section>
 
-      <section className="cp-section" aria-labelledby="cp-areas-title">
-        <div className="cp-section-head">
-          <h2 id="cp-areas-title">
-            Four <em>focus areas</em>
-          </h2>
-          <p>
-            Where your results say attention matters most — and why each one made it into your
-            plan.
-          </p>
+      {progressError && <p className="cp-progress-error" role="alert">{progressError}</p>}
+
+      <section className="cp-section cp-coauthored-section" aria-labelledby="cp-focus-title">
+        <div className="cp-section-head cp-coauthored-section-head">
+          <span className="p-eyebrow">THE CLINICAL STORY</span>
+          <h2 id="cp-focus-title">{focusAreas.length} <em>focus areas</em>, agreed one by one.</h2>
+          <p>Each priority connects what your doctor saw to the actions you decided would work in real life.</p>
         </div>
-        <div className="cp-areas">
-          {focusAreas.map((area) => (
-            <button className="cp-area" type="button" key={area.id} onClick={() => setOpenArea(area)}>
-              <span className="cp-area-image">
+
+        <div className="cp-coauthored-areas">
+          {focusAreas.map((area, index) => (
+            <article className="cp-coauthored-area" key={area.id}>
+              <div className="cp-coauthored-image">
                 <img src={area.overviewImageUrl} alt="" />
-              </span>
-              <span className="cp-area-body">
-                <h3>{area.title}</h3>
-                <p>{area.summary}</p>
-                <span className="cp-area-meta">
-                  {area.markers.map((marker) => (
-                    <span key={marker} className="cp-marker-chip">
-                      {marker}
-                    </span>
-                  ))}
-                  <span className="cp-area-count">
-                    {area.actions.length} action{area.actions.length > 1 ? "s" : ""}
-                  </span>
-                </span>
-              </span>
-            </button>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+              </div>
+              <div className="cp-coauthored-body">
+                <div className="cp-coauthored-copy">
+                  <span className="p-eyebrow">FOCUS AREA {index + 1}</span>
+                  <h2>{area.title}</h2>
+                  <p>{area.summary}</p>
+                </div>
+                <Evidence area={area} onResults={() => onNav("results")} />
+                <DoctorNote area={area} />
+                <div className="cp-coauthored-actions">
+                  <div>
+                    <h3>Your agreed actions</h3>
+                    <span>{area.actions.filter((action) => done[action.id]).length} of {area.actions.length} checked off</span>
+                  </div>
+                  <ul className="cp-rows">
+                    {area.actions.map((action) => (
+                      <ActionRow
+                        key={action.id}
+                        action={action}
+                        done={Boolean(done[action.id])}
+                        open={openAction === action.id}
+                        onToggleDone={() => toggleDone(action.id)}
+                        onToggleOpen={() => setOpenAction((current) => current === action.id ? null : action.id)}
+                      />
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </article>
           ))}
         </div>
       </section>
 
-      <section className="cp-section" aria-labelledby="cp-protocol-title">
-        <div className="cp-section-head">
-          <h2 id="cp-protocol-title">
-            Your weekly <em>protocol</em>
-          </h2>
-          <p>
-            {doneCount > 0
-              ? `${doneCount} of ${allActions.length} actions checked off — small, repeatable moves.`
-              : `${allActions.length} small, repeatable actions across food, movement, supplements and sleep.`}
-          </p>
-        </div>
-        {lifestyleCategoryOrder.map((category: LifestyleCategory) => {
-          const actions = allActions.filter((action) => action.lifestyleCategory === category);
-          if (actions.length === 0) return null;
-          return (
-            <div className="cp-group" key={category}>
-              <h3 className="cp-group-title">{category}</h3>
-              <ul className="cp-rows">
-                {actions.map((action) => (
-                  <ActionRow
-                    key={action.id}
-                    action={action}
-                    done={!!done[action.id]}
-                    open={openAction === action.id}
-                    areaTitle={areaTitleById.get(action.focusAreaId)}
-                    onToggleDone={() => toggleDone(action.id)}
-                    onToggleOpen={() =>
-                      setOpenAction((current) => (current === action.id ? null : action.id))
-                    }
-                  />
-                ))}
-              </ul>
-            </div>
-          );
-        })}
-      </section>
-
-      <section className="cp-review">
+      <section className="cp-review cp-coauthored-review">
         <div>
-          <h2>
-            Next review in <em>12 weeks</em>
-          </h2>
-          <p>
-            Your doctor will retest the markers behind this plan and adjust it with you. Nothing
-            here is forever — it's the next 12 weeks.
-          </p>
+          <span className="p-eyebrow">NEXT CHECK-IN</span>
+          <h2>Review on <em>{reviewLabel}</em></h2>
+          <p>Your doctor will revisit the evidence and adjust the next version with you. This plan is a starting point, not a permanent prescription.</p>
         </div>
-        <button className="p-btn-ghost" type="button">
-          Message your doctor
-        </button>
+        <span className="cp-review-ready"><CheckCircle2 aria-hidden="true" /> Plan version {plan?.version ?? 1}</span>
       </section>
-
-      {openArea && (
-        <FocusAreaPanel
-          area={openArea}
-          done={done}
-          onToggleDone={toggleDone}
-          onClose={() => setOpenArea(null)}
-        />
-      )}
     </main>
   );
 }
