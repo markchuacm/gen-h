@@ -432,4 +432,62 @@ describe("ProfileFlow refinements", () => {
     expect(view.container.querySelector(".pf-upload-files-shell")).toBe(shell);
     expect(screen.getByText("-")).toBeTruthy();
   });
+
+  it("opens on the welcome screen when asked, and starts from it", () => {
+    render(
+      <ProfileFlow
+        answers={DEFAULT_ANSWERS}
+        preferredNamePlaceholder="Alex"
+        uploadErrors={[]}
+        startAt={0}
+        showIntro
+        onPatch={vi.fn()}
+        onToggle={vi.fn()}
+        onToggleReport={vi.fn()}
+        onAddReports={vi.fn()}
+        onRemoveReport={vi.fn()}
+        onReachStep={vi.fn()}
+        onComplete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Before we start")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Continue" })).toBe(null);
+
+    fireEvent.click(screen.getByRole("button", { name: "Start" }));
+
+    expect(screen.queryByText("Before we start")).toBe(null);
+    expect(document.activeElement).toBe(screen.getByLabelText("Full name (as per IC / Passport)"));
+  });
+
+  it("starts the flow when Enter is pressed on the welcome screen", () => {
+    render(
+      <ProfileFlow
+        answers={DEFAULT_ANSWERS}
+        preferredNamePlaceholder="Alex"
+        uploadErrors={[]}
+        startAt={0}
+        showIntro
+        onPatch={vi.fn()}
+        onToggle={vi.fn()}
+        onToggleReport={vi.fn()}
+        onAddReports={vi.fn()}
+        onRemoveReport={vi.fn()}
+        onReachStep={vi.fn()}
+        onComplete={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+
+    fireEvent.keyDown(window, { key: "Enter" });
+
+    expect(screen.queryByText("Before we start")).toBe(null);
+    expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
+  });
+
+  it("skips the welcome screen for a resumed or edited flow", () => {
+    renderFlow(DEFAULT_ANSWERS, 0);
+    expect(screen.queryByText("Before we start")).toBe(null);
+  });
 });
