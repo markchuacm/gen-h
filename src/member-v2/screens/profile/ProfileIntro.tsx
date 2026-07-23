@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 
 // The beat before the flow: what the brief is for, how long it takes, and that
-// the whole thing is keyboard-driven. Each tile's art idles still and plays its
-// loop on hover/focus (CSS only — see .pf-welcome in profile.css).
+// the whole thing is keyboard-driven. Each tile's art idles still and animates
+// on hover/focus (CSS only — see .pf-welcome in profile.css).
 
 function BriefArt() {
   return (

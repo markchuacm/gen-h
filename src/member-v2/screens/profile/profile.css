@@ -242,7 +242,9 @@
   gap: 16px;
 }
 
-/* Tile art — a still frame at rest, a loop on hover/focus. */
+/* Tile art — a quiet still frame at rest. Tiles 1 and 2 play once into a
+   finished state on hover/focus and ease back out again; tile 3 keeps its
+   keycap loop, which already returns to rest on every cycle. */
 
 .pf-w-art {
   position: relative;
@@ -289,6 +291,12 @@
   gap: 6px;
 }
 
+/* Hover/focus is driven by transitions rather than keyframes so leaving the
+   tile eases back to rest instead of snapping the moment the selector stops
+   matching. Each element carries its *leaving* delay in the base rule (short,
+   reverse order, so the clipboard empties from the bottom up) and its arriving
+   delay in the hover rule. */
+
 .pf-w-clip-row i {
   flex: none;
   width: 9px;
@@ -296,6 +304,10 @@
   border-radius: 3px;
   background: #fff;
   box-shadow: inset 0 0 0 1.5px rgba(15, 23, 42, 0.18);
+  transition:
+    background 320ms var(--ease-ui),
+    box-shadow 320ms var(--ease-ui);
+  transition-delay: calc((2 - var(--i)) * 70ms);
 }
 
 .pf-w-clip-row span {
@@ -305,6 +317,8 @@
   background: rgba(15, 23, 42, 0.12);
   transform-origin: left center;
   scale: 0.45 1;
+  transition: scale 380ms var(--ease-spring);
+  transition-delay: calc((2 - var(--i)) * 70ms);
 }
 
 .pf-w-clip-check {
@@ -315,6 +329,9 @@
   height: 36px;
   opacity: 0;
   scale: 0.7;
+  transition:
+    opacity 260ms var(--ease-ui),
+    scale 420ms var(--ease-spring);
 }
 
 .pf-w-clip-check circle {
@@ -329,28 +346,33 @@
   stroke-linejoin: round;
   stroke-dasharray: 20;
   stroke-dashoffset: 20;
+  transition: stroke-dashoffset 300ms var(--ease-ui);
 }
 
 .pf-welcome-tile:hover .pf-w-clip-row i,
 .pf-welcome-tile:focus-visible .pf-w-clip-row i {
-  animation: pf-w-tick 2600ms var(--ease-spring) both;
-  animation-delay: calc(200ms + var(--i) * 300ms);
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  transition-delay: calc(140ms + var(--i) * 240ms);
 }
 
 .pf-welcome-tile:hover .pf-w-clip-row span,
 .pf-welcome-tile:focus-visible .pf-w-clip-row span {
-  animation: pf-w-fill 2600ms var(--ease-spring) both;
-  animation-delay: calc(200ms + var(--i) * 300ms);
+  scale: 1 1;
+  transition-delay: calc(140ms + var(--i) * 240ms);
 }
 
 .pf-welcome-tile:hover .pf-w-clip-check,
 .pf-welcome-tile:focus-visible .pf-w-clip-check {
-  animation: pf-w-stamp 1000ms var(--ease-spring) 1200ms both;
+  opacity: 1;
+  scale: 1;
+  transition-delay: 900ms;
 }
 
 .pf-welcome-tile:hover .pf-w-clip-check path,
 .pf-welcome-tile:focus-visible .pf-w-clip-check path {
-  animation: pf-w-draw 420ms var(--ease-ui) 1420ms both;
+  stroke-dashoffset: 0;
+  transition-delay: 1060ms;
 }
 
 /* `both` holds each box filled once its beat passes, so the clipboard reads as
@@ -395,13 +417,18 @@
   stroke-width: 6;
 }
 
+/* At rest the arc is a soft neutral, no louder than the other two tiles; the
+   terracotta only arrives on hover, alongside the sweep. */
 .pf-w-ring-sweep {
   fill: none;
-  stroke: var(--accent);
+  stroke: rgba(15, 23, 42, 0.2);
   stroke-width: 6;
   stroke-linecap: round;
   stroke-dasharray: 189;
   stroke-dashoffset: 170;
+  transition:
+    stroke 420ms var(--ease-ui),
+    stroke-dashoffset 720ms var(--ease-spring);
 }
 
 .pf-w-ring-label {
@@ -409,17 +436,19 @@
   font-size: 0.9rem;
   font-weight: 640;
   letter-spacing: -0.01em;
-  color: var(--ink);
+  color: var(--muted);
+  transition: color 320ms var(--ease-ui);
 }
 
 .pf-welcome-tile:hover .pf-w-ring-sweep,
 .pf-welcome-tile:focus-visible .pf-w-ring-sweep {
-  animation: pf-w-sweep 2400ms var(--ease-spring) infinite;
+  stroke: var(--accent);
+  stroke-dashoffset: 76;
 }
 
 .pf-welcome-tile:hover .pf-w-ring-label,
 .pf-welcome-tile:focus-visible .pf-w-ring-label {
-  animation: pf-w-label 2400ms var(--ease-ui) infinite;
+  color: var(--ink);
 }
 
 @keyframes pf-w-sweep {
@@ -623,11 +652,14 @@
     animation: pf-w-draw 420ms var(--ease-ui) 1820ms both;
   }
 
+  /* No hover to bring the terracotta in, so the ring plays it as it sweeps. */
   .pf-welcome-tile .pf-w-ring-sweep {
+    stroke: var(--accent);
     animation: pf-w-sweep 2400ms var(--ease-spring) infinite;
   }
 
   .pf-welcome-tile .pf-w-ring-label {
+    color: var(--ink);
     animation: pf-w-label 2400ms var(--ease-ui) infinite;
   }
 
