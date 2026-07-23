@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import ProfileFlow from "./ProfileFlow";
+import ProfileCompleteDialog from "./ProfileCompleteDialog";
 import ProfileSummary, { stepIndexOf } from "./ProfileSummary";
 import type { ProfileAnswers, StepId } from "./profileQuestions";
 import { useProfileAnswers } from "./useProfileAnswers";
@@ -38,6 +39,9 @@ function ProfileScreen({
   } = useProfileAnswers(profile!.id);
   const [startAt, setStartAt] = useState(0);
   const [completionError, setCompletionError] = useState<string | null>(null);
+  // The one-time hand-off dialog, shown over the summary right after the
+  // member finishes the flow (never when they revisit the tab later).
+  const [justCompletedName, setJustCompletedName] = useState<string | null>(null);
   const signedFullName = profile?.consent_name?.trim() || profile?.full_name?.trim() || "";
   const identitySeeded = useRef(false);
 
@@ -119,6 +123,7 @@ function ProfileScreen({
           }
           await persistIdentity(state.answers.identity);
           onFlowOpenChange(false);
+          setJustCompletedName(result.preferredName);
           onCompleted(result.preferredName);
         });
       }}
@@ -151,6 +156,13 @@ function ProfileScreen({
           Log-out
         </button>
       </div>
+
+      {justCompletedName !== null && !flowOpen && (
+        <ProfileCompleteDialog
+          preferredName={justCompletedName}
+          onClose={() => setJustCompletedName(null)}
+        />
+      )}
 
       {flowOpen && flow}
     </main>
