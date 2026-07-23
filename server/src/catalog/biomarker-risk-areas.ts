@@ -57,6 +57,10 @@ const IRON_STUDIES = [
   "transferrin",
 ] as const;
 
+// Primary Nutrients & Bone Health markers that also support the blood,
+// cardiovascular and (for folate) life-stage tiles.
+const B_VITAMINS = ["folate", "vitamin-b12"] as const;
+
 const KIDNEYS = [
   "albumin-microalbumin-urine",
   "creatinine",
@@ -140,6 +144,7 @@ export const BIOMARKER_RISK_AREAS: readonly BiomarkerRiskAreaDefinition[] = [
       ...HEART,
       "high-sensitivity-c-reactive-protein-hs-crp",
       "homocysteine",
+      ...B_VITAMINS,
       "glucose",
       "hemoglobin-a1c-hba1c",
       "insulin",
@@ -178,7 +183,7 @@ export const BIOMARKER_RISK_AREAS: readonly BiomarkerRiskAreaDefinition[] = [
     name: "Blood, Inflammation & Immunity",
     description: "Full blood count, immune cells, inflammation and iron status.",
     displayOrder: 3,
-    biomarkerIds: [...BLOOD, ...IMMUNE, ...IRON_STUDIES],
+    biomarkerIds: [...BLOOD, ...IMMUNE, ...IRON_STUDIES, ...B_VITAMINS],
   },
   {
     id: "kidney-urinary-health",
@@ -221,6 +226,7 @@ export const BIOMARKER_RISK_AREAS: readonly BiomarkerRiskAreaDefinition[] = [
       "magnesium",
       "phosphorus",
       ...IRON_STUDIES,
+      ...B_VITAMINS,
       "homocysteine",
       "albumin",
       "total-protein",
@@ -247,6 +253,7 @@ export const BIOMARKER_RISK_AREAS: readonly BiomarkerRiskAreaDefinition[] = [
       ...REPRODUCTIVE_HORMONES,
       "cortisol",
       "insulin-like-growth-factor-1",
+      "folate",
       "hiv-antigen-antibody-screen",
       "hepatitis-b-surface-antigen",
       "treponema-pallidum-antibody",
