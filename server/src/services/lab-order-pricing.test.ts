@@ -16,10 +16,12 @@ describe("lab-order pricing", () => {
       });
   });
 
-  it("applies RM20 per omission until the RM980 floor", () => {
+  it("applies RM10 per omission until the RM980 floor", () => {
     expect(calculateLabOrderQuote({ catalogCount: 103, selectedCount: 102, isFoundingMember: true }))
-      .toMatchObject({ personalizationDiscountMinor: 2_000, totalAmountMinor: 118_000 });
+      .toMatchObject({ personalizationDiscountMinor: 1_000, totalAmountMinor: 119_000 });
     expect(calculateLabOrderQuote({ catalogCount: 103, selectedCount: 92, isFoundingMember: true }))
+      .toMatchObject({ personalizationDiscountMinor: 11_000, totalAmountMinor: 109_000 });
+    expect(calculateLabOrderQuote({ catalogCount: 103, selectedCount: 81, isFoundingMember: true }))
       .toMatchObject({ personalizationDiscountMinor: 22_000, totalAmountMinor: 98_000 });
   });
 

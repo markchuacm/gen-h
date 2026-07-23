@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import DatePicker from "../../components/DatePicker";
+import ProfileIntro from "./ProfileIntro";
 import {
   alcoholOptionForSex,
   alcoholOptionsForSex,
@@ -56,6 +57,8 @@ type ProfileFlowProps = {
   preferredNamePlaceholder?: string;
   uploadErrors: string[];
   startAt?: number;
+  /** Opens on the welcome screen instead of step 1 (fresh starts only). */
+  showIntro?: boolean;
   onPatch: (patch: Partial<ProfileAnswers>) => void;
   onToggle: (key: ToggleListKey, option: string) => void;
   onToggleReport: (selection: ReportSelection) => void;
@@ -872,6 +875,7 @@ function ProfileFlow({
   preferredNamePlaceholder,
   uploadErrors,
   startAt,
+  showIntro = false,
   onPatch,
   onToggle,
   onToggleReport,
@@ -883,6 +887,7 @@ function ProfileFlow({
   saveError = null,
 }: ProfileFlowProps) {
   const [stepIndex, setStepIndex] = useState(Math.min(startAt ?? 0, STEP_COUNT - 1));
+  const [intro, setIntro] = useState(showIntro);
   const [whyOpen, setWhyOpen] = useState(false);
   const [composing, setComposing] = useState(false);
   const step = STEPS[stepIndex];
@@ -939,6 +944,16 @@ function ProfileFlow({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (composing) return;
+      if (intro) {
+        // The Start button holds focus, so Enter on it already fires onClick —
+        // only the unfocused case needs handling here.
+        if (event.key === "Enter" && (event.target as HTMLElement).tagName !== "BUTTON") {
+          event.preventDefault();
+          setIntro(false);
+        }
+        if (event.key === "Escape") void onClose();
+        return;
+      }
       const target = event.target as HTMLElement;
       const inText = target.tagName === "INPUT" && (target as HTMLInputElement).type === "text";
       const inButton = target.tagName === "BUTTON";
@@ -1021,7 +1036,9 @@ function ProfileFlow({
 
       {saveError && <p className="auth-error" role="alert">Couldn't save your changes ({saveError}). Retry Save &amp; close.</p>}
 
-      {composing ? (
+      {intro ? (
+        <ProfileIntro onStart={() => setIntro(false)} />
+      ) : composing ? (
         <div className="pf-composing">
           <span className="pf-composing-dot" aria-hidden="true" />
           <h2>
@@ -1067,7 +1084,7 @@ function ProfileFlow({
         </div>
       )}
 
-      {!composing && (
+      {!composing && !intro && (
         <div className="pf-flow-bottom">
           {stepIndex > 0 && (
             <button className="p-btn-ghost" type="button" onClick={back}>

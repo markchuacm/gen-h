@@ -103,6 +103,8 @@ function ProfileScreen({
       preferredNamePlaceholder={signedFullName}
       uploadErrors={uploadErrors}
       startAt={completed ? startAt : Math.max(0, state.lastStep)}
+      // Only on a genuinely fresh start — never when resuming or editing.
+      showIntro={!completed && state.lastStep <= 0}
       onPatch={setAnswers}
       onToggle={toggleListItem}
       onToggleReport={toggleReportSelection}

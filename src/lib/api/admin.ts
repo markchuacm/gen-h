@@ -1,4 +1,5 @@
 import { apiError, apiRequest } from "../apiClient";
+import type { DraftSection } from "./doctor";
 import type { LabOrderQuote } from "./labOrder";
 
 async function mutation(path: string, method: string, body?: unknown): Promise<{ error: string | null }> {
@@ -310,6 +311,23 @@ export async function deleteBiomarker(id: string) {
 
 export async function releaseLabReport(reportId: string) {
   return mutation(`/v1/admin/reports/${encodeURIComponent(reportId)}/release`, "POST");
+}
+
+/** Test-only (developer mode): writes a ready-made draft care plan for the
+    member, authored under their assigned doctor. See src/admin/demoSeed.ts. */
+export async function seedDemoCarePlan(
+  memberId: string,
+  plan: { title: string; summary: string; sections: DraftSection[] },
+) {
+  try {
+    const { data } = await apiRequest<{ data: { id: string } }>(
+      `/v1/admin/members/${encodeURIComponent(memberId)}/demo-care-plan`,
+      { method: "POST", body: JSON.stringify(plan) },
+    );
+    return { data, error: null };
+  } catch (error) {
+    return { data: null, error: apiError(error) };
+  }
 }
 
 export async function createReportCorrection(reportId: string) {

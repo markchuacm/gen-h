@@ -113,7 +113,7 @@ beforeEach(() => {
 
 describe("admin saved quote operations", () => {
   it("shows the stored snapshot and copies the amount and member summary", async () => {
-    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode={false} />);
 
     expect(await screen.findByRole("heading", { name: "Blood panel quote" })).toBeTruthy();
     expect(screen.getByText("97")).toBeTruthy();
@@ -128,7 +128,7 @@ describe("admin saved quote operations", () => {
   });
 
   it("updates future founding eligibility without changing the rendered saved snapshot", async () => {
-    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode={false} />);
     const membership = await screen.findByRole("switch", { name: "Founding member" });
 
     fireEvent.click(membership);
@@ -141,7 +141,7 @@ describe("admin saved quote operations", () => {
       data: { ...detail, labOrder: { ...detail.labOrder!, quote: null } },
       error: null,
     });
-    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode={false} />);
 
     expect(await screen.findByText("This panel predates saved pricing.")).toBeTruthy();
     expect(screen.getByText(/doctor reviews and saves the panel again/i)).toBeTruthy();
@@ -154,7 +154,7 @@ describe("blood-form release", () => {
     mocks.releaseBloodForm.mockResolvedValue({ error: null });
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
 
-    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode={false} />);
     expect(await screen.findByRole("heading", { name: "Blood test request form" })).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Preview form" }));
@@ -171,7 +171,7 @@ describe("blood-form release", () => {
       data: { ...detail, labOrder: { ...detail.labOrder!, formReleasedAt: "2026-07-22T02:00:00.000Z" } },
       error: null,
     });
-    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode={false} />);
 
     expect(await screen.findByRole("heading", { name: "Blood test request form" })).toBeTruthy();
     expect(screen.getAllByText("Released").length).toBeGreaterThan(0);
@@ -184,10 +184,21 @@ describe("blood-form release", () => {
       error: null,
     });
     mocks.updateBloodDraw.mockResolvedValue({ error: null });
-    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode={false} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Save appointment" }));
     await waitFor(() => expect(mocks.updateBloodDraw).toHaveBeenCalledWith("member-1", expect.any(String)));
+  });
+
+  it("keeps the test-data seeder out of the normal admin view", async () => {
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode={false} />);
+
+    expect(await screen.findByRole("heading", { name: "Care plan" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Populate with test data" })).toBeNull();
+
+    cleanup();
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode />);
+    expect(await screen.findByRole("button", { name: "Populate with test data" })).toBeTruthy();
   });
 
   it("flags missing identity fields that block a clean form", async () => {
@@ -195,7 +206,7 @@ describe("blood-form release", () => {
       data: { ...detail, icPassportNo: null, address: null },
       error: null,
     });
-    render(<CaseDetail memberId="member-1" onBack={vi.fn()} />);
+    render(<CaseDetail memberId="member-1" onBack={vi.fn()} developerMode={false} />);
 
     expect(await screen.findByRole("heading", { name: "Blood test request form" })).toBeTruthy();
     const missing = screen.getAllByText("— missing");

@@ -656,6 +656,12 @@
   box-shadow: var(--shadow-border);
 }
 
+/* Developer-mode-only tools; tinted so they never read as part of the flow. */
+.adm-card-developer {
+  background: var(--danger-tint);
+  box-shadow: none;
+}
+
 .adm-card-head {
   display: flex;
   justify-content: space-between;
