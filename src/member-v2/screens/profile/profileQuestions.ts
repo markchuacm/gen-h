@@ -86,12 +86,19 @@ export const REPORT_CATEGORY_LABELS: Record<ReportUploadCategory, string> = {
 
 export const PRESCRIPTION_MEDICATION_OPTION = "Prescription medication";
 export const MANAGE_EXISTING_CONDITION_REASON = "I want help managing an existing health condition";
-const LEGACY_MANAGE_EXISTING_CONDITION_REASON =
-  "I have an existing health condition, and I would like to manage it";
+// Earlier copy for this same "reason" option. Some members' saved answers
+// still hold one of these exact strings from before the wording changed,
+// which the reason chip step no longer recognises as a match —
+// normalizeReasonSelections re-maps them so they render as the current
+// option instead of stray, unselected entries.
+const LEGACY_REASON_LABELS: Record<string, string> = {
+  "I have an existing health condition, and I would like to manage it": MANAGE_EXISTING_CONDITION_REASON,
+  "I want help managing an existing health condition.": MANAGE_EXISTING_CONDITION_REASON,
+};
 
-export function hasConditionManagementReason(reason: string[]) {
-  return reason.includes(MANAGE_EXISTING_CONDITION_REASON) ||
-    reason.includes(LEGACY_MANAGE_EXISTING_CONDITION_REASON);
+export function normalizeReasonSelections(reason: string[]): string[] {
+  const mapped = reason.map((item) => LEGACY_REASON_LABELS[item] ?? item);
+  return Array.from(new Set(mapped));
 }
 
 export const STEPS: StepDef[] = [

@@ -5,6 +5,7 @@ import {
   DEFAULT_ANSWERS,
   EXCLUSIVE_PROFILE_OPTIONS,
   normalizeHabits,
+  normalizeReasonSelections,
   NOTHING_MAJOR_OPTION,
 } from "../member-v2/screens/profile/profileQuestions";
 import type { ProfileAnswers } from "../member-v2/screens/profile/profileQuestions";
@@ -47,7 +48,7 @@ export function toAnswers(onboarding: Record<string, unknown>): ProfileAnswers {
       asObject(onboarding.habits) as Partial<ProfileAnswers["habits"]>,
       basics.sex,
     ),
-    reason: asStringList(onboarding.reason),
+    reason: normalizeReasonSelections(asStringList(onboarding.reason)),
     reasonOther: typeof onboarding.reasonOther === "string" ? onboarding.reasonOther : "",
     goals: asStringList(onboarding.goals),
     goalsOther: typeof onboarding.goalsOther === "string" ? onboarding.goalsOther : "",

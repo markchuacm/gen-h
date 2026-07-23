@@ -42,4 +42,26 @@ describe("CaseBrief", () => {
     expect(screen.getByRole("region", { name: "Medical conditions" })).toBeTruthy();
     expect(screen.getByText("Diabetes")).toBeTruthy();
   });
+
+  it("collapses legacy reason wording so it doesn't show as a duplicate concern", () => {
+    render(
+      <CaseBrief
+        detail={{
+          ...detail,
+          onboarding: {
+            reason: [
+              "I have an existing health condition, and I would like to manage it",
+              "I want help managing an existing health condition.",
+              "I've done tests, but I don't know what to do with the results",
+            ],
+          },
+        }}
+      />,
+    );
+
+    const reasonBlock = screen.getByLabelText("Why they're here");
+    expect(reasonBlock.querySelectorAll("p")).toHaveLength(2);
+    expect(screen.getByText("I want help managing an existing health condition")).toBeTruthy();
+    expect(screen.getByText("I've done tests, but I don't know what to do with the results")).toBeTruthy();
+  });
 });

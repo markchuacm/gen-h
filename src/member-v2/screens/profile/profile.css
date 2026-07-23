@@ -1324,15 +1324,17 @@
   font-size: 0.95rem;
 }
 
+/* Every placeholder in the flow — identity fields, preferred name, the "Other"
+   reveal inputs — reads as the same faint hint, never mistaken for a filled
+   value. */
 .pf-other-input::placeholder {
-  color: var(--muted);
+  color: rgba(71, 85, 105, 0.22);
+  opacity: 1;
 }
 
 .pf-preferred-name-input::placeholder,
 .pf-other-detail-input::placeholder {
-  color: rgba(71, 85, 105, 0.42);
   font-size: 0.9rem;
-  opacity: 1;
 }
 
 .pf-other-input:focus-visible {
@@ -1340,23 +1342,8 @@
   outline-offset: 0;
 }
 
-/* Identity step: condensed so the heading and footer stay visible on short
-   viewports. Tighter row gaps and slightly shorter fields, with IC and DOB
-   sharing one row. */
-.pf-id-controls {
-  gap: 14px;
-}
-
-.pf-id-controls .pf-control {
-  gap: 6px;
-}
-
-.pf-id-controls .pf-other-input,
-.pf-id-controls .pf-phone-number {
-  padding-top: 10px;
-  padding-bottom: 10px;
-}
-
+/* Identity step: same row rhythm as every other step (.pf-controls), just
+   with IC and DOB sharing one row. */
 .pf-id-duo {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -1806,6 +1793,84 @@ textarea.pf-id-address-input {
   scale: 0.96;
 }
 
+/* ── Completion hand-off dialog ──────────────────────────────────────────── */
+
+/* Overrides are scoped with .p-pending-dialog so they always beat the shared
+   dialog rules in shell.css, whichever stylesheet loads last. */
+.p-pending-dialog.pf-done-dialog {
+  width: min(540px, 100%);
+  min-height: 0;
+  row-gap: 26px;
+  padding: 56px 60px 48px;
+  text-align: center;
+}
+
+.p-pending-dialog.pf-done-dialog .pf-done-eyebrow {
+  margin-bottom: 0;
+  color: var(--accent-dark);
+}
+
+.p-pending-dialog.pf-done-dialog h2 {
+  margin: 0;
+  font-size: clamp(1.7rem, 3.4vw, 2.1rem);
+  white-space: normal;
+  text-wrap: balance;
+}
+
+.p-pending-dialog.pf-done-dialog p {
+  max-width: 38ch;
+  margin: 0;
+}
+
+.p-pending-dialog.pf-done-dialog .pf-done-lede {
+  margin-top: -12px;
+}
+
+.pf-done-consult {
+  display: grid;
+  justify-items: start;
+  row-gap: 14px;
+  width: 100%;
+  padding: 26px 30px;
+  border-radius: 20px;
+  background: var(--accent-tint);
+  text-align: left;
+}
+
+.p-pending-dialog.pf-done-dialog .pf-done-consult-line {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  max-width: none;
+  color: var(--ink);
+  font-size: 0.97rem;
+  font-weight: 460;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.pf-done-consult-line svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 2px;
+  color: var(--accent-dark);
+  stroke-width: 1.75;
+}
+
+.p-pending-dialog.pf-done-dialog .p-pending-actions {
+  display: grid;
+  justify-content: stretch;
+  justify-items: center;
+  row-gap: 16px;
+  width: 100%;
+}
+
+.p-pending-dialog.pf-done-dialog .pf-done-footnote {
+  max-width: 46ch;
+  font-size: 0.88rem;
+}
+
 /* ── Breakpoints ─────────────────────────────────────────────────────────── */
 
 @media (max-width: 860px) {
@@ -1965,5 +2030,15 @@ textarea.pf-id-address-input {
   .pf-summary-edit {
     justify-content: center;
     width: 100%;
+  }
+
+  .p-pending-dialog.pf-done-dialog {
+    row-gap: 20px;
+    padding: 38px 26px 32px;
+  }
+
+  .pf-done-consult {
+    row-gap: 12px;
+    padding: 20px 20px;
   }
 }

@@ -38,7 +38,7 @@ function renderFlow(
 describe("ProfileFlow refinements", () => {
   it("opens on the identity step and blocks continuing until it is complete", () => {
     const { rerender } = renderFlow(DEFAULT_ANSWERS, 0);
-    expect(document.activeElement).toBe(screen.getByLabelText("Full name (as per IC / Passport)"));
+    expect(screen.getByLabelText("Full name (as per IC / Passport)")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(true);
 
     rerender(
@@ -61,6 +61,23 @@ describe("ProfileFlow refinements", () => {
       />,
     );
     expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("falls back to only the first name, properly cased, as the preferred-name placeholder", () => {
+    renderFlow(
+      {
+        ...DEFAULT_ANSWERS,
+        identity: {
+          ...DEFAULT_ANSWERS.identity,
+          fullName: "AMINA BURHANUDDIN HELMI BINTI MOHAMMAD BAKTIAR",
+        },
+      },
+      1,
+    );
+
+    const input = screen.getByLabelText("Preferred name") as HTMLInputElement;
+    expect(input.value).toBe("");
+    expect(input.placeholder).toBe("Amina");
   });
 
   it("keeps the Other field mounted so opening and closing can transition smoothly", () => {
@@ -169,9 +186,9 @@ describe("ProfileFlow refinements", () => {
     ).toBeTruthy();
   });
 
-  it("focuses the preferred-name field when the basics step opens", () => {
+  it("does not steal focus into the preferred-name field when the basics step opens", () => {
     renderFlow(DEFAULT_ANSWERS, 1);
-    expect(document.activeElement).toBe(screen.getByLabelText("Preferred name"));
+    expect(document.activeElement).not.toBe(screen.getByLabelText("Preferred name"));
   });
 
   it("uses gender-specific alcohol options on Question 6", () => {
@@ -458,7 +475,7 @@ describe("ProfileFlow refinements", () => {
     fireEvent.click(screen.getByRole("button", { name: "Start" }));
 
     expect(screen.queryByText("Before we start")).toBe(null);
-    expect(document.activeElement).toBe(screen.getByLabelText("Full name (as per IC / Passport)"));
+    expect(screen.getByLabelText("Full name (as per IC / Passport)")).toBeTruthy();
   });
 
   it("starts the flow when Enter is pressed on the welcome screen", () => {
