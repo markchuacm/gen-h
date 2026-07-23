@@ -28,4 +28,18 @@ describe("CaseBrief", () => {
     expect(screen.getByText("BMI")).toBeTruthy();
     expect(screen.getByText("25.4 kg/m²")).toBeTruthy();
   });
+
+  it("shows shared medical conditions in the doctor's brief", () => {
+    render(
+      <CaseBrief
+        detail={{
+          ...detail,
+          onboarding: { conditions: ["Diabetes"] },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Medical conditions" })).toBeTruthy();
+    expect(screen.getByText("Diabetes")).toBeTruthy();
+  });
 });

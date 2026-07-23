@@ -1048,6 +1048,35 @@
       ]
     },
     {
+      "id": "folate",
+      "name": "Folate",
+      "displayName": "Folate",
+      "aliases": [
+        "Folate",
+        "Folic Acid",
+        "Vitamin B9",
+        "Vitamin B9 (Folate)"
+      ],
+      "description": "Measures folate, or vitamin B9, circulating in the blood. Folate is needed for DNA production, cell division and normal red blood cell formation.",
+      "whatItMeasures": "Measures folate, or vitamin B9, circulating in the blood. Folate is needed for DNA production, cell division and normal red blood cell formation.",
+      "whyItMatters": "Low folate can contribute to megaloblastic anaemia, fatigue and elevated homocysteine. Folate requirements are especially important before and during pregnancy.",
+      "unit": "nmol/L",
+      "scoringMode": "THREE_TIER",
+      "contextRequirements": [],
+      "optimalRangeLabel": ">=10",
+      "suboptimalRangeLabel": "7-<10",
+      "outOfRangeLabel": "<7",
+      "lowerOptimal": 10,
+      "upperOptimal": null,
+      "lowerReference": 7,
+      "upperReference": null,
+      "directionality": "higher_is_better",
+      "isActive": true,
+      "categories": [
+        "Nutrients"
+      ]
+    },
+    {
       "id": "homocysteine",
       "name": "Homocysteine",
       "displayName": "Homocysteine",
@@ -1231,6 +1260,35 @@
       "description": "Measures the main protein that transports iron through the bloodstream.",
       "scoringMode": "TWO_TIER",
       "contextRequirements": [],
+      "isActive": true,
+      "categories": [
+        "Nutrients"
+      ]
+    },
+    {
+      "id": "vitamin-b12",
+      "name": "Vitamin B12",
+      "displayName": "Vitamin B12",
+      "aliases": [
+        "Vitamin B12",
+        "B12",
+        "Vitamin B-12",
+        "Cobalamin"
+      ],
+      "description": "Measures vitamin B12 circulating in the blood. Vitamin B12 supports red blood cell production, DNA synthesis and normal nerve function.",
+      "whatItMeasures": "Measures vitamin B12 circulating in the blood. Vitamin B12 supports red blood cell production, DNA synthesis and normal nerve function.",
+      "whyItMatters": "Deficiency can cause anaemia, fatigue, numbness, balance problems and cognitive or neurological symptoms. Neurological effects can occur even without anaemia.",
+      "unit": "pmol/L",
+      "scoringMode": "THREE_TIER",
+      "contextRequirements": [],
+      "optimalRangeLabel": ">258",
+      "suboptimalRangeLabel": "133-258",
+      "outOfRangeLabel": "<133",
+      "lowerOptimal": 258,
+      "upperOptimal": null,
+      "lowerReference": 133,
+      "upperReference": null,
+      "directionality": "higher_is_better",
       "isActive": true,
       "categories": [
         "Nutrients"

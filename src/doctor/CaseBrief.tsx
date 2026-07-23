@@ -64,6 +64,9 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
   const reasons = withOther(answers.reason, answers.reasonOther);
   const goals = withOther(answers.goals, answers.goalsOther);
   const symptoms = withOther(answers.symptoms, answers.symptomsOther);
+  const conditions = withOther(answers.conditions, answers.conditionsOther).filter(
+    (item) => !CLEAR_ANSWERS.has(item),
+  );
   const family = withOther(answers.family, answers.familyOther);
   const supplements = withOther(answers.supplements, answers.supplementsOther).filter(
     (item) => !CLEAR_ANSWERS.has(item),
@@ -112,6 +115,17 @@ function CaseBrief({ detail }: { detail: DoctorCaseDetail }) {
                   <li key={item} className={CLEAR_ANSWERS.has(item) ? "" : "is-flag"}>
                     {item}
                   </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {conditions.length > 0 && (
+            <section className="doc-card" aria-label="Medical conditions">
+              <h2 className="doc-card-title">Medical conditions</h2>
+              <ul className="doc-chips">
+                {conditions.map((item) => (
+                  <li key={item}>{item}</li>
                 ))}
               </ul>
             </section>

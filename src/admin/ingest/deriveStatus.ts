@@ -18,7 +18,14 @@ export type DerivedStatus = {
   refHigh: number | null;
 };
 
-type Branch = { label: string; lower: number | null; upper: number | null; comparator: "range" | "lower" | "upper" | "qualitative" };
+type Branch = {
+  label: string;
+  lower: number | null;
+  upper: number | null;
+  lowerInclusive: boolean;
+  upperInclusive: boolean;
+  comparator: "range" | "lower" | "upper" | "qualitative";
+};
 
 /** The catalog is fetched now, so callers pass it in. ingestPipeline primes it
     once and threads it through. */
@@ -36,18 +43,61 @@ function splitExpression(label: string): string[] {
 
 function parseBranch(label: string): Branch {
   const compact = label.replace(/\s/g, "");
-  if (!compact) return { label, lower: null, upper: null, comparator: "qualitative" };
-  if (compact.startsWith("<=") || compact.startsWith("<")) {
-    const v = Number(compact.match(/\d+(?:\.\d+)?/)?.[0]);
-    return { label, lower: null, upper: Number.isFinite(v) ? v : null, comparator: "upper" };
+  if (!compact) {
+    return {
+      label,
+      lower: null,
+      upper: null,
+      lowerInclusive: false,
+      upperInclusive: false,
+      comparator: "qualitative",
+    };
   }
-  if (compact.startsWith(">=") || compact.startsWith(">")) {
-    const v = Number(compact.match(/\d+(?:\.\d+)?/)?.[0]);
-    return { label, lower: Number.isFinite(v) ? v : null, upper: null, comparator: "lower" };
+
+  const upper = compact.match(/^(<=|<)(\d+(?:\.\d+)?)$/);
+  if (upper) {
+    return {
+      label,
+      lower: null,
+      upper: Number(upper[2]),
+      lowerInclusive: false,
+      upperInclusive: upper[1] === "<=",
+      comparator: "upper",
+    };
   }
-  const range = compact.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);
-  if (range) return { label, lower: Number(range[1]), upper: Number(range[2]), comparator: "range" };
-  return { label, lower: null, upper: null, comparator: "qualitative" };
+
+  const lower = compact.match(/^(>=|>)(\d+(?:\.\d+)?)$/);
+  if (lower) {
+    return {
+      label,
+      lower: Number(lower[2]),
+      upper: null,
+      lowerInclusive: lower[1] === ">=",
+      upperInclusive: false,
+      comparator: "lower",
+    };
+  }
+
+  const range = compact.match(/^([<>]=?)?(\d+(?:\.\d+)?)-([<>]=?)?(\d+(?:\.\d+)?)$/);
+  if (range) {
+    return {
+      label,
+      lower: Number(range[2]),
+      upper: Number(range[4]),
+      lowerInclusive: range[1] !== ">",
+      upperInclusive: range[3] !== "<",
+      comparator: "range",
+    };
+  }
+
+  return {
+    label,
+    lower: null,
+    upper: null,
+    lowerInclusive: false,
+    upperInclusive: false,
+    comparator: "qualitative",
+  };
 }
 
 function branchMatchesContext(branchKey: string, ctx: RangeCtx): boolean {
@@ -94,16 +144,22 @@ function statusFromRange(
   outOfRange: Branch | null,
 ): AdminStatus {
   if (optimal?.comparator === "range" && optimal.lower !== null && optimal.upper !== null) {
-    if (value >= optimal.lower && value <= optimal.upper) return "optimal";
+    if (
+      (value > optimal.lower || (optimal.lowerInclusive && value === optimal.lower)) &&
+      (value < optimal.upper || (optimal.upperInclusive && value === optimal.upper))
+    ) return "optimal";
   }
-  if (optimal?.comparator === "upper" && optimal.upper !== null && value < optimal.upper) return "optimal";
-  if (optimal?.comparator === "lower" && optimal.lower !== null && value >= optimal.lower) return "optimal";
+  if (optimal?.comparator === "upper" && optimal.upper !== null && (value < optimal.upper || (optimal.upperInclusive && value === optimal.upper))) return "optimal";
+  if (optimal?.comparator === "lower" && optimal.lower !== null && (value > optimal.lower || (optimal.lowerInclusive && value === optimal.lower))) return "optimal";
 
   if (outOfRange?.comparator === "range" && outOfRange.lower !== null && outOfRange.upper !== null) {
-    if (value >= outOfRange.lower && value <= outOfRange.upper) return "needs_attention";
+    if (
+      (value > outOfRange.lower || (outOfRange.lowerInclusive && value === outOfRange.lower)) &&
+      (value < outOfRange.upper || (outOfRange.upperInclusive && value === outOfRange.upper))
+    ) return "needs_attention";
   }
-  if (outOfRange?.comparator === "upper" && outOfRange.upper !== null && value < outOfRange.upper) return "needs_attention";
-  if (outOfRange?.comparator === "lower" && outOfRange.lower !== null && value >= outOfRange.lower) return "needs_attention";
+  if (outOfRange?.comparator === "upper" && outOfRange.upper !== null && (value < outOfRange.upper || (outOfRange.upperInclusive && value === outOfRange.upper))) return "needs_attention";
+  if (outOfRange?.comparator === "lower" && outOfRange.lower !== null && (value > outOfRange.lower || (outOfRange.lowerInclusive && value === outOfRange.lower))) return "needs_attention";
 
   return "at_risk";
 }

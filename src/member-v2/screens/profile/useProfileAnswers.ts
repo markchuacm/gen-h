@@ -38,6 +38,8 @@ export type ProfileState = {
   /** Index of the next unanswered step; equals STEP_COUNT once finished. */
   lastStep: number;
   completedAt: string | null;
+  /** True after the condition-management branch has been completed once. */
+  conditionBranchCompleted: boolean;
   /** True only while the per-member local draft has not been acknowledged by the API. */
   pendingSync: boolean;
 };
@@ -46,16 +48,18 @@ const INITIAL_STATE: ProfileState = {
   answers: DEFAULT_ANSWERS,
   lastStep: 0,
   completedAt: null,
+  conditionBranchCompleted: false,
   pendingSync: false,
 };
 
-type ToggleListKey = "reason" | "goals" | "symptoms" | "family" | "supplements" | "allergies";
-type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
+type ToggleListKey = "reason" | "goals" | "symptoms" | "conditions" | "family" | "supplements" | "allergies";
+type OtherAnswerKey = "reasonOther" | "goalsOther" | "symptomsOther" | "conditionsOther" | "familyOther" | "supplementsOther" | "allergiesOther";
 
 const OTHER_ANSWER_KEYS: Partial<Record<ToggleListKey, OtherAnswerKey>> = {
   reason: "reasonOther",
   goals: "goalsOther",
   symptoms: "symptomsOther",
+  conditions: "conditionsOther",
   family: "familyOther",
   supplements: "supplementsOther",
   allergies: "allergiesOther",
@@ -77,6 +81,9 @@ function sanitizeExclusiveSelections(answers: ProfileAnswers) {
     family: answers.family.includes(EXCLUSIVE_PROFILE_OPTIONS.family)
       ? [EXCLUSIVE_PROFILE_OPTIONS.family]
       : answers.family,
+    conditions: answers.conditions.includes(EXCLUSIVE_PROFILE_OPTIONS.conditions)
+      ? [EXCLUSIVE_PROFILE_OPTIONS.conditions]
+      : answers.conditions,
     supplements: answers.supplements.includes(EXCLUSIVE_PROFILE_OPTIONS.supplements)
       ? [EXCLUSIVE_PROFILE_OPTIONS.supplements]
       : answers.supplements,
@@ -121,6 +128,7 @@ function load(memberId: string): ProfileState {
       ...INITIAL_STATE,
       ...parsed,
       lastStep: parsed.lastStep ?? 0,
+      conditionBranchCompleted: parsed.conditionBranchCompleted ?? false,
       answers,
       pendingSync: parsed.pendingSync ?? false,
     };
@@ -172,7 +180,7 @@ export function useProfileAnswers(memberId: string) {
       }
       setState((current) => {
         const { meta, ...sections } = data as Partial<ProfileAnswers> & {
-          meta?: { lastStep?: number; completedAt?: string | null };
+          meta?: { lastStep?: number; completedAt?: string | null; conditionBranchCompleted?: boolean };
         };
         const answers = sanitizeExclusiveSelections({
           ...current.answers,
@@ -185,6 +193,7 @@ export function useProfileAnswers(memberId: string) {
           answers,
           lastStep: meta?.lastStep ?? current.lastStep,
           completedAt: meta?.completedAt ?? current.completedAt,
+          conditionBranchCompleted: meta?.conditionBranchCompleted ?? current.conditionBranchCompleted,
           pendingSync: false,
         };
         localStorage.setItem(storageKey(memberId), JSON.stringify(next));
@@ -207,7 +216,14 @@ export function useProfileAnswers(memberId: string) {
     setSaving(true);
     setSaveError(null);
     const { error } = await upsertOnboardingResponses(
-      { ...next.answers, meta: { lastStep: next.lastStep, completedAt: next.completedAt } },
+      {
+        ...next.answers,
+        meta: {
+          lastStep: next.lastStep,
+          completedAt: next.completedAt,
+          conditionBranchCompleted: next.conditionBranchCompleted,
+        },
+      },
       memberId,
     );
     setSaving(false);
@@ -445,7 +461,12 @@ export function useProfileAnswers(memberId: string) {
   );
 
   const setLastStep = useCallback(
-    (step: number) => save((current) => ({ ...current, lastStep: Math.max(current.lastStep, step) })),
+    (step: number) => save((current) => ({ ...current, lastStep: step })),
+    [save],
+  );
+
+  const setConditionBranchCompleted = useCallback(
+    (completed: boolean) => save((current) => ({ ...current, conditionBranchCompleted: completed })),
     [save],
   );
 
@@ -489,6 +510,7 @@ export function useProfileAnswers(memberId: string) {
     addUploadedReports,
     removeUploadedReport,
     setLastStep,
+    setConditionBranchCompleted,
     markCompleted,
     reset,
   };

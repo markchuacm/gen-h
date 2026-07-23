@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { fetchMemberProfile, updateMemberIdentity } from "../../lib/api/memberProfile";
+import DatePicker from "../components/DatePicker";
 import { dobFromIc, PhoneField } from "../screens/profile/identityFields";
 
 /**
@@ -90,7 +91,12 @@ function AccountDetailsModal({ onClose }: { onClose: () => void }) {
               </label>
               <label>
                 <span>Date of birth</span>
-                <input className="pf-other-input" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} />
+                <DatePicker
+                  id="account-date-of-birth"
+                  className="pf-other-input"
+                  value={dateOfBirth}
+                  onChange={setDateOfBirth}
+                />
               </label>
               <label>
                 <span>Phone</span>

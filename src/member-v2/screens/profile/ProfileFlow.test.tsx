@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import ProfileFlow from "./ProfileFlow";
-import { DEFAULT_ANSWERS } from "./profileQuestions";
+import { DEFAULT_ANSWERS, MANAGE_EXISTING_CONDITION_REASON } from "./profileQuestions";
 import type { ProfileAnswers } from "./profileQuestions";
 
 afterEach(() => {
@@ -15,6 +15,7 @@ function renderFlow(
   startAt: number,
   onRemoveReport = vi.fn(),
   onPatch = vi.fn(),
+  onReachStep = vi.fn(),
 ) {
   return render(
     <ProfileFlow
@@ -27,7 +28,7 @@ function renderFlow(
       onToggleReport={vi.fn()}
       onAddReports={vi.fn()}
       onRemoveReport={onRemoveReport}
-      onReachStep={vi.fn()}
+      onReachStep={onReachStep}
       onComplete={vi.fn()}
       onClose={vi.fn()}
     />,
@@ -98,6 +99,46 @@ describe("ProfileFlow refinements", () => {
       screen.getByText("Choose everything that fits, by pressing the number on keyboard"),
     ).toBeTruthy();
     expect(screen.queryByRole("note")).toBeNull();
+  });
+
+  it("adds health-condition management as option 4 and shifts later options", () => {
+    renderFlow(DEFAULT_ANSWERS, 2);
+
+    expect(screen.getByRole("button", { name: `4 ${MANAGE_EXISTING_CONDITION_REASON}` })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "5 I want to optimise energy, focus, body composition, or longevity" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "6 I want a doctor to review everything together" })).toBeTruthy();
+  });
+
+  it("keeps the same next step regardless of the selected reason", () => {
+    const onReachStep = vi.fn();
+    renderFlow(
+      { ...DEFAULT_ANSWERS, reason: [MANAGE_EXISTING_CONDITION_REASON] },
+      2,
+      undefined,
+      undefined,
+      onReachStep,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("4 of 12")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "What would you most like to improve over the next 12 months?" })).toBeTruthy();
+    expect(onReachStep).toHaveBeenLastCalledWith(3);
+  });
+
+  it("keeps the normal sequence when the management option is not selected", () => {
+    const onReachStep = vi.fn();
+    renderFlow(
+      { ...DEFAULT_ANSWERS, reason: ["I've done tests, but I don't know what to do with the results"] },
+      2,
+      undefined,
+      undefined,
+      onReachStep,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(screen.getByText("4 of 12")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "What would you most like to improve over the next 12 months?" })).toBeTruthy();
+    expect(onReachStep).toHaveBeenLastCalledWith(3);
   });
 
   it("requires detail when Other is the only Question 2 answer", () => {
@@ -221,26 +262,56 @@ describe("ProfileFlow refinements", () => {
     expect(screen.getByRole("button", { name: "9 Vapes / E-cigarettes" })).toBeTruthy();
   });
 
-  it("uses the allergies-to-medication wording on Question 9", () => {
-    renderFlow(DEFAULT_ANSWERS, 9);
+  it("adds a numbered medical-conditions step with an animated Other field", () => {
+    renderFlow({ ...DEFAULT_ANSWERS, conditions: ["Other"] }, 7);
+
+    expect(screen.getByText("8 of 12")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Do you have any existing medical conditions?" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "1 Hypertension" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "9 Cancer" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "0 Other" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "None" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Why we ask" })).toBeTruthy();
+
+      expect(Array.from(document.querySelectorAll(".pf-chip")).map((option) => option.textContent?.replace(/\s+/g, "").trim())).toEqual([
+        "1Hypertension",
+        "2Diabetes",
+        "3Asthma",
+        "4Chronickidneydisease",
+        "5Hyperlipidaemia",
+        "6Autoimmunedisease",
+        "7Previousheartattackorstroke",
+        "8Mentalhealthconditions",
+        "9Cancer",
+        "0Other",
+        "None",
+      ]);
+
+      const input = screen.getByLabelText("Other medical conditions") as HTMLInputElement;
+    expect(input.placeholder).toBe("Tell us about any other medical conditions");
+    expect(input.disabled).toBe(false);
+  });
+
+  it("uses the allergies-to-medication wording on Question 10", () => {
+    renderFlow(DEFAULT_ANSWERS, 10);
     expect(screen.getByText("allergies to medication?")).toBeTruthy();
   });
 
-  it("gives the Question 8 Other field relevant placeholder copy", () => {
-    renderFlow({ ...DEFAULT_ANSWERS, supplements: ["Other"] }, 8);
+  it("gives the Question 9 Other field relevant placeholder copy", () => {
+    renderFlow({ ...DEFAULT_ANSWERS, supplements: ["Other"] }, 9);
     const input = screen.getByLabelText("Other supplements & medications");
     expect(input.getAttribute("placeholder")).toBe(
       "Tell us about any other supplements or medications",
     );
   });
 
-  it("keeps the Prescription medication and Other details independently available on Question 8", () => {
+  it("keeps the Prescription medication and Other details independently available on Question 9", () => {
     renderFlow(
       {
         ...DEFAULT_ANSWERS,
         supplements: ["Prescription medication", "Other"],
       },
-      8,
+      9,
     );
 
     const prescriptionInput = screen.getByLabelText("Prescription medications and doses");
@@ -276,10 +347,10 @@ describe("ProfileFlow refinements", () => {
     expect(screen.getByRole("slider", { name: "Weight" }).getAttribute("max")).toBe("201");
   });
 
-  it("renders Question 10 with useful card subtext but no file-format copy or selected states", () => {
+  it("renders Question 11 with useful card subtext but no file-format copy or selected states", () => {
     renderFlow(
       { ...DEFAULT_ANSWERS, reportSelections: ["health_screening"] },
-      10,
+      11,
     );
 
     const healthUpload = screen.getByRole("button", { name: "Upload health screenings" });
@@ -308,7 +379,7 @@ describe("ProfileFlow refinements", () => {
           },
         ],
       },
-      10,
+      11,
       onRemoveReport,
     );
 
@@ -338,7 +409,7 @@ describe("ProfileFlow refinements", () => {
         },
       ],
     };
-    const view = renderFlow(uploaded, 10);
+    const view = renderFlow(uploaded, 11);
     const shell = view.container.querySelector(".pf-upload-files-shell");
 
     view.rerender(
@@ -346,7 +417,7 @@ describe("ProfileFlow refinements", () => {
         answers={{ ...uploaded, uploadedReports: [] }}
         preferredNamePlaceholder="Alex"
         uploadErrors={[]}
-        startAt={10}
+        startAt={11}
         onPatch={vi.fn()}
         onToggle={vi.fn()}
         onToggleReport={vi.fn()}

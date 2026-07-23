@@ -895,8 +895,3 @@
   font-size: 0.95rem;
   font-weight: 400;
 }
-
-.home-modal-fields input[type="date"] {
-  color-scheme: light;
-  accent-color: var(--accent);
-}
