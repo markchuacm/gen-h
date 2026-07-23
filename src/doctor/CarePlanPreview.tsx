@@ -1,82 +1,54 @@
-// Read-only render of the draft using the member app's actual care-plan
-// classes and image resolution, so the doctor sees what will ship. The member
-// CarePlanScreen itself isn't mounted here: it fetches its own (released-only)
-// data and owns localStorage done-state, neither of which fits a draft.
-import { CATEGORY_THUMBNAILS, resolveSectionImage } from "../member-v2/screens/care-plan/carePlanAssets";
-import { lifestyleCategoryOrder } from "../member-v2/screens/care-plan/carePlanData";
-import type { LifestyleCategory } from "../member-v2/screens/care-plan/carePlanData";
+import { CheckCircle2 } from "lucide-react";
+import { resolveSectionImage } from "../member-v2/screens/care-plan/carePlanAssets";
 import type { DraftSection } from "../lib/api/doctor";
 import "../member-v2/screens/care-plan/care-plan.css";
 
 function CarePlanPreview({ title, sections }: { title: string; sections: DraftSection[] }) {
-  const allActions = sections.flatMap((section, index) =>
-    section.actions.map((action) => ({ ...action, areaTitle: section.title || `Focus area ${index + 1}` })),
-  );
-
+  const active = sections.filter((section) => section.section_state !== "deferred");
+  const actionCount = active.reduce((sum, section) => sum + section.actions.length, 0);
   return (
     <div className="doc-plan-preview">
-      <header className="cp-head">
-        <span className="p-eyebrow">Member view</span>
-        <h1 className="doc-plan-preview-title">{title || "Your care plan"}</h1>
+      <header className="doc-plan-preview-head">
+        <div>
+          <span className="p-eyebrow">MEMBER VIEW</span>
+          <h1 className="doc-plan-preview-title">{title || "Your care plan"}</h1>
+          <p>{active.length} focus areas · {actionCount} agreed actions</p>
+        </div>
+        <CheckCircle2 aria-hidden="true" />
       </header>
 
-      <div className="cp-areas">
-        {sections.map((section, index) => (
-          <div className="cp-area" key={section.id ?? index}>
-            <span className="cp-area-image">
-              <img src={resolveSectionImage(section.image_key, index)} alt="" />
-            </span>
-            <span className="cp-area-body">
-              <h3>{section.title || `Focus area ${index + 1}`}</h3>
+      <div className="doc-plan-preview-areas">
+        {active.map((section, index) => (
+          <section className="doc-plan-preview-area" key={section.id ?? index}>
+            <img src={resolveSectionImage(section.image_key, index)} alt="" />
+            <div>
+              <span className="p-eyebrow">FOCUS AREA {index + 1}</span>
+              <h2>{section.title || `Focus area ${index + 1}`}</h2>
               <p>{section.summary}</p>
-              <span className="cp-area-meta">
-                {section.markers.map((marker) => (
-                  <span key={marker} className="cp-marker-chip">
-                    {marker}
-                  </span>
+              {(section.evidence_snapshot?.length ?? 0) > 0 && (
+                <div className="guided-evidence">
+                  {section.evidence_snapshot!.map((item) => (
+                    <span className={`guided-evidence-chip is-${item.status}`} key={`${item.reportId}:${item.biomarkerCode}`}>
+                      <span>{item.displayName}</span>
+                      <strong>{item.value ?? "—"}{item.unit ? ` ${item.unit}` : ""}</strong>
+                      <em>{item.status === "needs_attention" ? "Needs attention" : "At risk"}</em>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {section.doctor_note && <blockquote>{section.doctor_note}</blockquote>}
+              <ul>
+                {section.actions.map((action) => (
+                  <li key={action.id}>
+                    <span className={`guided-category is-${action.lifestyleCategory.toLowerCase()}`}>{action.lifestyleCategory}</span>
+                    <span><strong>{action.title}</strong><em>{action.instruction}</em></span>
+                  </li>
                 ))}
-                <span className="cp-area-count">
-                  {section.actions.length} action{section.actions.length === 1 ? "" : "s"}
-                </span>
-              </span>
-            </span>
-          </div>
+              </ul>
+            </div>
+          </section>
         ))}
       </div>
-
-      {allActions.length > 0 && (
-        <div className="doc-plan-preview-protocol">
-          {lifestyleCategoryOrder.map((category: LifestyleCategory) => {
-            const actions = allActions.filter((action) => action.lifestyleCategory === category);
-            if (actions.length === 0) return null;
-            return (
-              <div className="cp-group" key={category}>
-                <h3 className="cp-group-title">{category}</h3>
-                <ul className="cp-rows">
-                  {actions.map((action) => (
-                    <li className="cp-row" key={action.id}>
-                      <div className="cp-row-main">
-                        <img
-                          className="cp-row-thumb"
-                          src={CATEGORY_THUMBNAILS[action.lifestyleCategory] ?? CATEGORY_THUMBNAILS.Nutrition}
-                          alt=""
-                        />
-                        <span className="cp-row-copy">
-                          <strong>{action.title}</strong>
-                          <span>{action.instruction}</span>
-                        </span>
-                        <span className="cp-row-side">
-                          <span className="cp-marker-chip">{action.areaTitle}</span>
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

@@ -7,6 +7,24 @@ export type CarePlanActionData = {
   instruction: string;
   rationale: string;
   moreGuidance: string;
+  sourceTemplateId?: string;
+  clinicianConfirmed?: boolean;
+};
+
+export type CarePlanEvidenceData = {
+  biomarkerCode: string;
+  displayName: string;
+  value: number | string | null;
+  unit: string | null;
+  status: "optimal" | "at_risk" | "needs_attention";
+  reportId: string;
+  collectedAt: string | null;
+};
+
+export type ProposedCarePlanAction = Omit<CarePlanActionData, "clinicianConfirmed"> & {
+  templateId: string;
+  doctorRecommended: boolean;
+  safetyNote?: string;
 };
 
 export type CarePlanSectionRow = {
@@ -20,6 +38,10 @@ export type CarePlanSectionRow = {
   /** Doctor-chosen member-facing image; null falls back to the order cycle. */
   image_key: string | null;
   actions: CarePlanActionData[];
+  template_key?: string | null;
+  basis_type?: "results" | "prevention" | "manual" | "legacy";
+  evidence_snapshot?: CarePlanEvidenceData[];
+  profile_basis?: string[];
 };
 
 export type CarePlanRow = {
@@ -29,7 +51,10 @@ export type CarePlanRow = {
   title: string | null;
   summary: string | null;
   status: "draft" | "released" | "archived";
+  version: number;
   released_at: string | null;
+  review_date: string | null;
+  ruleset_version: string | null;
   care_plan_sections: CarePlanSectionRow[];
 };
 
@@ -43,5 +68,28 @@ export async function fetchCarePlan(memberId?: string) {
     return { data, error: null };
   } catch (error) {
     return { data: null, error: apiError(error) };
+  }
+}
+
+export async function fetchCarePlanProgress(planId: string) {
+  try {
+    const { data } = await apiRequest<{ data: Record<string, boolean> }>(
+      `/v1/member/care-plans/${encodeURIComponent(planId)}/progress`,
+    );
+    return { data, error: null };
+  } catch (error) {
+    return { data: {}, error: apiError(error) };
+  }
+}
+
+export async function setCarePlanActionProgress(planId: string, actionId: string, completed: boolean) {
+  try {
+    await apiRequest(
+      `/v1/member/care-plans/${encodeURIComponent(planId)}/actions/${encodeURIComponent(actionId)}/progress`,
+      { method: "PUT", body: JSON.stringify({ completed }) },
+    );
+    return { error: null };
+  } catch (error) {
+    return { error: apiError(error) };
   }
 }

@@ -309,6 +309,9 @@ button.cp-marker-chip {
 .cp-rows {
   display: grid;
   gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .cp-row {
@@ -625,5 +628,444 @@ button.cp-marker-chip {
 
   .cp-row-detail {
     padding-left: 14px;
+  }
+}
+
+/* ── Co-authored released plan ──────────────────────────────────────────── */
+
+.cp-coauthored {
+  --cp-amber: #c9973d;
+  --cp-amber-soft: rgba(201, 151, 61, 0.12);
+  --cp-red: #cd6353;
+  --cp-red-soft: rgba(205, 99, 83, 0.11);
+  -webkit-font-smoothing: antialiased;
+}
+
+.cp-coauthored h1,
+.cp-coauthored h2 {
+  text-wrap: balance;
+}
+
+.cp-coauthored p {
+  text-wrap: pretty;
+}
+
+.cp-coauthored :is(button, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.cp-coauthored-head {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 30px;
+}
+
+.cp-coauthored-head h1 {
+  max-width: 840px;
+}
+
+.cp-coauthored-head > p {
+  max-width: 60ch;
+  color: var(--muted);
+  font-size: 1rem;
+}
+
+.cp-download-plan {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+  gap: 8px;
+  min-height: 44px;
+  margin-top: 16px;
+  padding: 0 22px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 520;
+  cursor: pointer;
+  transition: background-color 180ms var(--ease-ui);
+}
+
+.cp-download-plan:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.cp-download-plan svg {
+  width: 17px;
+  height: 17px;
+}
+
+.cp-coauthored-attribution {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: 24px 28px;
+  border-radius: 26px;
+}
+
+.cp-progress-ring {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px 7px;
+  align-items: center;
+  min-width: 100px;
+  min-height: 64px;
+  padding: 9px 16px;
+  border-radius: 18px;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-progress-ring strong {
+  font-size: 1.7rem;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+
+.cp-progress-ring span {
+  font-size: 0.7rem;
+  line-height: 1.15;
+}
+
+.cp-progress-error {
+  margin: -28px 0 30px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--danger-tint);
+  color: var(--danger-dark);
+  font-size: 0.88rem;
+}
+
+.cp-coauthored-section {
+  margin-top: 70px;
+}
+
+.cp-coauthored-section-head {
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+  margin-bottom: 30px;
+}
+
+.cp-coauthored-section-head h2 {
+  margin: 0;
+  font-size: clamp(1.8rem, 3.3vw, 2.8rem);
+}
+
+.cp-coauthored-areas {
+  display: grid;
+  gap: 30px;
+}
+
+.cp-coauthored-area {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.38fr) minmax(0, 1fr);
+  overflow: hidden;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+}
+
+.cp-coauthored-image {
+  position: relative;
+  min-height: 100%;
+  overflow: hidden;
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.cp-coauthored-image img {
+  width: 100%;
+  height: 100%;
+  min-height: 460px;
+  object-fit: cover;
+  filter: saturate(0.62);
+}
+
+.cp-coauthored-image > span {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-coauthored-body {
+  display: grid;
+  gap: 24px;
+  min-width: 0;
+  padding: clamp(26px, 4vw, 46px);
+}
+
+.cp-coauthored-copy {
+  display: grid;
+  gap: 8px;
+}
+
+.cp-coauthored-copy h2 {
+  font-size: clamp(1.7rem, 2.6vw, 2.2rem);
+}
+
+.cp-coauthored-copy > p {
+  max-width: 68ch;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.cp-coauthored-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.cp-evidence-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 34px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--cp-amber-soft);
+  color: var(--cp-amber);
+  text-align: left;
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+  transition: background-color 180ms var(--ease-ui);
+}
+
+.cp-evidence-chip:hover {
+  background: color-mix(in srgb, var(--cp-amber) 18%, transparent);
+}
+
+.cp-evidence-chip.is-needs_attention {
+  background: var(--cp-red-soft);
+  color: var(--cp-red);
+}
+
+.cp-evidence-chip.is-needs_attention:hover {
+  background: color-mix(in srgb, var(--cp-red) 18%, transparent);
+}
+
+.cp-evidence-chip > span,
+.cp-evidence-chip strong {
+  font-weight: 560;
+}
+
+.cp-evidence-chip em {
+  font-style: normal;
+  opacity: 0.72;
+}
+
+.cp-prevention-basis {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 8px;
+  min-height: 34px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  font-size: 0.8rem;
+}
+
+.cp-prevention-basis svg {
+  flex: 0 0 auto;
+  width: 15px;
+}
+
+.cp-coauthored-note {
+  margin: 0;
+}
+
+.cp-coauthored-actions {
+  display: grid;
+  gap: 12px;
+  padding-top: 2px;
+}
+
+.cp-coauthored-actions > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: baseline;
+}
+
+.cp-coauthored-actions h3 {
+  font-size: 1.05rem;
+}
+
+.cp-coauthored-actions > div:first-child > span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-coauthored-action {
+  border-radius: 18px;
+}
+
+.cp-coauthored-action .cp-row-copy {
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  text-align: left;
+}
+
+/* The focus area already carries the photography; a per-action thumbnail
+   only crowds the row here. */
+.cp-coauthored-action .cp-row-thumb {
+  display: none;
+}
+
+.cp-coauthored-action .cp-row-main {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  padding: 16px 20px;
+}
+
+.cp-coauthored-action .cp-row-detail {
+  padding: 0 20px 18px 76px;
+}
+
+.cp-category {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--muted);
+  font-size: 0.66rem !important;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.cp-category.is-supplements {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+}
+
+.cp-coauthored-review {
+  margin-top: 54px;
+}
+
+.cp-review-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  font-size: 0.82rem;
+  font-weight: 520;
+}
+
+.cp-review-ready svg {
+  width: 16px;
+}
+
+@media (max-width: 900px) {
+  .cp-coauthored-area {
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+
+  .cp-coauthored-image img {
+    min-height: 420px;
+  }
+}
+
+@media (max-width: 720px) {
+  .cp-coauthored-attribution {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .cp-progress-ring {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+    justify-content: center;
+  }
+
+  .cp-coauthored-section {
+    margin-top: 48px;
+  }
+
+  .cp-coauthored-area {
+    grid-template-columns: 1fr;
+  }
+
+  .cp-coauthored-image {
+    height: 220px;
+  }
+
+  .cp-coauthored-image img {
+    min-height: 220px;
+  }
+
+  .cp-coauthored-body {
+    padding: 24px 20px 28px;
+  }
+}
+
+@media (max-width: 460px) {
+  .cp-coauthored-attribution {
+    grid-template-columns: 1fr;
+  }
+
+  .cp-coauthored-attribution > img {
+    width: 52px;
+    height: 52px;
+  }
+
+  .cp-coauthored-actions > div:first-child {
+    display: grid;
+    gap: 3px;
+  }
+
+  .cp-evidence-chip {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cp-coauthored *,
+  .cp-coauthored *::before,
+  .cp-coauthored *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  .p-nav,
+  .cp-download-plan,
+  .cp-check,
+  .cp-row-side {
+    display: none !important;
+  }
+
+  .cp-coauthored {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+
+  .cp-coauthored-area,
+  .cp-attribution,
+  .cp-review {
+    break-inside: avoid;
+    box-shadow: none;
   }
 }

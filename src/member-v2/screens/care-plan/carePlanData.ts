@@ -34,6 +34,14 @@ export type FocusArea = {
   summary: string;
   /** Biomarkers this focus area is built around — shown as reference chips. */
   markers: string[];
+  evidence?: Array<{
+    biomarkerCode: string;
+    displayName: string;
+    value: number | string | null;
+    unit: string | null;
+    status: "optimal" | "at_risk" | "needs_attention";
+  }>;
+  profileBasis?: string[];
   doctorNote: {
     doctorName: string;
     avatarUrl: string;

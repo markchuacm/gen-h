@@ -1,5 +1,9 @@
-import { apiError, apiRequest } from "../apiClient";
-import type { CarePlanActionData } from "./carePlan";
+import { ApiClientError, apiError, apiRequest } from "../apiClient";
+import type {
+  CarePlanActionData,
+  CarePlanEvidenceData,
+  ProposedCarePlanAction,
+} from "./carePlan";
 
 export type DoctorCase = {
   assignmentId: string;
@@ -84,6 +88,13 @@ export type DraftSection = {
   /** Doctor-chosen member-facing image; null falls back to the order cycle. */
   image_key: string | null;
   actions: CarePlanActionData[];
+  template_key?: string | null;
+  basis_type?: "results" | "prevention" | "manual" | "legacy";
+  section_state?: "active" | "deferred";
+  defer_reason?: string | null;
+  evidence_snapshot?: CarePlanEvidenceData[];
+  profile_basis?: string[];
+  proposed_actions?: ProposedCarePlanAction[];
 };
 
 export type EditablePlan = {
@@ -92,6 +103,13 @@ export type EditablePlan = {
   summary: string | null;
   status: string;
   version: number;
+  ruleset_version: string | null;
+  generation_mode: "results" | "prevention" | "manual" | null;
+  generation_status: "pending" | "ready" | "failed" | "stale";
+  source_report_ids: string[];
+  review_date: string | null;
+  evidence_stale: boolean;
+  draft_revision: number;
   care_plan_sections: DraftSection[];
 };
 
@@ -126,14 +144,53 @@ export async function createPlanVersion(planId: string) {
   }
 }
 
-export async function savePlanSections(planId: string, sections: DraftSection[]) {
+export async function savePlanSections(
+  planId: string,
+  sections: DraftSection[],
+  options: { expectedRevision?: number; title?: string; reviewDate?: string | null } = {},
+) {
   try {
-    await apiRequest(`/v1/doctor/care-plans/${encodeURIComponent(planId)}/sections`, {
-      method: "PUT", body: JSON.stringify({ sections }),
+    const response = await apiRequest<{ ok: true; revision: number }>(
+      `/v1/doctor/care-plans/${encodeURIComponent(planId)}/sections`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          sections,
+          expectedRevision: options.expectedRevision,
+          title: options.title,
+          reviewDate: options.reviewDate,
+        }),
+      },
+    );
+    return { revision: response.revision, error: null };
+  } catch (error) {
+    return {
+      revision: null,
+      error: apiError(error),
+      code: error instanceof ApiClientError ? error.code : null,
+    };
+  }
+}
+
+export async function regenerateCarePlan(memberId: string) {
+  try {
+    await apiRequest(`/v1/doctor/care-plans/${encodeURIComponent(memberId)}/regenerate`, {
+      method: "POST",
     });
     return { error: null };
   } catch (error) {
     return { error: apiError(error) };
+  }
+}
+
+export async function reconcileCarePlan(memberId: string) {
+  try {
+    return await apiRequest<{ data: { id: string; draft_revision: number } }>(
+      `/v1/doctor/care-plans/${encodeURIComponent(memberId)}/reconcile`,
+      { method: "POST" },
+    ).then(({ data }) => ({ data, error: null }));
+  } catch (error) {
+    return { data: null, error: apiError(error) };
   }
 }
 
@@ -151,8 +208,11 @@ export async function updatePlanMeta(planId: string, patch: { title?: string; su
 export async function releaseCarePlan(planId: string) {
   try {
     await apiRequest(`/v1/doctor/care-plans/${encodeURIComponent(planId)}/release`, { method: "POST" });
-    return { error: null };
+    return { error: null, issues: [] };
   } catch (error) {
-    return { error: apiError(error) };
+    return {
+      error: apiError(error),
+      issues: error instanceof ApiClientError ? error.issues : [],
+    };
   }
 }
