@@ -85,7 +85,11 @@ function TagGroup({
   );
 }
 
-function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void }) {
+function CaseDetail({ memberId, onBack, developerMode }: {
+  memberId: string;
+  onBack: () => void;
+  developerMode: boolean;
+}) {
   const [detail, setDetail] = useState<AdminCaseDetail | null>(null);
   const [reports, setReports] = useState<AdminLabReport[]>([]);
   const [doctors, setDoctors] = useState<AdminDoctorRow[]>([]);
@@ -100,6 +104,8 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
   const [bloodDrawInput, setBloodDrawInput] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const [docType, setDocType] = useState(DOC_TYPES[0].value);
+  const [seeding, setSeeding] = useState(false);
+  const [seedStatus, setSeedStatus] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     const [d, r, a] = await Promise.all([
@@ -250,6 +256,34 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
     if (err) setError(err === "no_active_doctor" ? "Assign a doctor before scheduling." : err);
     else await reload();
     setBusy(false);
+  };
+
+  // Developer mode only: fills the profile with catalog-wide results and a
+  // draft plan so a fully populated member can be reviewed. See demoSeed.ts.
+  const onSeedProfile = async () => {
+    if (!window.confirm(
+      "Test data only. This adds three released lab reports covering the whole biomarker catalog and a draft care plan to this member's profile. Continue?",
+    )) return;
+    setSeeding(true);
+    setSeedStatus("Starting…");
+    setError(null);
+    const { seedFullProfile } = await import("./demoSeed");
+    const { data, error: err } = await seedFullProfile(
+      memberId,
+      { sex: detail?.sex ?? null, age: detail?.age ?? null },
+      setSeedStatus,
+    );
+    if (err || !data) {
+      setError(err ?? "Couldn't seed this profile.");
+      setSeedStatus(null);
+    } else if (data.carePlanError) {
+      setError(`Results seeded, but the care plan didn't: ${data.carePlanError}`);
+      setSeedStatus(null);
+    } else {
+      setSeedStatus(`Seeded ${data.biomarkers} results across ${data.reports} reports, plus a ${data.sections}-section draft care plan.`);
+    }
+    setSeeding(false);
+    await reload();
   };
 
   const onCancelConsult = async () => {
@@ -830,6 +864,25 @@ function CaseDetail({ memberId, onBack }: { memberId: string; onBack: () => void
         </dl>
         <p className="adm-hint">Care plans are authored and released by the assigned doctor.</p>
       </div>
+
+      {developerMode && (
+        <div className="adm-card adm-card-developer">
+          <h2>Seed test data</h2>
+          <p className="adm-hint">
+            Fills this profile with three released reports covering every biomarker in the
+            catalog (12 months, 6 months and today, so trends have shape) and a five-section
+            draft care plan under the assigned doctor. For reviewing how a fully populated
+            member looks — not real results.
+          </p>
+          {!detail.doctorId && <p className="adm-hint adm-warn">Assign a doctor first, or the care plan will be skipped.</p>}
+          <div className="adm-assign-controls">
+            <button type="button" className="adm-btn" disabled={seeding || busy} onClick={() => void onSeedProfile()}>
+              {seeding ? "Seeding…" : "Populate with test data"}
+            </button>
+            {seedStatus && <span role="status" className="adm-hint">{seedStatus}</span>}
+          </div>
+        </div>
+      )}
     </section>
   );
 }

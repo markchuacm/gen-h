@@ -216,7 +216,7 @@ function AdminApp() {
 
       <main className="adm-main">
         {tab === "cases" && (openMemberId
-          ? <CaseDetail memberId={openMemberId} onBack={() => setOpenMemberId(null)} />
+          ? <CaseDetail memberId={openMemberId} onBack={() => setOpenMemberId(null)} developerMode={developerMode} />
           : <CasesList onOpen={(id) => setOpenMemberId(id)} developerMode={developerMode} />)}
         {tab === "doctors" && <DoctorsPage developerMode={developerMode} />}
         {tab === "biomarkers" && <CatalogPage />}

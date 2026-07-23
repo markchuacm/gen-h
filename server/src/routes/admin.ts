@@ -41,6 +41,25 @@ const biomarkerSchema = z.object({
   notes: z.string().max(4000).nullable(),
 });
 
+// Mirrors doctor.ts planSectionSchema — the demo-seed endpoint writes the same
+// shape the care-plan editor does.
+const demoPlanSectionSchema = z.object({
+  sort_order: z.number().int().min(0),
+  title: z.string().max(250),
+  summary: z.string().max(4000),
+  markers: z.array(z.string().max(100)).max(100),
+  doctor_note: z.string().max(8000),
+  image_key: z.string().max(250).nullable(),
+  actions: z.array(z.object({
+    id: z.string(),
+    title: z.string(),
+    lifestyleCategory: z.enum(["Nutrition", "Exercise", "Supplements", "Sleep"]),
+    instruction: z.string(),
+    rationale: z.string(),
+    moreGuidance: z.string(),
+  })).max(100),
+});
+
 const reportFieldsSchema = z.object({
   lab_name: z.string().max(250).nullable(),
   panel_name: z.string().max(250).nullable(),
@@ -435,10 +454,15 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
     const body = reportFieldsSchema.parse(request.body);
     const row = await withActor(current, async (client) => {
       const result = await client.query(
+        // external_report_id has no partner to supply one for a manually-entered
+        // report, so mint one: (partner_id, external_report_id, source_version)
+        // is unique with nulls treated as equal, and every manual report shares
+        // source_version=1 — leaving it null would let only one such row exist
+        // system-wide.
         `insert into app.lab_reports
-          (member_id, lab_name, panel_name, collected_at, document_id, status, source_status, created_by)
-         values ($1, $2, $3, $4, $5, 'draft', 'final', $6) returning id`,
-        [request.params.memberId, body.lab_name, body.panel_name, body.collected_at, body.document_id, current.userId],
+          (member_id, lab_name, panel_name, collected_at, document_id, status, source_status, external_report_id, created_by)
+         values ($1, $2, $3, $4, $5, 'draft', 'final', $6, $7) returning id`,
+        [request.params.memberId, body.lab_name, body.panel_name, body.collected_at, body.document_id, `manual:${randomUUID()}`, current.userId],
       );
       return result.rows[0];
     });
@@ -802,6 +826,69 @@ export async function adminRoutes(app: FastifyInstance): Promise<void> {
       request.log.error({ userId: request.params.userId }, "account deleted with orphaned document objects");
     }
     return reply.code(204).send();
+  });
+
+  // Test-only: drops a ready-made draft care plan onto a member so a fully
+  // populated profile can be reviewed end to end. Authored under the member's
+  // assigned doctor (not the admin) so the member-facing attribution is real.
+  // Developer mode only — never part of the normal admin workflow.
+  app.post<{ Params: { memberId: string } }>("/v1/admin/members/:memberId/demo-care-plan", { preHandler: developerOnly }, async (request, reply) => {
+    const current = actor(request);
+    const memberId = request.params.memberId;
+    const body = z.object({
+      title: z.string().min(1).max(250),
+      summary: z.string().max(8000),
+      sections: z.array(demoPlanSectionSchema).max(50),
+    }).parse(request.body);
+
+    const result = await withActor(current, async (client) => {
+      const doctor = await client.query<{ doctor_id: string }>(
+        "select doctor_id from app.doctor_assignments where member_id = $1 and status = 'active' order by assigned_at desc limit 1",
+        [memberId],
+      );
+      const doctorId = doctor.rows[0]?.doctor_id;
+      if (!doctorId) return { kind: "no_doctor" as const };
+
+      await client.query("select pg_advisory_xact_lock(hashtextextended($1, 0))", [`care-plan:${memberId}`]);
+      const existing = await client.query<{ id: string }>(
+        "select id from app.care_plans where member_id = $1 and status = 'draft' for update",
+        [memberId],
+      );
+
+      let planId = existing.rows[0]?.id;
+      if (planId) {
+        await client.query(
+          "update app.care_plans set doctor_id = $2, title = $3, summary = $4 where id = $1",
+          [planId, doctorId, body.title, body.summary],
+        );
+        await client.query("delete from app.care_plan_sections where care_plan_id = $1", [planId]);
+      } else {
+        const created = await client.query<{ id: string }>(
+          `insert into app.care_plans (member_id, doctor_id, title, summary, status, version)
+           values ($1, $2, $3, $4, 'draft',
+                   (select coalesce(max(version), 0) + 1 from app.care_plans where member_id = $1))
+           returning id`,
+          [memberId, doctorId, body.title, body.summary],
+        );
+        planId = created.rows[0]!.id;
+      }
+
+      for (const section of body.sections) {
+        await client.query(
+          `insert into app.care_plan_sections
+            (care_plan_id, sort_order, title, summary, markers, doctor_note, image_key, actions)
+           values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb)`,
+          [planId, section.sort_order, section.title, section.summary, section.markers,
+            section.doctor_note, section.image_key, JSON.stringify(section.actions)],
+        );
+      }
+      return { kind: "ok" as const, id: planId };
+    });
+
+    if (result.kind === "no_doctor") {
+      return reply.code(409).send({ error: "Assign a doctor to this member first", code: "NO_DOCTOR", requestId: request.id });
+    }
+    return reply.code(201).send({ data: { id: result.id } });
   });
 
   app.patch<{ Params: { memberId: string } }>("/v1/admin/members/:memberId/stage", { preHandler: adminOnly }, async (request) => {

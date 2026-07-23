@@ -98,16 +98,25 @@ export function resultKind(biomarker: Biomarker): ResultKind {
   return "measured";
 }
 
+// collected_at can arrive as a bare date ("2026-01-15") or a full ISO
+// datetime, depending on the source — normalize before formatting so an
+// already-timestamped value doesn't get "T00:00:00" appended onto it.
+function toDate(value: string): Date {
+  return new Date(value.includes("T") ? value : `${value}T00:00:00`);
+}
+
 function formatDate(value: string | null) {
   if (!value) return "";
-  return new Intl.DateTimeFormat("en", { month: "short", year: "numeric" }).format(new Date(`${value}T00:00:00`));
+  const date = toDate(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en", { month: "short", year: "numeric" }).format(date);
 }
 
 function formatFullDate(value: string | null) {
   if (!value) return "";
-  return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(
-    new Date(`${value}T00:00:00`),
-  );
+  const date = toDate(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(date);
 }
 
 function formatValue(biomarker: Biomarker) {
