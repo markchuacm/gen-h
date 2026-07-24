@@ -243,30 +243,41 @@ function ReportUploadTile({
   label,
   helper,
   uploadedReport,
-  mobile,
+  completedReportCount,
   onAddReports,
 }: {
   category: ReportUploadCategory;
   label: string;
   helper?: string;
   uploadedReport?: UploadedReport;
-  mobile: boolean;
+  completedReportCount: number;
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [isReuploading, setIsReuploading] = useState(false);
+  const previousCompletedCount = useRef(completedReportCount);
   const Icon = REPORT_ICONS[category];
-  const uploaded = mobile && uploadedReport && uploadedReport.status !== "uploading";
-  const TileIcon = uploaded ? Check : Icon;
-  const tileLabel = uploaded ? "Successfully uploaded" : label;
-  const tileHelper = uploaded ? uploadedReport.name : helper;
+  const uploaded = Boolean(uploadedReport);
+  const tileLabel = label;
+  const tileHelper = helper;
+
+  useEffect(() => {
+    if (completedReportCount > previousCompletedCount.current) {
+      setIsReuploading(true);
+      const timer = setTimeout(() => setIsReuploading(false), 460);
+      previousCompletedCount.current = completedReportCount;
+      return () => clearTimeout(timer);
+    }
+    previousCompletedCount.current = completedReportCount;
+  }, [completedReportCount]);
 
   return (
     <section className="pf-upload-group" aria-label={label}>
       <button
         type="button"
         className={`pf-report-tile pf-report-upload-tile ${uploaded ? "is-uploaded" : ""} ${dragOver ? "is-drag" : ""}`}
-        aria-label={uploaded ? `${label}: Successfully uploaded ${uploadedReport.name}` : label}
+        aria-label={label}
         onClick={() => inputRef.current?.click()}
         onDragOver={(event) => {
           event.preventDefault();
@@ -283,14 +294,21 @@ function ReportUploadTile({
         <span className="pf-report-tile-label">{tileLabel}</span>
         {tileHelper && (
           <span
-            className={`pf-report-tile-helper${uploaded ? " pf-report-tile-helper--uploaded" : ""}`}
-            title={uploaded ? uploadedReport.name : undefined}
+            className="pf-report-tile-helper"
           >
             {tileHelper}
           </span>
         )}
-        <span className="pf-report-tile-icon" aria-hidden="true">
-          <TileIcon strokeWidth={uploaded ? 2.4 : 1.8} />
+        <span
+          className={`pf-report-tile-icon ${uploaded ? "is-uploaded" : ""} ${isReuploading ? "is-reuploading" : ""}`}
+          aria-hidden="true"
+        >
+          <span className="pf-report-tile-icon-glyph pf-report-tile-icon-glyph--default">
+            <Icon strokeWidth={1.8} />
+          </span>
+          <span className="pf-report-tile-icon-glyph pf-report-tile-icon-glyph--success">
+            <Check strokeWidth={2.4} />
+          </span>
         </span>
       </button>
       <input
@@ -322,14 +340,14 @@ function ReportSelectionGrid({
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
   onRemoveReport: (id: string) => void;
 }) {
-  const isMobile = useIsMobileViewport();
-
   return (
     <div className="pf-upload-layout">
       <div className="pf-report-grid" role="group" aria-label="Previous test uploads">
         {REPORT_OPTIONS.map((option) => {
           const selected = answers.reportSelections.includes(option.id);
-          const Icon = REPORT_ICONS[option.id];
+          const completedReports = answers.uploadedReports.filter(
+            (report) => report.category === option.id && report.status !== "uploading",
+          );
 
           if (option.id !== "no_tests") {
             return (
@@ -338,31 +356,45 @@ function ReportSelectionGrid({
                 category={option.id}
                 label={option.label}
                 helper={option.helper}
-                uploadedReport={[...answers.uploadedReports]
-                  .reverse()
-                  .find((report) => report.category === option.id)}
-                mobile={isMobile}
+                uploadedReport={completedReports[completedReports.length - 1]}
+                completedReportCount={completedReports.length}
                 onAddReports={onAddReports}
               />
             );
           }
 
           return (
-            <button
-              key={option.id}
-              type="button"
-              className={`pf-report-tile pf-report-tile--no-tests ${selected ? "is-selected" : ""}`}
-              aria-pressed={selected}
-              onClick={() => onToggleReport(option.id)}
-            >
-              <span className="pf-report-tile-label">{option.label}</span>
-              <span className="pf-report-tile-icon" aria-hidden="true">
-                <Icon strokeWidth={1.8} />
-              </span>
-              <span className="pf-report-tile-check" aria-hidden="true">
-                <Check strokeWidth={2.4} />
-              </span>
-            </button>
+            (() => {
+              const hasUploadedFiles = answers.uploadedReports.length > 0;
+              const noTestsTile = (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`pf-report-tile pf-report-tile--no-tests ${selected ? "is-selected" : ""}`}
+                  aria-pressed={selected}
+                  disabled={hasUploadedFiles}
+                  tabIndex={hasUploadedFiles ? -1 : undefined}
+                  onClick={() => onToggleReport(option.id)}
+                >
+                  <span className="pf-report-tile-label">{option.label}</span>
+                  {selected ? (
+                    <span className="pf-report-tile-icon" aria-hidden="true">
+                      <Check strokeWidth={2.4} />
+                    </span>
+                  ) : null}
+                </button>
+              );
+
+              return (
+                <div
+                  key={option.id}
+                  className={`pf-no-tests-reveal ${hasUploadedFiles ? "" : "is-open"}`}
+                  aria-hidden={hasUploadedFiles}
+                >
+                  {noTestsTile}
+                </div>
+              );
+            })()
           );
         })}
       </div>
@@ -373,16 +405,28 @@ function ReportSelectionGrid({
           ))}
         </ul>
       )}
-      {!isMobile && (
-        <section className="pf-upload-files" aria-label="Files uploaded">
-          <h3>Files uploaded</h3>
-          <AnimatedUploadedReports
-            reports={answers.uploadedReports}
-            onRemove={onRemoveReport}
-          />
-        </section>
-      )}
+      <UploadedReportsSection
+        reports={answers.uploadedReports}
+        onRemove={onRemoveReport}
+      />
     </div>
+  );
+}
+
+function UploadedReportsSection({
+  reports,
+  onRemove,
+}: {
+  reports: UploadedReport[];
+  onRemove: (id: string) => void;
+}) {
+  if (reports.length === 0) return null;
+
+  return (
+    <section className="pf-upload-files" aria-label="Files uploaded">
+      <h3>Files uploaded</h3>
+      <AnimatedUploadedReports reports={reports} onRemove={onRemove} />
+    </section>
   );
 }
 
@@ -943,6 +987,7 @@ function ProfileFlow({
   const [intro, setIntro] = useState(showIntro);
   const [whyOpen, setWhyOpen] = useState(false);
   const [composing, setComposing] = useState(false);
+  const isMobile = useIsMobileViewport();
   const step = STEPS[stepIndex];
 
   const canContinue = useMemo(() => {

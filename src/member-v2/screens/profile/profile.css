@@ -849,10 +849,38 @@
 
 /* Report category tiles + uploads */
 
+.pf-no-tests-reveal {
+  display: grid;
+  min-height: 0;
+  max-height: 76px;
+  overflow: hidden;
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    max-height 300ms var(--ease-spring),
+    opacity 180ms var(--ease-ui),
+    translate 300ms var(--ease-spring);
+}
+
+.pf-no-tests-reveal:not(.is-open) {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  translate: 0 -4px;
+}
+
+.pf-no-tests-reveal.is-open {
+  overflow: visible;
+}
+
+.pf-no-tests-reveal:not(.is-open) > .pf-report-tile {
+  min-height: 0;
+}
+
 .pf-report-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
   width: 100%;
 }
 
@@ -860,10 +888,10 @@
   position: relative;
   display: grid;
   align-content: start;
-  gap: 8px;
-  min-height: 162px;
-  padding: 18px;
-  border-radius: 18px;
+  gap: 4px;
+  min-height: 76px;
+  padding: 14px;
+  border-radius: 16px;
   background: #fff;
   box-shadow: var(--shadow-border);
   text-align: left;
@@ -889,9 +917,40 @@
   box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 
+.pf-report-tile.is-uploaded,
+.pf-report-tile.is-uploaded:hover {
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1.5px rgba(184, 93, 53, 0.22);
+}
+
+.pf-report-tile--no-tests {
+  align-content: center;
+  align-items: center;
+  min-height: 58px;
+  background: transparent;
+  color: #6f7a85;
+  box-shadow: var(--shadow-border);
+}
+
+.pf-report-tile--no-tests.is-selected {
+  background: transparent;
+  box-shadow: var(--shadow-border);
+}
+
+.pf-report-tile--no-tests:hover,
+.pf-report-tile--no-tests.is-selected:hover {
+  background: transparent;
+  box-shadow: var(--shadow-border-hover);
+}
+
+.pf-report-tile--no-tests .pf-report-tile-label {
+  color: #6f7a85;
+  font-weight: 500;
+}
+
 .pf-report-tile-label {
   max-width: 11rem;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 650;
   line-height: 1.22;
   text-wrap: balance;
@@ -903,7 +962,7 @@
 }
 
 .pf-report-tile-helper {
-  max-width: 13rem;
+  max-width: calc(100% - 54px);
   color: var(--muted);
   font-size: 0.82rem;
   line-height: 1.4;
@@ -912,15 +971,77 @@
 
 .pf-report-tile-icon {
   position: absolute;
-  right: 14px;
-  bottom: 14px;
+  right: 12px;
+  bottom: 12px;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   background: var(--accent-tint);
   color: var(--accent-dark);
+}
+
+.pf-report-tile.is-uploaded .pf-report-tile-icon {
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--accent-dark);
+}
+
+.pf-report-tile--no-tests .pf-report-tile-icon {
+  background: #d9dee3;
+  color: #66727d;
+}
+
+.pf-report-tile--no-tests.is-selected .pf-report-tile-icon {
+  background: #87919b;
+  color: #fff;
+}
+
+.pf-report-upload-tile .pf-report-tile-icon {
+  overflow: hidden;
+}
+
+.pf-report-upload-tile .pf-report-tile-icon-glyph {
+  display: grid;
+  grid-area: 1 / 1;
+  place-items: center;
+  transition:
+    opacity 180ms var(--ease-ui),
+    scale 260ms var(--ease-spring),
+    rotate 260ms var(--ease-spring);
+}
+
+.pf-report-upload-tile .pf-report-tile-icon-glyph--success {
+  opacity: 0;
+  scale: 0.5;
+  rotate: -16deg;
+}
+
+.pf-report-upload-tile .pf-report-tile-icon.is-uploaded .pf-report-tile-icon-glyph--default {
+  opacity: 0;
+  scale: 0.5;
+  rotate: 16deg;
+}
+
+.pf-report-upload-tile .pf-report-tile-icon.is-uploaded .pf-report-tile-icon-glyph--success {
+  opacity: 1;
+  scale: 1;
+  rotate: 0deg;
+}
+
+@keyframes pf-upload-check-bump {
+  0%,
+  100% {
+    scale: 1;
+  }
+
+  42% {
+    scale: 1.18;
+  }
+}
+
+.pf-report-upload-tile .pf-report-tile-icon.is-reuploading .pf-report-tile-icon-glyph--success {
+  animation: pf-upload-check-bump 460ms var(--ease-spring);
 }
 
 .pf-report-tile-icon svg {
@@ -1069,9 +1190,22 @@
   color: var(--accent-dark);
 }
 
+@keyframes pf-upload-files-enter {
+  from {
+    opacity: 0;
+    translate: 0 -6px;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
 .pf-upload-files {
   display: grid;
   gap: 12px;
+  animation: pf-upload-files-enter 280ms var(--ease-spring) both;
 }
 
 .pf-upload-files h3 {
@@ -1110,6 +1244,18 @@
   grid-template-columns: repeat(auto-fill, minmax(128px, 154px));
 }
 
+@keyframes pf-report-file-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .pf-report-file {
   position: relative;
   display: grid;
@@ -1122,6 +1268,7 @@
     transform 180ms var(--ease-ui),
     opacity 180ms ease-in,
     scale 180ms ease-in;
+  animation: pf-report-file-enter 280ms var(--ease-spring) both;
 }
 
 .pf-report-file:hover {
@@ -1988,6 +2135,42 @@ textarea.pf-id-address-input {
   }
 }
 
+@media (min-width: 621px) {
+  .pf-stage--reports {
+    align-content: start;
+    padding-top: 80px;
+  }
+
+  .pf-report-upload-tile {
+    align-content: center;
+  }
+
+  .pf-report-upload-tile .pf-report-tile-icon {
+    top: 50%;
+    bottom: auto;
+    translate: 0 -50%;
+  }
+
+  .pf-stage--reports .pf-report-file-grid {
+    grid-template-columns: repeat(auto-fill, minmax(132px, 144px));
+    gap: 8px;
+  }
+
+  .pf-stage--reports .pf-report-file {
+    aspect-ratio: 1;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .pf-stage--reports .pf-report-file-thumb {
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  .pf-stage--reports .pf-report-file-meta {
+    padding: 8px 9px 10px;
+  }
+}
+
 @media (max-width: 460px) {
   .pf-brief-title h1 {
     font-size: 2.05rem;
@@ -2053,16 +2236,16 @@ textarea.pf-id-address-input {
   }
 }
 
-/* Mobile reports: keep the upload state in the source tile so the user gets
-   immediate confirmation without a second file-list section. */
+/* Mobile reports: keep the upload state in the source tile, then show uploaded
+   files as compact square cards below the Why we ask control. */
 @media (max-width: 620px) {
   .pf-stage--reports {
-    gap: 14px;
-    padding-block: 12px 20px;
+    gap: 10px;
+    padding-block: 8px 12px;
   }
 
   .pf-stage--reports .pf-report-grid {
-    gap: 8px;
+    gap: 6px;
   }
 
   .pf-stage--reports .pf-report-tile {
@@ -2070,6 +2253,12 @@ textarea.pf-id-address-input {
     padding: 14px;
     border-radius: 16px;
     gap: 4px;
+  }
+
+  .pf-stage--reports .pf-report-tile--no-tests {
+    min-height: 58px;
+    align-content: center;
+    align-items: center;
   }
 
   .pf-stage--reports .pf-report-tile-label {
@@ -2081,12 +2270,6 @@ textarea.pf-id-address-input {
     font-size: 0.78rem;
   }
 
-  .pf-stage--reports .pf-report-tile-helper--uploaded {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
   .pf-stage--reports .pf-report-tile-icon {
     right: 12px;
     bottom: 12px;
@@ -2095,41 +2278,52 @@ textarea.pf-id-address-input {
     border-radius: 10px;
   }
 
-  .pf-stage--reports .pf-report-tile.is-uploaded,
-  .pf-stage--reports .pf-report-tile.is-uploaded:hover {
-    background: var(--accent-tint);
-    box-shadow: inset 0 0 0 1.5px rgba(184, 93, 53, 0.22);
-  }
-
-  .pf-stage--reports .pf-report-tile.is-uploaded .pf-report-tile-icon {
-    background: rgba(255, 255, 255, 0.72);
-    color: var(--accent-dark);
-  }
-
-  .pf-stage--reports .pf-report-tile-helper--uploaded {
-    color: #87919b;
-  }
-
-  .pf-stage--reports .pf-report-tile--no-tests {
-    min-height: 58px;
-    background: #f3f4f5;
-  }
-
-  .pf-stage--reports .pf-report-tile--no-tests.is-selected {
-    background: #f3f4f5;
-    box-shadow: inset 0 0 0 1.5px #aab1b9;
-  }
-
-  .pf-stage--reports .pf-report-tile--no-tests .pf-report-tile-icon {
-    background: rgba(15, 23, 42, 0.07);
-    color: #7b8793;
-  }
-
   .pf-stage--reports .pf-why {
     min-height: 50px;
   }
 
   .pf-stage--reports .pf-why > button {
     min-height: 44px;
+  }
+
+  .pf-stage--reports .pf-upload-files {
+    gap: 6px;
+    width: 100%;
+  }
+
+  .pf-stage--reports .pf-upload-layout {
+    gap: 12px;
+  }
+
+  .pf-stage--reports .pf-upload-files h3 {
+    font-size: 0.82rem;
+  }
+
+  .pf-stage--reports .pf-report-tile-helper {
+    font-size: 0.78rem;
+  }
+
+  .pf-stage--reports .pf-report-file-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .pf-stage--reports .pf-report-file {
+    aspect-ratio: 1;
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .pf-stage--reports .pf-report-file-thumb {
+    min-height: 0;
+    aspect-ratio: auto;
+  }
+
+  .pf-stage--reports .pf-report-file-meta {
+    padding: 8px 9px 10px;
+  }
+
+  .pf-stage--reports .pf-report-file-remove {
+    opacity: 1;
+    scale: 1;
   }
 }

@@ -476,6 +476,7 @@ describe("ProfileFlow refinements", () => {
     expect(screen.getByText(/Blood work, urine tests/i)).toBeTruthy();
     expect(screen.queryByText(/Drop files here or click to browse/i)).toBeNull();
     expect(screen.queryByText(/PDF, JPG, PNG/i)).toBeNull();
+    expect(screen.queryByText("Files uploaded")).toBeNull();
   });
 
   it("shows uploaded-file confirmation inside the tile on mobile", () => {
@@ -486,7 +487,7 @@ describe("ProfileFlow refinements", () => {
     });
 
     try {
-      renderFlow(
+      const view = renderFlow(
         {
           ...DEFAULT_ANSWERS,
           reportSelections: ["health_screening"],
@@ -507,17 +508,202 @@ describe("ProfileFlow refinements", () => {
       );
 
       const healthUpload = screen.getByRole("button", {
-        name: /Upload health screenings: Successfully uploaded annual-health-screening-results-2026\.pdf/,
+        name: "Upload health screenings",
       });
       expect(healthUpload.classList.contains("is-uploaded")).toBe(true);
-      expect(screen.getByText("Successfully uploaded")).toBeTruthy();
-      expect(screen.getByText("annual-health-screening-results-2026.pdf")).toBeTruthy();
-      expect(screen.queryByText("Blood work, urine tests, health screening reports")).toBeNull();
-      expect(screen.queryByText("Files uploaded")).toBeNull();
-      expect(screen.getByRole("button", { name: "I don't have any tests" }).className).toContain(
-        "pf-report-tile--no-tests",
+      expect(healthUpload.querySelector(".pf-report-tile-label")?.textContent).toBe("Upload health screenings");
+      expect(screen.getAllByText("annual-health-screening-results-2026.pdf")).toHaveLength(1);
+      expect(healthUpload.querySelector(".pf-report-tile-helper")?.textContent).toBe(
+        "Blood work, urine tests, health screening reports",
       );
+      expect(healthUpload.querySelector(".pf-report-tile-icon-glyph--default")).toBeTruthy();
+      expect(healthUpload.querySelector(".pf-report-tile-icon-glyph--success")).toBeTruthy();
+      expect(screen.getByText("Files uploaded")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Remove annual-health-screening-results-2026.pdf" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "I don't have any tests" })).toBeNull();
+      expect(view.container.querySelector(".pf-no-tests-reveal")?.getAttribute("aria-hidden")).toBe("true");
       expect(screen.getByRole("button", { name: "Why we ask" })).toBeTruthy();
+
+      view.rerender(
+        <ProfileFlow
+          answers={{ ...DEFAULT_ANSWERS, reportSelections: [], uploadedReports: [] }}
+          preferredNamePlaceholder="Alex"
+          uploadErrors={[]}
+          startAt={11}
+          onPatch={vi.fn()}
+          onToggle={vi.fn()}
+          onToggleReport={vi.fn()}
+          onAddReports={vi.fn()}
+          onRemoveReport={vi.fn()}
+          onReachStep={vi.fn()}
+          onComplete={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "I don't have any tests" })).toBeTruthy();
+      expect(view.container.querySelector(".pf-no-tests-reveal")?.classList.contains("is-open")).toBe(true);
+      expect(screen.queryByText("Files uploaded")).toBeNull();
+      expect(screen.getByRole("button", { name: "I don't have any tests" }).querySelector(".pf-report-tile-icon")).toBeNull();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("uses the shared upload and no-tests states on desktop", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: false }),
+    });
+
+    try {
+      const uploaded = {
+        id: "report-desktop-1",
+        name: "desktop-screening.pdf",
+        type: "application/pdf",
+        size: 1024,
+        uploadedAt: "2026-07-20T00:00:00.000Z",
+        category: "health_screening" as const,
+        kind: "pdf" as const,
+        status: "uploaded" as const,
+      };
+      const view = renderFlow(
+        { ...DEFAULT_ANSWERS, uploadedReports: [uploaded] },
+        11,
+      );
+
+      expect(screen.getByRole("button", { name: "Upload health screenings" }).classList.contains("is-uploaded")).toBe(true);
+      expect(screen.queryByRole("button", { name: "I don't have any tests" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Remove desktop-screening.pdf" })).toBeTruthy();
+
+      view.rerender(
+        <ProfileFlow
+          answers={{ ...DEFAULT_ANSWERS, uploadedReports: [] }}
+          preferredNamePlaceholder="Alex"
+          uploadErrors={[]}
+          startAt={11}
+          onPatch={vi.fn()}
+          onToggle={vi.fn()}
+          onToggleReport={vi.fn()}
+          onAddReports={vi.fn()}
+          onRemoveReport={vi.fn()}
+          onReachStep={vi.fn()}
+          onComplete={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const noTests = screen.getByRole("button", { name: "I don't have any tests" });
+      expect(noTests.querySelector(".pf-report-tile-icon")).toBeNull();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("uses one neutral check icon for the selected no-tests choice on mobile", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    try {
+      renderFlow({ ...DEFAULT_ANSWERS, reportSelections: ["no_tests"] }, 11);
+      const noTests = screen.getByRole("button", { name: "I don't have any tests" });
+      expect(noTests.className).toContain("is-selected");
+      expect(noTests.querySelector(".pf-report-tile-check")).toBeNull();
+      expect(noTests.querySelector(".lucide-check")).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("keeps the checkmark during a repeat upload and bumps it when the new file finishes", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    const firstReport = {
+      id: "report-1",
+      name: "screening-one.png",
+      type: "image/png",
+      size: 1024,
+      uploadedAt: "2026-07-20T00:00:00.000Z",
+      category: "health_screening" as const,
+      kind: "image" as const,
+      status: "uploaded" as const,
+    };
+    const secondReport = {
+      ...firstReport,
+      id: "report-2",
+      name: "screening-two.png",
+    };
+
+    try {
+      const view = renderFlow(
+        { ...DEFAULT_ANSWERS, reportSelections: ["health_screening"], uploadedReports: [firstReport] },
+        11,
+      );
+
+      view.rerender(
+        <ProfileFlow
+          answers={{
+            ...DEFAULT_ANSWERS,
+            reportSelections: ["health_screening"],
+            uploadedReports: [{ ...firstReport }, { ...secondReport, status: "uploading" }],
+          }}
+          preferredNamePlaceholder="Alex"
+          uploadErrors={[]}
+          startAt={11}
+          onPatch={vi.fn()}
+          onToggle={vi.fn()}
+          onToggleReport={vi.fn()}
+          onAddReports={vi.fn()}
+          onRemoveReport={vi.fn()}
+          onReachStep={vi.fn()}
+          onComplete={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const pendingTile = screen.getByRole("button", { name: "Upload health screenings" });
+      expect(pendingTile.classList.contains("is-uploaded")).toBe(true);
+      expect(pendingTile.querySelector(".is-reuploading")).toBeNull();
+
+      view.rerender(
+        <ProfileFlow
+          answers={{
+            ...DEFAULT_ANSWERS,
+            reportSelections: ["health_screening"],
+            uploadedReports: [{ ...firstReport }, { ...secondReport, status: "uploaded" }],
+          }}
+          preferredNamePlaceholder="Alex"
+          uploadErrors={[]}
+          startAt={11}
+          onPatch={vi.fn()}
+          onToggle={vi.fn()}
+          onToggleReport={vi.fn()}
+          onAddReports={vi.fn()}
+          onRemoveReport={vi.fn()}
+          onReachStep={vi.fn()}
+          onComplete={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Upload health screenings" }).querySelector(".is-reuploading")).toBeTruthy();
     } finally {
       Object.defineProperty(window, "matchMedia", {
         configurable: true,
@@ -559,7 +745,7 @@ describe("ProfileFlow refinements", () => {
     expect(onRemoveReport).toHaveBeenCalledWith("report-1");
   });
 
-  it("keeps the uploaded-file height shell mounted when the last file disappears", () => {
+  it("removes the uploaded-file section when the last file disappears", () => {
     const uploaded = {
       ...DEFAULT_ANSWERS,
       uploadedReports: [
@@ -576,7 +762,8 @@ describe("ProfileFlow refinements", () => {
       ],
     };
     const view = renderFlow(uploaded, 11);
-    const shell = view.container.querySelector(".pf-upload-files-shell");
+    expect(view.container.querySelector(".pf-upload-files")).toBeTruthy();
+    expect(screen.getByText("Files uploaded")).toBeTruthy();
 
     view.rerender(
       <ProfileFlow
@@ -595,8 +782,8 @@ describe("ProfileFlow refinements", () => {
       />,
     );
 
-    expect(view.container.querySelector(".pf-upload-files-shell")).toBe(shell);
-    expect(screen.getByText("-")).toBeTruthy();
+    expect(view.container.querySelector(".pf-upload-files")).toBeNull();
+    expect(screen.queryByText("Files uploaded")).toBeNull();
   });
 
   it("opens on the welcome screen when asked, and starts from it", () => {

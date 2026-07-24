@@ -299,7 +299,7 @@ export const STEPS: StepDef[] = [
     prompt: "Share what you already ",
     promptEm: "have",
     whyWeAsk:
-      "Existing reports help your doctor connect your current profile with what has already been measured.",
+      "Existing reports help your doctor connect your profile to past measurements.",
     summaryLabel: "Previous reports",
     required: true,
   },
