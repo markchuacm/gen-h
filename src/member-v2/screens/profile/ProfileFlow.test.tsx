@@ -16,6 +16,7 @@ function renderFlow(
   onRemoveReport = vi.fn(),
   onPatch = vi.fn(),
   onReachStep = vi.fn(),
+  onToggle = vi.fn(),
 ) {
   return render(
     <ProfileFlow
@@ -24,7 +25,7 @@ function renderFlow(
       uploadErrors={[]}
       startAt={startAt}
       onPatch={onPatch}
-      onToggle={vi.fn()}
+      onToggle={onToggle}
       onToggleReport={vi.fn()}
       onAddReports={vi.fn()}
       onRemoveReport={onRemoveReport}
@@ -36,16 +37,22 @@ function renderFlow(
 }
 
 describe("ProfileFlow refinements", () => {
-  it("opens on the identity step and blocks continuing until it is complete", () => {
+  it("keeps Continue available and highlights missing identity fields", () => {
     const { rerender } = renderFlow(DEFAULT_ANSWERS, 0);
     expect(screen.getByLabelText("Full name (as per IC / Passport)")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(true);
+    const continueButton = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
+    expect(continueButton.disabled).toBe(false);
+    fireEvent.click(continueButton);
+    expect(screen.getByLabelText("Full name (as per IC / Passport)").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText("Phone").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText("Address").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText("1 of 12")).toBeTruthy();
 
     rerender(
       <ProfileFlow
         answers={{
           ...DEFAULT_ANSWERS,
-          identity: { fullName: "Amina Burhanuddin", icPassportNo: "900101145566", dateOfBirth: "1990-01-01", address: "12 Jalan Setiabakti", phone: "" },
+          identity: { fullName: "Amina Burhanuddin", icPassportNo: "900101145566", dateOfBirth: "1990-01-01", address: "12 Jalan Setiabakti", phone: "+60173280063" },
         }}
         preferredNamePlaceholder="Alex"
         uploadErrors={[]}
@@ -61,6 +68,20 @@ describe("ProfileFlow refinements", () => {
       />,
     );
     expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("keeps Continue available and highlights missing basics fields", () => {
+    renderFlow(DEFAULT_ANSWERS, 1);
+    const continueButton = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
+
+    expect(continueButton.disabled).toBe(false);
+    fireEvent.click(continueButton);
+
+    expect(screen.getByLabelText("Preferred name").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("group", { name: "Gender" }).getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("button", { name: "Male" }).classList.contains("pf-chip--invalid")).toBe(true);
+    expect(screen.getByRole("button", { name: "Female" }).classList.contains("pf-chip--invalid")).toBe(true);
+    expect(screen.getByText("2 of 12")).toBeTruthy();
   });
 
   it("falls back to only the first name, properly cased, as the preferred-name placeholder", () => {
@@ -322,6 +343,106 @@ describe("ProfileFlow refinements", () => {
     );
   });
 
+  it("uses a shorter Other placeholder on mobile", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    try {
+      renderFlow({ ...DEFAULT_ANSWERS, conditions: ["Other"] }, 7);
+      expect((screen.getByLabelText("Other medical conditions") as HTMLInputElement).placeholder).toBe(
+        "Tell us another condition",
+      );
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("uses the concise family-history placeholder on mobile Question 9", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    try {
+      renderFlow({ ...DEFAULT_ANSWERS, family: ["Other"] }, 8);
+      expect((screen.getByLabelText("Other family history") as HTMLInputElement).placeholder).toBe(
+        "Tell us about your family history",
+      );
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("lets the single-choice health and lifestyle answers be deselected", () => {
+    const onPatch = vi.fn();
+    const genderView = renderFlow(
+      {
+        ...DEFAULT_ANSWERS,
+        basics: { ...DEFAULT_ANSWERS.basics, sex: "Male" },
+        lifestyle: { ...DEFAULT_ANSWERS.lifestyle, exerciseDays: "1–2", diet: "Mixed" },
+        habits: { ...DEFAULT_ANSWERS.habits, alcohol: "14 or less drinks a week", smoking: "Never" },
+      },
+      1,
+      undefined,
+      onPatch,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Male" }));
+    expect(onPatch).toHaveBeenCalledWith({
+      basics: { ...DEFAULT_ANSWERS.basics, sex: "" },
+    });
+    genderView.unmount();
+
+    onPatch.mockClear();
+    const view = renderFlow(
+      {
+        ...DEFAULT_ANSWERS,
+        lifestyle: { ...DEFAULT_ANSWERS.lifestyle, exerciseDays: "1–2", diet: "Mixed" },
+      },
+      5,
+      undefined,
+      onPatch,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "1–2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mixed" }));
+    expect(onPatch).toHaveBeenNthCalledWith(1, {
+      lifestyle: { ...DEFAULT_ANSWERS.lifestyle, exerciseDays: "", diet: "Mixed" },
+    });
+    expect(onPatch).toHaveBeenNthCalledWith(2, {
+      lifestyle: { ...DEFAULT_ANSWERS.lifestyle, exerciseDays: "1–2", diet: "" },
+    });
+    view.unmount();
+    onPatch.mockClear();
+
+    renderFlow(
+      {
+        ...DEFAULT_ANSWERS,
+        habits: { ...DEFAULT_ANSWERS.habits, alcohol: "14 or less drinks a week", smoking: "Never" },
+      },
+      6,
+      undefined,
+      onPatch,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "2 14 or less drinks a week" }));
+    fireEvent.click(screen.getByRole("button", { name: "4 Never" }));
+    expect(onPatch).toHaveBeenNthCalledWith(1, {
+      habits: { ...DEFAULT_ANSWERS.habits, alcohol: "", smoking: "Never" },
+    });
+    expect(onPatch).toHaveBeenNthCalledWith(2, {
+      habits: { ...DEFAULT_ANSWERS.habits, alcohol: "14 or less drinks a week", smoking: "", smokingProducts: [] },
+    });
+  });
+
   it("keeps the Prescription medication and Other details independently available on Question 9", () => {
     renderFlow(
       {
@@ -375,6 +496,240 @@ describe("ProfileFlow refinements", () => {
     expect(screen.getByText(/Blood work, urine tests/i)).toBeTruthy();
     expect(screen.queryByText(/Drop files here or click to browse/i)).toBeNull();
     expect(screen.queryByText(/PDF, JPG, PNG/i)).toBeNull();
+    expect(screen.queryByText("Files uploaded")).toBeNull();
+  });
+
+  it("shows uploaded-file confirmation inside the tile on mobile", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    try {
+      const view = renderFlow(
+        {
+          ...DEFAULT_ANSWERS,
+          reportSelections: ["health_screening"],
+          uploadedReports: [
+            {
+              id: "report-1",
+              name: "annual-health-screening-results-2026.pdf",
+              type: "application/pdf",
+              size: 1024,
+              uploadedAt: "2026-07-20T00:00:00.000Z",
+              category: "health_screening",
+              kind: "pdf",
+              status: "uploaded",
+            },
+          ],
+        },
+        11,
+      );
+
+      const healthUpload = screen.getByRole("button", {
+        name: "Upload health screenings",
+      });
+      expect(healthUpload.classList.contains("is-uploaded")).toBe(true);
+      expect(healthUpload.querySelector(".pf-report-tile-label")?.textContent).toBe("Upload health screenings");
+      expect(screen.getAllByText("annual-health-screening-results-2026.pdf")).toHaveLength(1);
+      expect(healthUpload.querySelector(".pf-report-tile-helper")?.textContent).toBe(
+        "Blood work, urine tests, health screening reports",
+      );
+      expect(healthUpload.querySelector(".pf-report-tile-icon-glyph--default")).toBeTruthy();
+      expect(healthUpload.querySelector(".pf-report-tile-icon-glyph--success")).toBeTruthy();
+      expect(screen.getByText("Files uploaded")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Remove annual-health-screening-results-2026.pdf" })).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "I don't have any tests" })).toBeNull();
+      expect(view.container.querySelector(".pf-no-tests-reveal")?.getAttribute("aria-hidden")).toBe("true");
+      expect(screen.getByRole("button", { name: "Why we ask" })).toBeTruthy();
+
+      view.rerender(
+        <ProfileFlow
+          answers={{ ...DEFAULT_ANSWERS, reportSelections: [], uploadedReports: [] }}
+          preferredNamePlaceholder="Alex"
+          uploadErrors={[]}
+          startAt={11}
+          onPatch={vi.fn()}
+          onToggle={vi.fn()}
+          onToggleReport={vi.fn()}
+          onAddReports={vi.fn()}
+          onRemoveReport={vi.fn()}
+          onReachStep={vi.fn()}
+          onComplete={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "I don't have any tests" })).toBeTruthy();
+      expect(view.container.querySelector(".pf-no-tests-reveal")?.classList.contains("is-open")).toBe(true);
+      expect(screen.queryByText("Files uploaded")).toBeNull();
+      expect(screen.getByRole("button", { name: "I don't have any tests" }).querySelector(".pf-report-tile-icon")).toBeNull();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("uses the shared upload and no-tests states on desktop", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: false }),
+    });
+
+    try {
+      const uploaded = {
+        id: "report-desktop-1",
+        name: "desktop-screening.pdf",
+        type: "application/pdf",
+        size: 1024,
+        uploadedAt: "2026-07-20T00:00:00.000Z",
+        category: "health_screening" as const,
+        kind: "pdf" as const,
+        status: "uploaded" as const,
+      };
+      const view = renderFlow(
+        { ...DEFAULT_ANSWERS, uploadedReports: [uploaded] },
+        11,
+      );
+
+      expect(screen.getByRole("button", { name: "Upload health screenings" }).classList.contains("is-uploaded")).toBe(true);
+      expect(screen.queryByRole("button", { name: "I don't have any tests" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Remove desktop-screening.pdf" })).toBeTruthy();
+
+      view.rerender(
+        <ProfileFlow
+          answers={{ ...DEFAULT_ANSWERS, uploadedReports: [] }}
+          preferredNamePlaceholder="Alex"
+          uploadErrors={[]}
+          startAt={11}
+          onPatch={vi.fn()}
+          onToggle={vi.fn()}
+          onToggleReport={vi.fn()}
+          onAddReports={vi.fn()}
+          onRemoveReport={vi.fn()}
+          onReachStep={vi.fn()}
+          onComplete={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const noTests = screen.getByRole("button", { name: "I don't have any tests" });
+      expect(noTests.querySelector(".pf-report-tile-icon")).toBeNull();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("uses one neutral check icon for the selected no-tests choice on mobile", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    try {
+      renderFlow({ ...DEFAULT_ANSWERS, reportSelections: ["no_tests"] }, 11);
+      const noTests = screen.getByRole("button", { name: "I don't have any tests" });
+      expect(noTests.className).toContain("is-selected");
+      expect(noTests.querySelector(".pf-report-tile-check")).toBeNull();
+      expect(noTests.querySelector(".lucide-check")).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("keeps the checkmark during a repeat upload and bumps it when the new file finishes", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    const firstReport = {
+      id: "report-1",
+      name: "screening-one.png",
+      type: "image/png",
+      size: 1024,
+      uploadedAt: "2026-07-20T00:00:00.000Z",
+      category: "health_screening" as const,
+      kind: "image" as const,
+      status: "uploaded" as const,
+    };
+    const secondReport = {
+      ...firstReport,
+      id: "report-2",
+      name: "screening-two.png",
+    };
+
+    try {
+      const view = renderFlow(
+        { ...DEFAULT_ANSWERS, reportSelections: ["health_screening"], uploadedReports: [firstReport] },
+        11,
+      );
+
+      view.rerender(
+        <ProfileFlow
+          answers={{
+            ...DEFAULT_ANSWERS,
+            reportSelections: ["health_screening"],
+            uploadedReports: [{ ...firstReport }, { ...secondReport, status: "uploading" }],
+          }}
+          preferredNamePlaceholder="Alex"
+          uploadErrors={[]}
+          startAt={11}
+          onPatch={vi.fn()}
+          onToggle={vi.fn()}
+          onToggleReport={vi.fn()}
+          onAddReports={vi.fn()}
+          onRemoveReport={vi.fn()}
+          onReachStep={vi.fn()}
+          onComplete={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+
+      const pendingTile = screen.getByRole("button", { name: "Upload health screenings" });
+      expect(pendingTile.classList.contains("is-uploaded")).toBe(true);
+      expect(pendingTile.querySelector(".is-reuploading")).toBeNull();
+
+      view.rerender(
+        <ProfileFlow
+          answers={{
+            ...DEFAULT_ANSWERS,
+            reportSelections: ["health_screening"],
+            uploadedReports: [{ ...firstReport }, { ...secondReport, status: "uploaded" }],
+          }}
+          preferredNamePlaceholder="Alex"
+          uploadErrors={[]}
+          startAt={11}
+          onPatch={vi.fn()}
+          onToggle={vi.fn()}
+          onToggleReport={vi.fn()}
+          onAddReports={vi.fn()}
+          onRemoveReport={vi.fn()}
+          onReachStep={vi.fn()}
+          onComplete={vi.fn()}
+          onClose={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByRole("button", { name: "Upload health screenings" }).querySelector(".is-reuploading")).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
   });
 
   it("lets an attachment exit before removing it from the layout", () => {
@@ -410,7 +765,7 @@ describe("ProfileFlow refinements", () => {
     expect(onRemoveReport).toHaveBeenCalledWith("report-1");
   });
 
-  it("keeps the uploaded-file height shell mounted when the last file disappears", () => {
+  it("removes the uploaded-file section when the last file disappears", () => {
     const uploaded = {
       ...DEFAULT_ANSWERS,
       uploadedReports: [
@@ -427,7 +782,8 @@ describe("ProfileFlow refinements", () => {
       ],
     };
     const view = renderFlow(uploaded, 11);
-    const shell = view.container.querySelector(".pf-upload-files-shell");
+    expect(view.container.querySelector(".pf-upload-files")).toBeTruthy();
+    expect(screen.getByText("Files uploaded")).toBeTruthy();
 
     view.rerender(
       <ProfileFlow
@@ -446,8 +802,8 @@ describe("ProfileFlow refinements", () => {
       />,
     );
 
-    expect(view.container.querySelector(".pf-upload-files-shell")).toBe(shell);
-    expect(screen.getByText("-")).toBeTruthy();
+    expect(view.container.querySelector(".pf-upload-files")).toBeNull();
+    expect(screen.queryByText("Files uploaded")).toBeNull();
   });
 
   it("opens on the welcome screen when asked, and starts from it", () => {
@@ -501,6 +857,29 @@ describe("ProfileFlow refinements", () => {
 
     expect(screen.queryByText("Before we start")).toBe(null);
     expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
+  });
+
+  it("ignores Enter and number shortcuts on mobile", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+    const onToggle = vi.fn();
+
+    try {
+      renderFlow(DEFAULT_ANSWERS, 2, undefined, undefined, undefined, onToggle);
+      fireEvent.keyDown(window, { key: "1" });
+      fireEvent.keyDown(window, { key: "Enter" });
+
+      expect(onToggle).not.toHaveBeenCalled();
+      expect(screen.getByText("3 of 12")).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
   });
 
   it("skips the welcome screen for a resumed or edited flow", () => {

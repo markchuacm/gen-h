@@ -58,10 +58,12 @@ export function PhoneField({
   id,
   value,
   onChange,
+  invalid = false,
 }: {
   id?: string;
   value: string;
   onChange: (value: string) => void;
+  invalid?: boolean;
 }) {
   const [iso, setIso] = useState(() => matchCountry(value).country.iso);
   const [open, setOpen] = useState(false);
@@ -120,7 +122,7 @@ export function PhoneField({
   };
 
   return (
-    <div className={`pf-phone ${open ? "is-open" : ""}`} ref={rootRef}>
+    <div className={`pf-phone ${open ? "is-open" : ""}${invalid ? " is-invalid" : ""}`} ref={rootRef}>
       <button
         type="button"
         className="pf-phone-trigger"
@@ -140,6 +142,7 @@ export function PhoneField({
           inputMode="numeric"
           autoComplete="tel-national"
           value={national}
+          aria-invalid={invalid || undefined}
           onChange={(event) => onChange(combinePhone(country.dial, event.target.value))}
         />
       </div>

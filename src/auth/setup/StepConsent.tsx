@@ -5,6 +5,14 @@ import { apiError } from "../../lib/apiClient";
 import MarkdownContent from "../../legal/MarkdownContent";
 import { LEGAL_PATHS, TERMS_OF_SERVICE, publicLegalUrl } from "../../legal/legalDocuments";
 
+function toProperCase(value: string): string {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase("en-MY")
+    .replace(/(^|[\s'-])(\p{L})/gu, (_, separator: string, letter: string) => `${separator}${letter.toLocaleUpperCase("en-MY")}`);
+}
+
 export default function StepConsent({ onDone }: { onDone: () => Promise<void> }) {
   const [signature, setSignature] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -21,7 +29,7 @@ export default function StepConsent({ onDone }: { onDone: () => Promise<void> })
     setError(null);
     setBusy(true);
     try {
-      await acceptConsent(signature.trim());
+      await acceptConsent(toProperCase(signature));
       await onDone();
     } catch (err) {
       setError(apiError(err));
@@ -45,19 +53,21 @@ export default function StepConsent({ onDone }: { onDone: () => Promise<void> })
           <div className="setup-check-list" role="group" aria-label="Required acknowledgements">
             <div className="setup-check">
               <input id="accept-terms" type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} />
-              <label htmlFor="accept-terms">I have read and agree to the Terms of Service above.</label>
+              <label htmlFor="accept-terms">
+                I have read and agree to the <a href={publicLegalUrl(LEGAL_PATHS.terms)} target="_blank" rel="noreferrer">Terms of Service</a>
+              </label>
             </div>
             <div className="setup-check">
               <input id="acknowledge-privacy" type="checkbox" checked={acknowledgePrivacy} onChange={(e) => setAcknowledgePrivacy(e.target.checked)} />
               <label htmlFor="acknowledge-privacy">
-                I acknowledge that I have read the{" "}
-                <a href={publicLegalUrl(LEGAL_PATHS.privacy)} target="_blank" rel="noreferrer">Privacy Policy</a>.
+                I acknowledge the{" "}
+                <a href={publicLegalUrl(LEGAL_PATHS.privacy)} target="_blank" rel="noreferrer">Privacy Policy</a>
               </label>
             </div>
             <div className="setup-check">
               <input id="accept-informed-consent" type="checkbox" checked={acceptConsentBox} onChange={(e) => setAcceptConsentBox(e.target.checked)} />
               <label htmlFor="accept-informed-consent">
-                I expressly consent to the collection and processing of my health information according to the{" "}
+                I consent to the collection and processing of my health information under the{" "}
                 <a href={publicLegalUrl(LEGAL_PATHS.informedConsent)} target="_blank" rel="noreferrer">Informed Consent Policy</a>
               </label>
             </div>

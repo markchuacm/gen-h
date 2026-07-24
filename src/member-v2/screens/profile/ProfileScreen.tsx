@@ -6,7 +6,7 @@ import type { ProfileAnswers, StepId } from "./profileQuestions";
 import { firstNameFromFull } from "./identityFields";
 import { useProfileAnswers } from "./useProfileAnswers";
 import { useAuth } from "../../../auth/AuthProvider";
-import { fetchMemberProfile, updateMemberIdentity } from "../../../lib/api/memberProfile";
+import { updateMemberIdentity } from "../../../lib/api/memberProfile";
 import "./profile.css";
 
 type ProfileScreenProps = {
@@ -23,7 +23,7 @@ function ProfileScreen({
   onExitIncomplete,
 }: ProfileScreenProps) {
   // profile is always loaded before ProfileScreen mounts (see main.tsx Gate).
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const {
     state,
     hydrated,
@@ -67,21 +67,9 @@ function ProfileScreen({
         },
       });
     }
-    void fetchMemberProfile().then(({ data }) => {
-      if (!data) return;
-      // Fill only blanks so an in-progress draft is never overwritten.
-      setAnswers({
-        identity: {
-          fullName: id.fullName || data.full_name || signedFullName,
-          icPassportNo: id.icPassportNo || data.ic_passport_no || "",
-          dateOfBirth: id.dateOfBirth || (data.date_of_birth ? data.date_of_birth.slice(0, 10) : ""),
-          address: id.address || data.address || "",
-          phone: id.phone || data.phone || "",
-        },
-      });
-    });
     // Intentionally seeded once, right after hydration; `state` is the hydrated
-    // snapshot at that point.
+    // snapshot at that point. Other identity fields stay blank until entered;
+    // DOB is derived from the IC field as it is typed in the flow.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, setAnswers, signedFullName]);
 
@@ -160,13 +148,6 @@ function ProfileScreen({
           onClick={() => openFlow(0)}
         >
           Edit answers
-        </button>
-        <button
-          className="pf-summary-edit"
-          type="button"
-          onClick={() => void signOut()}
-        >
-          Log-out
         </button>
       </div>
 

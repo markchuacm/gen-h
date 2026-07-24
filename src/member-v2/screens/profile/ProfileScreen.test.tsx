@@ -5,18 +5,15 @@ import ProfileScreen from "./ProfileScreen";
 
 vi.mock("../../../auth/AuthProvider", () => ({
   useAuth: () => ({
-    profile: { id: "member-a", full_name: "Amina Burhanuddin Helmi Binti Mohammad Baktiar", consent_name: null },
+    profile: { id: "member-a", full_name: "Account Name", consent_name: "Amina Burhanuddin Helmi Binti Mohammad Baktiar" },
     signOut: vi.fn(),
   }),
 }));
-
-const { fetchMemberProfile } = vi.hoisted(() => ({ fetchMemberProfile: vi.fn() }));
 
 vi.mock("../../../lib/api/memberProfile", () => ({
   fetchOnboardingResponses: vi.fn().mockResolvedValue({ data: null, error: null }),
   upsertOnboardingResponses: vi.fn().mockResolvedValue({ error: null }),
   completeOnboarding: vi.fn().mockResolvedValue({ error: null }),
-  fetchMemberProfile,
   updateMemberIdentity: vi.fn().mockResolvedValue({ error: null }),
 }));
 
@@ -29,14 +26,10 @@ vi.mock("../../../lib/api/healthDocuments", () => ({
 afterEach(() => {
   cleanup();
   localStorage.clear();
-  fetchMemberProfile.mockReset();
 });
 
 describe("ProfileScreen", () => {
   it("fills the full name field from sign-up immediately, without waiting on the profile fetch", async () => {
-    // Never resolves during this test — proves the seed doesn't depend on it.
-    fetchMemberProfile.mockReturnValue(new Promise(() => {}));
-
     render(
       <ProfileScreen
         flowOpen={false}
@@ -56,16 +49,6 @@ describe("ProfileScreen", () => {
   });
 
   it("pre-fills the preferred-name field with the first name, unfocused, on the basics step", async () => {
-    fetchMemberProfile.mockResolvedValue({
-      data: {
-        full_name: "Amina Burhanuddin Helmi Binti Mohammad Baktiar",
-        ic_passport_no: "900101145566",
-        date_of_birth: "1990-01-01",
-        address: "12 Jalan Setiabakti",
-        phone: "",
-      },
-    });
-
     render(
       <ProfileScreen
         flowOpen={false}
@@ -77,6 +60,10 @@ describe("ProfileScreen", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Start" }));
 
+    fireEvent.change(screen.getByLabelText("IC / passport number"), { target: { value: "900101145566" } });
+    fireEvent.change(screen.getByLabelText("Address"), { target: { value: "12 Jalan Setiabakti" } });
+    fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "0173280063" } });
+    expect((screen.getByLabelText("Date of birth") as HTMLInputElement).value).toBe("01/01/1990");
     await waitFor(() =>
       expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(false),
     );

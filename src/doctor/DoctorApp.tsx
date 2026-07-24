@@ -4,8 +4,9 @@ import { useAuth } from "../auth/AuthProvider";
 import { fetchDoctorAppointments, fetchDoctorCases } from "../lib/api/doctor";
 import type { DoctorAppointment, DoctorCase } from "../lib/api/doctor";
 import { formatConsultDate, formatConsultTime } from "../lib/api/appointments";
-import CaseDetail from "./CaseDetail";
+import CaseDetail, { type CaseView } from "./CaseDetail";
 import DoctorNav from "./DoctorNav";
+import DoctorCaseNav from "./DoctorCaseNav";
 import { STAGE_LABELS } from "./stageLabels";
 import "../member-v2/shell/shell.css";
 import "./doctor.css";
@@ -20,7 +21,7 @@ function DoctorApp() {
     return match ? decodeURIComponent(match[1]) : null;
   };
   const [openMemberId, setOpenMemberId] = useState<string | null>(() => caseFromUrl());
-  const [caseView, setCaseView] = useState<"brief" | "panel" | "results" | "carePlan">(() => {
+  const [caseView, setCaseView] = useState<CaseView>(() => {
     const value = new URLSearchParams(window.location.search).get("view");
     return value === "panel" || value === "results" || value === "carePlan" ? value : "brief";
   });
@@ -56,7 +57,13 @@ function DoctorApp() {
     const activeCase = cases?.find((c) => c.memberId === openMemberId);
     return (
       <>
-        <DoctorNav />
+        <DoctorCaseNav
+          activeView={caseView}
+          onNav={(view) => {
+            if (view === "home") navigateToCase(null);
+            else navigateToCase(openMemberId, view);
+          }}
+        />
         <CaseDetail
           memberId={openMemberId}
           caseSummary={activeCase}

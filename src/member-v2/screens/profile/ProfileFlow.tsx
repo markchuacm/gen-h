@@ -89,6 +89,27 @@ const REPORT_FILE_ICONS: Record<UploadedReportKind, LucideIcon> = {
   other: Paperclip,
 };
 
+function isMobileViewport() {
+  return typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 620px)").matches;
+}
+
+function useIsMobileViewport() {
+  const [isMobile, setIsMobile] = useState(() => isMobileViewport());
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(max-width: 620px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener?.("change", sync);
+    return () => media.removeEventListener?.("change", sync);
+  }, []);
+
+  return isMobile;
+}
+
 function ChipGrid({
   options,
   selected,
@@ -147,28 +168,38 @@ function Segment({
   onSelect,
   label,
   numberStart,
+  id,
+  invalid = false,
 }: {
   options: readonly string[];
   value: string;
   onSelect: (option: string) => void;
   label?: string;
   numberStart?: number;
+  id?: string;
+  invalid?: boolean;
 }) {
   return (
-    <div className="pf-control">
+    <div className={`pf-control${invalid ? " pf-control--invalid" : ""}`}>
       {label && (
         <div className="pf-control-head">
           <label>{label}</label>
         </div>
       )}
-      <div className="pf-segment" role="group" aria-label={label}>
+      <div
+        className="pf-segment"
+        id={id}
+        role="group"
+        aria-label={label}
+        aria-invalid={invalid || undefined}
+      >
         {options.map((option, index) => (
           <button
             key={option}
             type="button"
-            className={`pf-chip ${value === option ? "is-selected" : ""}`}
+            className={`pf-chip ${value === option ? "is-selected" : ""}${invalid ? " pf-chip--invalid" : ""}`}
             aria-pressed={value === option}
-            onClick={() => onSelect(option)}
+            onClick={() => onSelect(value === option ? "" : option)}
           >
             {numberStart !== undefined && (
               <span className="pf-chip-key">{numberStart + index}</span>
@@ -189,6 +220,8 @@ function SliderControl({
   max,
   step,
   onChange,
+  id,
+  invalid = false,
 }: {
   label: string;
   value: number;
@@ -197,20 +230,24 @@ function SliderControl({
   max: number;
   step: number;
   onChange: (value: number) => void;
+  id?: string;
+  invalid?: boolean;
 }) {
   return (
-    <div className="pf-control">
+    <div className={`pf-control${invalid ? " pf-control--invalid" : ""}`}>
       <div className="pf-control-head">
         <label>{label}</label>
         <span className="pf-control-value">{display}</span>
       </div>
       <input
         type="range"
+        id={id}
         min={min}
         max={max}
         step={step}
         value={value}
         aria-label={label}
+        aria-invalid={invalid || undefined}
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </div>
@@ -221,22 +258,41 @@ function ReportUploadTile({
   category,
   label,
   helper,
+  uploadedReport,
+  completedReportCount,
   onAddReports,
 }: {
   category: ReportUploadCategory;
   label: string;
   helper?: string;
+  uploadedReport?: UploadedReport;
+  completedReportCount: number;
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [isReuploading, setIsReuploading] = useState(false);
+  const previousCompletedCount = useRef(completedReportCount);
   const Icon = REPORT_ICONS[category];
+  const uploaded = Boolean(uploadedReport);
+  const tileLabel = label;
+  const tileHelper = helper;
+
+  useEffect(() => {
+    if (completedReportCount > previousCompletedCount.current) {
+      setIsReuploading(true);
+      const timer = setTimeout(() => setIsReuploading(false), 460);
+      previousCompletedCount.current = completedReportCount;
+      return () => clearTimeout(timer);
+    }
+    previousCompletedCount.current = completedReportCount;
+  }, [completedReportCount]);
 
   return (
     <section className="pf-upload-group" aria-label={label}>
       <button
         type="button"
-        className={`pf-report-tile pf-report-upload-tile ${dragOver ? "is-drag" : ""}`}
+        className={`pf-report-tile pf-report-upload-tile ${uploaded ? "is-uploaded" : ""} ${dragOver ? "is-drag" : ""}`}
         aria-label={label}
         onClick={() => inputRef.current?.click()}
         onDragOver={(event) => {
@@ -251,10 +307,24 @@ function ReportUploadTile({
           if (files.length) onAddReports(files, category);
         }}
       >
-        <span className="pf-report-tile-label">{label}</span>
-        {helper && <span className="pf-report-tile-helper">{helper}</span>}
-        <span className="pf-report-tile-icon" aria-hidden="true">
-          <Icon strokeWidth={1.8} />
+        <span className="pf-report-tile-label">{tileLabel}</span>
+        {tileHelper && (
+          <span
+            className="pf-report-tile-helper"
+          >
+            {tileHelper}
+          </span>
+        )}
+        <span
+          className={`pf-report-tile-icon ${uploaded ? "is-uploaded" : ""} ${isReuploading ? "is-reuploading" : ""}`}
+          aria-hidden="true"
+        >
+          <span className="pf-report-tile-icon-glyph pf-report-tile-icon-glyph--default">
+            <Icon strokeWidth={1.8} />
+          </span>
+          <span className="pf-report-tile-icon-glyph pf-report-tile-icon-glyph--success">
+            <Check strokeWidth={2.4} />
+          </span>
         </span>
       </button>
       <input
@@ -291,7 +361,9 @@ function ReportSelectionGrid({
       <div className="pf-report-grid" role="group" aria-label="Previous test uploads">
         {REPORT_OPTIONS.map((option) => {
           const selected = answers.reportSelections.includes(option.id);
-          const Icon = REPORT_ICONS[option.id];
+          const completedReports = answers.uploadedReports.filter(
+            (report) => report.category === option.id && report.status !== "uploading",
+          );
 
           if (option.id !== "no_tests") {
             return (
@@ -300,27 +372,45 @@ function ReportSelectionGrid({
                 category={option.id}
                 label={option.label}
                 helper={option.helper}
+                uploadedReport={completedReports[completedReports.length - 1]}
+                completedReportCount={completedReports.length}
                 onAddReports={onAddReports}
               />
             );
           }
 
           return (
-            <button
-              key={option.id}
-              type="button"
-              className={`pf-report-tile ${selected ? "is-selected" : ""}`}
-              aria-pressed={selected}
-              onClick={() => onToggleReport(option.id)}
-            >
-              <span className="pf-report-tile-label">{option.label}</span>
-              <span className="pf-report-tile-icon" aria-hidden="true">
-                <Icon strokeWidth={1.8} />
-              </span>
-              <span className="pf-report-tile-check" aria-hidden="true">
-                <Check strokeWidth={2.4} />
-              </span>
-            </button>
+            (() => {
+              const hasUploadedFiles = answers.uploadedReports.length > 0;
+              const noTestsTile = (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`pf-report-tile pf-report-tile--no-tests ${selected ? "is-selected" : ""}`}
+                  aria-pressed={selected}
+                  disabled={hasUploadedFiles}
+                  tabIndex={hasUploadedFiles ? -1 : undefined}
+                  onClick={() => onToggleReport(option.id)}
+                >
+                  <span className="pf-report-tile-label">{option.label}</span>
+                  {selected ? (
+                    <span className="pf-report-tile-icon" aria-hidden="true">
+                      <Check strokeWidth={2.4} />
+                    </span>
+                  ) : null}
+                </button>
+              );
+
+              return (
+                <div
+                  key={option.id}
+                  className={`pf-no-tests-reveal ${hasUploadedFiles ? "" : "is-open"}`}
+                  aria-hidden={hasUploadedFiles}
+                >
+                  {noTestsTile}
+                </div>
+              );
+            })()
           );
         })}
       </div>
@@ -331,14 +421,28 @@ function ReportSelectionGrid({
           ))}
         </ul>
       )}
-      <section className="pf-upload-files" aria-label="Files uploaded">
-        <h3>Files uploaded</h3>
-        <AnimatedUploadedReports
-          reports={answers.uploadedReports}
-          onRemove={onRemoveReport}
-        />
-      </section>
+      <UploadedReportsSection
+        reports={answers.uploadedReports}
+        onRemove={onRemoveReport}
+      />
     </div>
+  );
+}
+
+function UploadedReportsSection({
+  reports,
+  onRemove,
+}: {
+  reports: UploadedReport[];
+  onRemove: (id: string) => void;
+}) {
+  if (reports.length === 0) return null;
+
+  return (
+    <section className="pf-upload-files" aria-label="Files uploaded">
+      <h3>Files uploaded</h3>
+      <AnimatedUploadedReports reports={reports} onRemove={onRemove} />
+    </section>
   );
 }
 
@@ -534,6 +638,7 @@ function StepInputs({
   onToggleReport,
   onAddReports,
   onRemoveReport,
+  showValidationErrors = false,
 }: {
   step: StepDef;
   answers: ProfileAnswers;
@@ -544,7 +649,10 @@ function StepInputs({
   onToggleReport: (selection: ReportSelection) => void;
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
   onRemoveReport: (id: string) => void;
+  showValidationErrors?: boolean;
 }) {
+  const isMobile = useIsMobileViewport();
+
   if (step.kind === "reports") {
     return (
       <ReportSelectionGrid
@@ -559,6 +667,13 @@ function StepInputs({
 
   if (step.kind === "identity") {
     const { identity } = answers;
+    const missing = {
+      fullName: showValidationErrors && !identity.fullName.trim(),
+      icPassportNo: showValidationErrors && !identity.icPassportNo.trim(),
+      dateOfBirth: showValidationErrors && !identity.dateOfBirth,
+      phone: showValidationErrors && !identity.phone.trim(),
+      address: showValidationErrors && !identity.address.trim(),
+    };
     const setId = (patch: Partial<ProfileAnswers["identity"]>) =>
       onPatch({ identity: { ...identity, ...patch } });
     const onIcChange = (value: string) => {
@@ -574,10 +689,11 @@ function StepInputs({
           </div>
           <input
             id="pf-id-name"
-            className="pf-other-input"
+            className={`pf-other-input${missing.fullName ? " pf-input--invalid" : ""}`}
             type="text"
             value={identity.fullName}
             placeholder={preferredNamePlaceholder}
+            aria-invalid={missing.fullName || undefined}
             onChange={(event) => {
               // The preferred name defaults to the first word of the full name,
               // in normal caps; the basics step can still override it.
@@ -596,9 +712,10 @@ function StepInputs({
             </div>
             <input
               id="pf-id-ic"
-              className="pf-other-input"
+              className={`pf-other-input${missing.icPassportNo ? " pf-input--invalid" : ""}`}
               type="text"
               value={identity.icPassportNo}
+              aria-invalid={missing.icPassportNo || undefined}
               onChange={(event) => onIcChange(event.target.value)}
             />
           </div>
@@ -609,7 +726,8 @@ function StepInputs({
             <DatePicker
               id="pf-id-dob"
               value={identity.dateOfBirth}
-              className="pf-other-input pf-date-input"
+              className={`pf-other-input pf-date-input${missing.dateOfBirth ? " pf-input--invalid" : ""}`}
+              ariaInvalid={missing.dateOfBirth}
               onChange={(dateOfBirth) => setId({ dateOfBirth })}
             />
           </div>
@@ -618,7 +736,12 @@ function StepInputs({
           <div className="pf-control-head">
             <label htmlFor="pf-id-phone">Phone</label>
           </div>
-          <PhoneField id="pf-id-phone" value={identity.phone} onChange={(phone) => setId({ phone })} />
+          <PhoneField
+            id="pf-id-phone"
+            value={identity.phone}
+            invalid={missing.phone}
+            onChange={(phone) => setId({ phone })}
+          />
         </div>
         <div className="pf-control">
           <div className="pf-control-head">
@@ -626,9 +749,10 @@ function StepInputs({
           </div>
           <textarea
             id="pf-id-address"
-            className="pf-other-input pf-id-address-input"
+            className={`pf-other-input pf-id-address-input${missing.address ? " pf-input--invalid" : ""}`}
             rows={2}
             value={identity.address}
+            aria-invalid={missing.address || undefined}
             onChange={(event) => setId({ address: event.target.value })}
           />
         </div>
@@ -638,6 +762,13 @@ function StepInputs({
 
   if (step.kind === "basics") {
     const { basics, identity } = answers;
+    const missing = {
+      preferredName: showValidationErrors && !basics.preferredName.trim(),
+      sex: showValidationErrors && !basics.sex,
+      age: showValidationErrors && !(basics.age > 0),
+      heightCm: showValidationErrors && !(basics.heightCm > 0),
+      weightKg: showValidationErrors && !(basics.weightKg > 0),
+    };
     // The identity step's full name is only ever a raw placeholder there
     // (Full name as per IC), so once it's typed or seeded from the member's
     // account it should still surface here as a first-name suggestion, not
@@ -651,55 +782,68 @@ function StepInputs({
           </div>
           <input
             id="pf-preferred-name"
-            className="pf-other-input pf-preferred-name-input"
+            className={`pf-other-input pf-preferred-name-input${missing.preferredName ? " pf-input--invalid" : ""}`}
             type="text"
             value={basics.preferredName}
             placeholder={preferredNameDefault || preferredNamePlaceholder}
+            aria-invalid={missing.preferredName || undefined}
             onChange={(event) =>
               onPatch({ basics: { ...basics, preferredName: event.target.value } })
             }
           />
         </div>
         <Segment
+          id="pf-basics-sex"
           label="Gender"
           options={["Male", "Female"]}
           value={basics.sex}
+          invalid={missing.sex}
           onSelect={(sex) => {
-            const nextSex = sex as "Male" | "Female";
+            const nextSex = sex as "" | "Male" | "Female";
             onPatch({
               basics: { ...basics, sex: nextSex },
-              habits: {
-                ...answers.habits,
-                alcohol: alcoholOptionForSex(answers.habits.alcohol, nextSex),
-              },
+              ...(nextSex
+                ? {
+                    habits: {
+                      ...answers.habits,
+                      alcohol: alcoholOptionForSex(answers.habits.alcohol, nextSex),
+                    },
+                  }
+                : null),
             });
           }}
         />
         <SliderControl
+          id="pf-basics-age"
           label="Age"
           value={basics.age}
           display={basics.age > 80 ? ">80" : `${basics.age}`}
           min={18}
           max={81}
           step={1}
+          invalid={missing.age}
           onChange={(age) => onPatch({ basics: { ...basics, age } })}
         />
         <SliderControl
+          id="pf-basics-height"
           label="Height"
           value={basics.heightCm}
           display={basics.heightCm < 140 ? "<140 cm" : basics.heightCm > 220 ? ">220 cm" : `${basics.heightCm} cm`}
           min={139}
           max={221}
           step={1}
+          invalid={missing.heightCm}
           onChange={(heightCm) => onPatch({ basics: { ...basics, heightCm } })}
         />
         <SliderControl
+          id="pf-basics-weight"
           label="Weight"
           value={basics.weightKg}
           display={basics.weightKg < 30 ? "<30 kg" : basics.weightKg > 200 ? ">200 kg" : `${basics.weightKg} kg`}
           min={29}
           max={201}
           step={1}
+          invalid={missing.weightKg}
           onChange={(weightKg) => onPatch({ basics: { ...basics, weightKg } })}
         />
       </div>
@@ -753,7 +897,7 @@ function StepInputs({
   if (step.kind === "habits") {
     const { habits } = answers;
     const alcoholOptions = alcoholOptionsForSex(answers.basics.sex);
-    const showSmokingProducts = habits.smoking !== "Never";
+    const showSmokingProducts = habits.smoking !== "" && habits.smoking !== "Never";
     return (
       <div className="pf-controls">
         <Segment
@@ -775,7 +919,7 @@ function StepInputs({
               habits: {
                 ...habits,
                 smoking: smoking as typeof habits.smoking,
-                smokingProducts: smoking === "Never" ? [] : habits.smokingProducts,
+                smokingProducts: smoking === "Never" || smoking === "" ? [] : habits.smokingProducts,
               },
             })
           }
@@ -843,7 +987,7 @@ function StepInputs({
               className="pf-other-input pf-other-detail-input"
               type="text"
               aria-label="Prescription medications and doses"
-              placeholder="Tell us your prescription medications and doses"
+              placeholder={isMobile ? "Prescription meds & doses" : "Tell us your prescription medications and doses"}
               value={answers.prescriptionMedicationDetails}
               disabled={!showPrescriptionInput}
               tabIndex={showPrescriptionInput ? 0 : -1}
@@ -861,7 +1005,7 @@ function StepInputs({
             className="pf-other-input pf-other-detail-input"
             type="text"
             aria-label={`Other ${step.summaryLabel.toLowerCase()}`}
-            placeholder={step.otherPlaceholder}
+            placeholder={isMobile ? step.mobileOtherPlaceholder ?? step.otherPlaceholder : step.otherPlaceholder}
             value={answers[otherAnswerKey]}
             disabled={!showOtherInput}
             tabIndex={showOtherInput ? 0 : -1}
@@ -893,12 +1037,18 @@ function ProfileFlow({
   const [intro, setIntro] = useState(showIntro);
   const [whyOpen, setWhyOpen] = useState(false);
   const [composing, setComposing] = useState(false);
+  const [validationAttemptedStep, setValidationAttemptedStep] = useState<number | null>(null);
+  const isMobile = useIsMobileViewport();
   const step = STEPS[stepIndex];
 
   const canContinue = useMemo(() => {
     if (step.kind === "identity") {
-      const { fullName, icPassportNo, dateOfBirth, address } = answers.identity;
-      return Boolean(fullName.trim() && icPassportNo.trim() && dateOfBirth && address.trim());
+      const { fullName, icPassportNo, dateOfBirth, phone, address } = answers.identity;
+      return Boolean(fullName.trim() && icPassportNo.trim() && dateOfBirth && phone.trim() && address.trim());
+    }
+    if (step.kind === "basics") {
+      const { preferredName, age, sex, heightCm, weightKg } = answers.basics;
+      return Boolean(preferredName.trim() && sex && age > 0 && heightCm > 0 && weightKg > 0);
     }
     if (step.kind === "reports") {
       return answers.reportSelections.includes("no_tests") || answers.uploadedReports.length > 0;
@@ -918,8 +1068,16 @@ function ProfileFlow({
     return true;
   }, [step, answers]);
 
+  const isInlineValidationStep = step.id === "identity" || step.id === "basics";
+  const showValidationErrors = validationAttemptedStep === stepIndex;
+
   const advance = () => {
-    if (!canContinue) return;
+    if (!canContinue) {
+      if (isInlineValidationStep) {
+        setValidationAttemptedStep(stepIndex);
+      }
+      return;
+    }
     const target = stepIndex + 1;
     if (target >= STEP_COUNT) {
       onReachStep(STEP_COUNT);
@@ -947,6 +1105,26 @@ function ProfileFlow({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (composing) return;
+      const target = event.target as HTMLElement;
+      const inText = target.tagName === "INPUT" && (target as HTMLInputElement).type === "text";
+      const isEditable =
+        target.tagName === "TEXTAREA" ||
+        (target.tagName === "INPUT" &&
+          !["button", "submit", "reset", "checkbox", "radio"].includes(
+            (target as HTMLInputElement).type,
+          ));
+
+      if (isMobileViewport()) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          return;
+        }
+        if (/^[0-9]$/.test(event.key)) {
+          if (!isEditable) event.preventDefault();
+          return;
+        }
+      }
+
       if (intro) {
         // The Start button holds focus, so Enter on it already fires onClick —
         // only the unfocused case needs handling here.
@@ -957,8 +1135,6 @@ function ProfileFlow({
         if (event.key === "Escape") void onClose();
         return;
       }
-      const target = event.target as HTMLElement;
-      const inText = target.tagName === "INPUT" && (target as HTMLInputElement).type === "text";
       const inButton = target.tagName === "BUTTON";
       if (event.key === "Enter" && !inText && !inButton) {
         event.preventDefault();
@@ -1050,7 +1226,7 @@ function ProfileFlow({
           <p>Organising your answers the way your doctor reads them.</p>
         </div>
       ) : (
-        <div className="pf-stage" key={step.id}>
+        <div className={`pf-stage pf-stage--${step.id}`} key={step.id}>
           <span className="pf-stage-count">
             {stepIndex + 1} of {STEP_COUNT}
           </span>
@@ -1058,12 +1234,17 @@ function ProfileFlow({
             {step.prompt}
             {step.promptEm && <em>{step.promptEm}</em>}
           </h2>
-          {step.helper && <p className="pf-stage-helper">{step.helper}</p>}
+          {step.helper && (
+            <p className={`pf-stage-helper${step.id === "reason" ? " pf-stage-helper--keyboard" : ""}`}>
+              {step.helper}
+            </p>
+          )}
           <StepInputs
             step={step}
             answers={answers}
             preferredNamePlaceholder={preferredNamePlaceholder}
             uploadErrors={uploadErrors}
+            showValidationErrors={showValidationErrors}
             onPatch={onPatch}
             onToggle={onToggle}
             onToggleReport={onToggleReport}
@@ -1098,8 +1279,8 @@ function ProfileFlow({
             className="p-btn"
             type="button"
             onClick={advance}
-            disabled={!canContinue}
-            style={!canContinue ? { opacity: 0.45, cursor: "default" } : undefined}
+            disabled={!canContinue && !isInlineValidationStep}
+            style={!canContinue && !isInlineValidationStep ? { opacity: 0.45, cursor: "default" } : undefined}
           >
             {willFinish ? "Finish" : "Continue"}
           </button>
