@@ -50,6 +50,40 @@ function JourneyRail({ steps }: { steps: Step[] }) {
   );
 }
 
+function JourneyOverview({
+  steps,
+  surface = "card",
+}: {
+  steps: Step[];
+  surface?: "card" | "dialog";
+}) {
+  const isCard = surface === "card";
+  const titleId = isCard ? "home-journey-card-title" : "home-journey-dialog-title";
+
+  return (
+    <section
+      className={isCard ? "home-journey-card" : "home-journey-body"}
+      aria-labelledby={titleId}
+    >
+      <h2 className="home-journey-title" id={titleId}>
+        Your Verae Journey
+      </h2>
+      <section className="home-journey-progress" aria-label="Journey stages">
+        <JourneyRail steps={steps} />
+      </section>
+      <section className="home-journey-explainer" aria-labelledby={`${titleId}-explainer`}>
+        <h3 id={`${titleId}-explainer`}>How it works</h3>
+        <p>
+          Your journey starts with a health profile and pre-test consultation, where your doctor
+          learns what matters to you and selects the right tests. After your blood draw, your
+          results are reviewed in context and turned into a personalised care plan with clear
+          actions and follow-up.
+        </p>
+      </section>
+    </section>
+  );
+}
+
 function HeroCard({
   hero,
   onAction,
@@ -362,21 +396,7 @@ function DetailDialog({
                   <ChevronLeft strokeWidth={1.8} aria-hidden="true" />
                 </button>
               )}
-              <div className="home-journey-body">
-                <h3 className="home-journey-title">Your Verae Journey</h3>
-                <section className="home-journey-progress" aria-label="Journey stages">
-                  <JourneyRail steps={config.steps} />
-                </section>
-                <section className="home-journey-explainer" aria-labelledby="home-journey-explainer-title">
-                  <h3 id="home-journey-explainer-title">How it works</h3>
-                  <p>
-                    Your journey starts with a health profile and pre-test consultation, where your
-                    doctor learns what matters to you and selects the right tests. After your blood
-                    draw, your results are reviewed in context and turned into a personalised care
-                    plan with clear actions and follow-up.
-                  </p>
-                </section>
-              </div>
+              <JourneyOverview steps={config.steps} surface="dialog" />
             </div>
           </div>
         </div>
@@ -423,6 +443,7 @@ function HomeScreen({ config, onNav, onStartProfile }: HomeScreenProps) {
         onAction={handleHeroAction}
         onDetails={() => setIsDetailOpen(true)}
       />
+      <JourneyOverview steps={config.steps} />
       {formError && (
         <p className="home-form-error" role="alert">{formError}</p>
       )}

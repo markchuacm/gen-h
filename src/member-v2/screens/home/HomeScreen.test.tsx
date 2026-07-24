@@ -39,7 +39,7 @@ beforeEach(() => {
 });
 
 describe("HomeScreen detail journey", () => {
-  it("starts with the hero and without the former home heading or journey rail", () => {
+  it("starts with the hero and the journey overview card", () => {
     const view = render(
       <HomeScreen
         config={JOURNEY_STATES.CONSULT_UPCOMING}
@@ -50,7 +50,8 @@ describe("HomeScreen detail journey", () => {
 
     expect(screen.queryByText("HOME")).toBeNull();
     expect(screen.queryByRole("heading", { name: /welcome/i })).toBeNull();
-    expect(screen.queryByRole("list", { name: "Your Verae journey" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Your Verae Journey" })).toBeTruthy();
+    expect(screen.getByRole("list", { name: "Your Verae Journey stages" })).toBeTruthy();
     expect(view.container.querySelector("main")?.classList.contains("home-page")).toBe(true);
   });
 
@@ -64,9 +65,10 @@ describe("HomeScreen detail journey", () => {
       fireEvent.click(screen.getByRole("button", { name: "View your Verae journey" }));
     }
 
-    expect(screen.getByRole("heading", { name: "Your Verae Journey" })).toBeTruthy();
-    expect(screen.getByRole("list", { name: "Your Verae Journey stages" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "How it works" })).toBeTruthy();
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByRole("heading", { name: "Your Verae Journey" })).toBeTruthy();
+    expect(within(dialog).getByRole("list", { name: "Your Verae Journey stages" })).toBeTruthy();
+    expect(within(dialog).getByRole("heading", { name: "How it works" })).toBeTruthy();
 
     if (config.journeyOnly) {
       expect(screen.queryByRole("heading", { name: "Where your sample is" })).toBeNull();

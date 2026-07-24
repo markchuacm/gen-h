@@ -264,6 +264,11 @@
 
 @media (max-width: 560px) {
   .pf-date-picker-popover {
-    width: 100%;
+    /* Keep the calendar roomy on mobile even when the DOB field sits in the
+       narrow half of the identity two-column row. Align to the field's right
+       edge so the larger overlay stays within the question column. */
+    right: 0;
+    left: auto;
+    width: min(18rem, calc(100vw - 32px));
   }
 }

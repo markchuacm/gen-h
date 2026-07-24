@@ -168,26 +168,36 @@ function Segment({
   onSelect,
   label,
   numberStart,
+  id,
+  invalid = false,
 }: {
   options: readonly string[];
   value: string;
   onSelect: (option: string) => void;
   label?: string;
   numberStart?: number;
+  id?: string;
+  invalid?: boolean;
 }) {
   return (
-    <div className="pf-control">
+    <div className={`pf-control${invalid ? " pf-control--invalid" : ""}`}>
       {label && (
         <div className="pf-control-head">
           <label>{label}</label>
         </div>
       )}
-      <div className="pf-segment" role="group" aria-label={label}>
+      <div
+        className="pf-segment"
+        id={id}
+        role="group"
+        aria-label={label}
+        aria-invalid={invalid || undefined}
+      >
         {options.map((option, index) => (
           <button
             key={option}
             type="button"
-            className={`pf-chip ${value === option ? "is-selected" : ""}`}
+            className={`pf-chip ${value === option ? "is-selected" : ""}${invalid ? " pf-chip--invalid" : ""}`}
             aria-pressed={value === option}
             onClick={() => onSelect(value === option ? "" : option)}
           >
@@ -210,6 +220,8 @@ function SliderControl({
   max,
   step,
   onChange,
+  id,
+  invalid = false,
 }: {
   label: string;
   value: number;
@@ -218,20 +230,24 @@ function SliderControl({
   max: number;
   step: number;
   onChange: (value: number) => void;
+  id?: string;
+  invalid?: boolean;
 }) {
   return (
-    <div className="pf-control">
+    <div className={`pf-control${invalid ? " pf-control--invalid" : ""}`}>
       <div className="pf-control-head">
         <label>{label}</label>
         <span className="pf-control-value">{display}</span>
       </div>
       <input
         type="range"
+        id={id}
         min={min}
         max={max}
         step={step}
         value={value}
         aria-label={label}
+        aria-invalid={invalid || undefined}
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </div>
@@ -622,6 +638,7 @@ function StepInputs({
   onToggleReport,
   onAddReports,
   onRemoveReport,
+  showValidationErrors = false,
 }: {
   step: StepDef;
   answers: ProfileAnswers;
@@ -632,6 +649,7 @@ function StepInputs({
   onToggleReport: (selection: ReportSelection) => void;
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
   onRemoveReport: (id: string) => void;
+  showValidationErrors?: boolean;
 }) {
   const isMobile = useIsMobileViewport();
 
@@ -649,6 +667,13 @@ function StepInputs({
 
   if (step.kind === "identity") {
     const { identity } = answers;
+    const missing = {
+      fullName: showValidationErrors && !identity.fullName.trim(),
+      icPassportNo: showValidationErrors && !identity.icPassportNo.trim(),
+      dateOfBirth: showValidationErrors && !identity.dateOfBirth,
+      phone: showValidationErrors && !identity.phone.trim(),
+      address: showValidationErrors && !identity.address.trim(),
+    };
     const setId = (patch: Partial<ProfileAnswers["identity"]>) =>
       onPatch({ identity: { ...identity, ...patch } });
     const onIcChange = (value: string) => {
@@ -664,10 +689,11 @@ function StepInputs({
           </div>
           <input
             id="pf-id-name"
-            className="pf-other-input"
+            className={`pf-other-input${missing.fullName ? " pf-input--invalid" : ""}`}
             type="text"
             value={identity.fullName}
             placeholder={preferredNamePlaceholder}
+            aria-invalid={missing.fullName || undefined}
             onChange={(event) => {
               // The preferred name defaults to the first word of the full name,
               // in normal caps; the basics step can still override it.
@@ -686,9 +712,10 @@ function StepInputs({
             </div>
             <input
               id="pf-id-ic"
-              className="pf-other-input"
+              className={`pf-other-input${missing.icPassportNo ? " pf-input--invalid" : ""}`}
               type="text"
               value={identity.icPassportNo}
+              aria-invalid={missing.icPassportNo || undefined}
               onChange={(event) => onIcChange(event.target.value)}
             />
           </div>
@@ -699,7 +726,8 @@ function StepInputs({
             <DatePicker
               id="pf-id-dob"
               value={identity.dateOfBirth}
-              className="pf-other-input pf-date-input"
+              className={`pf-other-input pf-date-input${missing.dateOfBirth ? " pf-input--invalid" : ""}`}
+              ariaInvalid={missing.dateOfBirth}
               onChange={(dateOfBirth) => setId({ dateOfBirth })}
             />
           </div>
@@ -708,7 +736,12 @@ function StepInputs({
           <div className="pf-control-head">
             <label htmlFor="pf-id-phone">Phone</label>
           </div>
-          <PhoneField id="pf-id-phone" value={identity.phone} onChange={(phone) => setId({ phone })} />
+          <PhoneField
+            id="pf-id-phone"
+            value={identity.phone}
+            invalid={missing.phone}
+            onChange={(phone) => setId({ phone })}
+          />
         </div>
         <div className="pf-control">
           <div className="pf-control-head">
@@ -716,9 +749,10 @@ function StepInputs({
           </div>
           <textarea
             id="pf-id-address"
-            className="pf-other-input pf-id-address-input"
+            className={`pf-other-input pf-id-address-input${missing.address ? " pf-input--invalid" : ""}`}
             rows={2}
             value={identity.address}
+            aria-invalid={missing.address || undefined}
             onChange={(event) => setId({ address: event.target.value })}
           />
         </div>
@@ -728,6 +762,13 @@ function StepInputs({
 
   if (step.kind === "basics") {
     const { basics, identity } = answers;
+    const missing = {
+      preferredName: showValidationErrors && !basics.preferredName.trim(),
+      sex: showValidationErrors && !basics.sex,
+      age: showValidationErrors && !(basics.age > 0),
+      heightCm: showValidationErrors && !(basics.heightCm > 0),
+      weightKg: showValidationErrors && !(basics.weightKg > 0),
+    };
     // The identity step's full name is only ever a raw placeholder there
     // (Full name as per IC), so once it's typed or seeded from the member's
     // account it should still surface here as a first-name suggestion, not
@@ -741,19 +782,22 @@ function StepInputs({
           </div>
           <input
             id="pf-preferred-name"
-            className="pf-other-input pf-preferred-name-input"
+            className={`pf-other-input pf-preferred-name-input${missing.preferredName ? " pf-input--invalid" : ""}`}
             type="text"
             value={basics.preferredName}
             placeholder={preferredNameDefault || preferredNamePlaceholder}
+            aria-invalid={missing.preferredName || undefined}
             onChange={(event) =>
               onPatch({ basics: { ...basics, preferredName: event.target.value } })
             }
           />
         </div>
         <Segment
+          id="pf-basics-sex"
           label="Gender"
           options={["Male", "Female"]}
           value={basics.sex}
+          invalid={missing.sex}
           onSelect={(sex) => {
             const nextSex = sex as "" | "Male" | "Female";
             onPatch({
@@ -770,30 +814,36 @@ function StepInputs({
           }}
         />
         <SliderControl
+          id="pf-basics-age"
           label="Age"
           value={basics.age}
           display={basics.age > 80 ? ">80" : `${basics.age}`}
           min={18}
           max={81}
           step={1}
+          invalid={missing.age}
           onChange={(age) => onPatch({ basics: { ...basics, age } })}
         />
         <SliderControl
+          id="pf-basics-height"
           label="Height"
           value={basics.heightCm}
           display={basics.heightCm < 140 ? "<140 cm" : basics.heightCm > 220 ? ">220 cm" : `${basics.heightCm} cm`}
           min={139}
           max={221}
           step={1}
+          invalid={missing.heightCm}
           onChange={(heightCm) => onPatch({ basics: { ...basics, heightCm } })}
         />
         <SliderControl
+          id="pf-basics-weight"
           label="Weight"
           value={basics.weightKg}
           display={basics.weightKg < 30 ? "<30 kg" : basics.weightKg > 200 ? ">200 kg" : `${basics.weightKg} kg`}
           min={29}
           max={201}
           step={1}
+          invalid={missing.weightKg}
           onChange={(weightKg) => onPatch({ basics: { ...basics, weightKg } })}
         />
       </div>
@@ -987,13 +1037,18 @@ function ProfileFlow({
   const [intro, setIntro] = useState(showIntro);
   const [whyOpen, setWhyOpen] = useState(false);
   const [composing, setComposing] = useState(false);
+  const [validationAttemptedStep, setValidationAttemptedStep] = useState<number | null>(null);
   const isMobile = useIsMobileViewport();
   const step = STEPS[stepIndex];
 
   const canContinue = useMemo(() => {
     if (step.kind === "identity") {
-      const { fullName, icPassportNo, dateOfBirth, address } = answers.identity;
-      return Boolean(fullName.trim() && icPassportNo.trim() && dateOfBirth && address.trim());
+      const { fullName, icPassportNo, dateOfBirth, phone, address } = answers.identity;
+      return Boolean(fullName.trim() && icPassportNo.trim() && dateOfBirth && phone.trim() && address.trim());
+    }
+    if (step.kind === "basics") {
+      const { preferredName, age, sex, heightCm, weightKg } = answers.basics;
+      return Boolean(preferredName.trim() && sex && age > 0 && heightCm > 0 && weightKg > 0);
     }
     if (step.kind === "reports") {
       return answers.reportSelections.includes("no_tests") || answers.uploadedReports.length > 0;
@@ -1013,8 +1068,16 @@ function ProfileFlow({
     return true;
   }, [step, answers]);
 
+  const isInlineValidationStep = step.id === "identity" || step.id === "basics";
+  const showValidationErrors = validationAttemptedStep === stepIndex;
+
   const advance = () => {
-    if (!canContinue) return;
+    if (!canContinue) {
+      if (isInlineValidationStep) {
+        setValidationAttemptedStep(stepIndex);
+      }
+      return;
+    }
     const target = stepIndex + 1;
     if (target >= STEP_COUNT) {
       onReachStep(STEP_COUNT);
@@ -1181,6 +1244,7 @@ function ProfileFlow({
             answers={answers}
             preferredNamePlaceholder={preferredNamePlaceholder}
             uploadErrors={uploadErrors}
+            showValidationErrors={showValidationErrors}
             onPatch={onPatch}
             onToggle={onToggle}
             onToggleReport={onToggleReport}
@@ -1215,8 +1279,8 @@ function ProfileFlow({
             className="p-btn"
             type="button"
             onClick={advance}
-            disabled={!canContinue}
-            style={!canContinue ? { opacity: 0.45, cursor: "default" } : undefined}
+            disabled={!canContinue && !isInlineValidationStep}
+            style={!canContinue && !isInlineValidationStep ? { opacity: 0.45, cursor: "default" } : undefined}
           >
             {willFinish ? "Finish" : "Continue"}
           </button>

@@ -23,7 +23,7 @@ function ProfileScreen({
   onExitIncomplete,
 }: ProfileScreenProps) {
   // profile is always loaded before ProfileScreen mounts (see main.tsx Gate).
-  const { profile, signOut } = useAuth();
+  const { profile } = useAuth();
   const {
     state,
     hydrated,
@@ -148,13 +148,6 @@ function ProfileScreen({
           onClick={() => openFlow(0)}
         >
           Edit answers
-        </button>
-        <button
-          className="pf-summary-edit"
-          type="button"
-          onClick={() => void signOut()}
-        >
-          Log-out
         </button>
       </div>
 

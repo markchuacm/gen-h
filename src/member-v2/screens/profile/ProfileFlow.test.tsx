@@ -37,16 +37,22 @@ function renderFlow(
 }
 
 describe("ProfileFlow refinements", () => {
-  it("opens on the identity step and blocks continuing until it is complete", () => {
+  it("keeps Continue available and highlights missing identity fields", () => {
     const { rerender } = renderFlow(DEFAULT_ANSWERS, 0);
     expect(screen.getByLabelText("Full name (as per IC / Passport)")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(true);
+    const continueButton = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
+    expect(continueButton.disabled).toBe(false);
+    fireEvent.click(continueButton);
+    expect(screen.getByLabelText("Full name (as per IC / Passport)").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText("Phone").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByLabelText("Address").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByText("1 of 12")).toBeTruthy();
 
     rerender(
       <ProfileFlow
         answers={{
           ...DEFAULT_ANSWERS,
-          identity: { fullName: "Amina Burhanuddin", icPassportNo: "900101145566", dateOfBirth: "1990-01-01", address: "12 Jalan Setiabakti", phone: "" },
+          identity: { fullName: "Amina Burhanuddin", icPassportNo: "900101145566", dateOfBirth: "1990-01-01", address: "12 Jalan Setiabakti", phone: "+60173280063" },
         }}
         preferredNamePlaceholder="Alex"
         uploadErrors={[]}
@@ -62,6 +68,20 @@ describe("ProfileFlow refinements", () => {
       />,
     );
     expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it("keeps Continue available and highlights missing basics fields", () => {
+    renderFlow(DEFAULT_ANSWERS, 1);
+    const continueButton = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
+
+    expect(continueButton.disabled).toBe(false);
+    fireEvent.click(continueButton);
+
+    expect(screen.getByLabelText("Preferred name").getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("group", { name: "Gender" }).getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("button", { name: "Male" }).classList.contains("pf-chip--invalid")).toBe(true);
+    expect(screen.getByRole("button", { name: "Female" }).classList.contains("pf-chip--invalid")).toBe(true);
+    expect(screen.getByText("2 of 12")).toBeTruthy();
   });
 
   it("falls back to only the first name, properly cased, as the preferred-name placeholder", () => {

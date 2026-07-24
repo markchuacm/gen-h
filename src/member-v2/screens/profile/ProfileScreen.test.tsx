@@ -62,6 +62,7 @@ describe("ProfileScreen", () => {
 
     fireEvent.change(screen.getByLabelText("IC / passport number"), { target: { value: "900101145566" } });
     fireEvent.change(screen.getByLabelText("Address"), { target: { value: "12 Jalan Setiabakti" } });
+    fireEvent.change(screen.getByLabelText("Phone"), { target: { value: "0173280063" } });
     expect((screen.getByLabelText("Date of birth") as HTMLInputElement).value).toBe("01/01/1990");
     await waitFor(() =>
       expect((screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement).disabled).toBe(false),

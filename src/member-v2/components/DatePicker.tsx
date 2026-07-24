@@ -7,6 +7,7 @@ type DatePickerProps = {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  ariaInvalid?: boolean;
   disabled?: boolean;
 };
 
@@ -49,7 +50,7 @@ function sameDate(first: Date | null, second: Date | null): boolean {
   return Boolean(first && second && toIsoDate(first) === toIsoDate(second));
 }
 
-function DatePicker({ id, value, onChange, className, disabled = false }: DatePickerProps) {
+function DatePicker({ id, value, onChange, className, ariaInvalid = false, disabled = false }: DatePickerProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const selectedDate = parseIsoDate(value);
@@ -160,6 +161,7 @@ function DatePicker({ id, value, onChange, className, disabled = false }: DatePi
           placeholder="DD/MM/YYYY"
           value={draft}
           disabled={disabled}
+          aria-invalid={ariaInvalid || undefined}
           onClick={openPicker}
           onChange={(event) => handleDraftChange(event.target.value)}
           onBlur={handleDraftBlur}
