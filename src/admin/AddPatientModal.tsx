@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { createPatient, fetchAdminDoctors } from "../lib/api/admin";
 import type { AdminDoctorRow, InviteResult } from "../lib/api/admin";
+import { PhoneField } from "../member-v2/screens/profile/identityFields";
 import InviteReveal from "./InviteReveal";
 
 export default function AddPatientModal({
@@ -71,10 +72,10 @@ export default function AddPatientModal({
               <span>Email</span>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             </label>
-            <label className="adm-field">
+            <div className="adm-field">
               <span>Phone</span>
-              <input value={phone} onChange={(e) => setPhone(e.target.value)} required />
-            </label>
+              <PhoneField id="adm-add-patient-phone" value={phone} onChange={setPhone} />
+            </div>
             <label className="adm-field">
               <span>Assigned doctor</span>
               <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)}>

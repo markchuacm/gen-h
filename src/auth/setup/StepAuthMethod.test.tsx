@@ -32,7 +32,12 @@ describe("invited-member password choice", () => {
     fireEvent.change(fields[0], { target: { value: "short" } });
     fireEvent.change(fields[1], { target: { value: "short" } });
     fireEvent.submit(screen.getByRole("button", { name: "Set password and continue" }).closest("form")!);
-    expect((await screen.findByRole("alert")).textContent).toContain("Use between 10 and 200 characters");
+    expect(fields[0]).toHaveProperty("validationMessage", "Use at least 10 characters");
     expect(setSetupPassword).not.toHaveBeenCalled();
+  });
+
+  it("does not show the removed password guidance note", () => {
+    render(<StepAuthMethod onDone={vi.fn()} />);
+    expect(screen.queryByText(/Use 10–200 characters/)).toBeNull();
   });
 });

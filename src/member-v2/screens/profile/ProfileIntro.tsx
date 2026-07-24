@@ -1,8 +1,7 @@
 import type { CSSProperties } from "react";
 
-// The beat before the flow: what the brief is for, how long it takes, and that
-// the whole thing is keyboard-driven. Each tile's art idles still and animates
-// on hover/focus (CSS only — see .pf-welcome in profile.css).
+// The beat before the flow: what the brief is for and how long it takes. The
+// desktop flow also exposes keyboard shortcuts, while mobile stays touch-first.
 
 function BriefArt() {
   return (
@@ -51,16 +50,19 @@ function KeysArt() {
 
 const TILES = [
   {
+    id: "brief",
     art: <BriefArt />,
     title: "It becomes your doctor brief",
     body: "Your doctor reads it before you sit down.",
   },
   {
+    id: "time",
     art: <TimeArt />,
     title: "Takes 3 to 5 minutes",
     body: "Answers save as you go.",
   },
   {
+    id: "keyboard",
     art: <KeysArt />,
     title: "Your keyboard works",
     body: "Press a number to pick your answer, Enter to move on.",
@@ -80,7 +82,7 @@ function ProfileIntro({ onStart }: { onStart: () => void }) {
 
       <div className="pf-welcome-tiles">
         {TILES.map((tile) => (
-          <article className="pf-welcome-tile" key={tile.title} tabIndex={0}>
+          <article className={`pf-welcome-tile pf-welcome-tile--${tile.id}`} key={tile.title} tabIndex={0}>
             {tile.art}
             <h3>{tile.title}</h3>
             <p>{tile.body}</p>

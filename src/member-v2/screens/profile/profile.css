@@ -631,9 +631,20 @@
   }
 }
 
-/* No hover on touch: the clipboard plays once as the screen settles and holds
-   its finished state; the ring and keycaps keep looping. */
-@media (hover: none) {
+/* Mobile intro: no page transition or keyboard affordances. The first two
+   illustrations play once on load and hold their finished states. */
+@media (max-width: 620px) {
+  .pf-welcome {
+    animation: none;
+  }
+
+  .pf-welcome-tile--keyboard,
+  .pf-enter-hint,
+  .pf-chip-key,
+  .pf-stage-helper--keyboard {
+    display: none;
+  }
+
   .pf-welcome-tile .pf-w-clip-row i {
     animation: pf-w-tick 2600ms var(--ease-spring) both;
     animation-delay: calc(600ms + var(--i) * 300ms);
@@ -655,21 +666,12 @@
   /* No hover to bring the terracotta in, so the ring plays it as it sweeps. */
   .pf-welcome-tile .pf-w-ring-sweep {
     stroke: var(--accent);
-    animation: pf-w-sweep 2400ms var(--ease-spring) infinite;
+    animation: pf-w-sweep 2400ms var(--ease-spring) both;
   }
 
   .pf-welcome-tile .pf-w-ring-label {
     color: var(--ink);
-    animation: pf-w-label 2400ms var(--ease-ui) infinite;
-  }
-
-  .pf-welcome-tile .pf-w-key.is-picked {
-    animation: pf-w-press 2400ms var(--ease-spring) infinite;
-  }
-
-  .pf-welcome-tile .pf-w-key-enter {
-    animation: pf-w-press 2400ms var(--ease-spring) infinite;
-    animation-delay: 700ms;
+    animation: pf-w-label 2400ms var(--ease-ui) both;
   }
 }
 
@@ -2040,5 +2042,94 @@ textarea.pf-id-address-input {
   .pf-done-consult {
     row-gap: 12px;
     padding: 20px 20px;
+  }
+}
+
+/* Keep the answer controls touch-first on phones. This comes after the
+   shared chip-key declaration so the mobile rule wins in the cascade. */
+@media (max-width: 620px) {
+  .pf-chip-key {
+    display: none;
+  }
+}
+
+/* Mobile reports: keep the upload state in the source tile so the user gets
+   immediate confirmation without a second file-list section. */
+@media (max-width: 620px) {
+  .pf-stage--reports {
+    gap: 14px;
+    padding-block: 12px 20px;
+  }
+
+  .pf-stage--reports .pf-report-grid {
+    gap: 8px;
+  }
+
+  .pf-stage--reports .pf-report-tile {
+    min-height: 76px;
+    padding: 14px;
+    border-radius: 16px;
+    gap: 4px;
+  }
+
+  .pf-stage--reports .pf-report-tile-label {
+    font-size: 0.95rem;
+  }
+
+  .pf-stage--reports .pf-report-tile-helper {
+    max-width: calc(100% - 54px);
+    font-size: 0.78rem;
+  }
+
+  .pf-stage--reports .pf-report-tile-helper--uploaded {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .pf-stage--reports .pf-report-tile-icon {
+    right: 12px;
+    bottom: 12px;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+  }
+
+  .pf-stage--reports .pf-report-tile.is-uploaded,
+  .pf-stage--reports .pf-report-tile.is-uploaded:hover {
+    background: var(--accent-tint);
+    box-shadow: inset 0 0 0 1.5px rgba(184, 93, 53, 0.22);
+  }
+
+  .pf-stage--reports .pf-report-tile.is-uploaded .pf-report-tile-icon {
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--accent-dark);
+  }
+
+  .pf-stage--reports .pf-report-tile-helper--uploaded {
+    color: #87919b;
+  }
+
+  .pf-stage--reports .pf-report-tile--no-tests {
+    min-height: 58px;
+    background: #f3f4f5;
+  }
+
+  .pf-stage--reports .pf-report-tile--no-tests.is-selected {
+    background: #f3f4f5;
+    box-shadow: inset 0 0 0 1.5px #aab1b9;
+  }
+
+  .pf-stage--reports .pf-report-tile--no-tests .pf-report-tile-icon {
+    background: rgba(15, 23, 42, 0.07);
+    color: #7b8793;
+  }
+
+  .pf-stage--reports .pf-why {
+    min-height: 50px;
+  }
+
+  .pf-stage--reports .pf-why > button {
+    min-height: 44px;
   }
 }

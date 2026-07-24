@@ -6,6 +6,14 @@ import { setSetupPassword } from "./api";
 import { apiError } from "../../lib/apiClient";
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH } from "@verae/contracts";
 
+const PASSWORD_LENGTH_ERROR = "Use at least 10 characters";
+
+function updatePasswordValidity(input: HTMLInputElement, value: string) {
+  input.setCustomValidity(
+    value.length > 0 && value.length < PASSWORD_MIN_LENGTH ? PASSWORD_LENGTH_ERROR : "",
+  );
+}
+
 export default function StepAuthMethod({ onDone }: { onDone: () => Promise<void> }) {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -30,12 +38,17 @@ export default function StepAuthMethod({ onDone }: { onDone: () => Promise<void>
   async function submitPassword(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    const form = event.currentTarget as HTMLFormElement;
+    const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+    const confirmInput = form.elements.namedItem("confirmPassword") as HTMLInputElement | null;
     if (password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
-      setError(`Use between ${PASSWORD_MIN_LENGTH} and ${PASSWORD_MAX_LENGTH} characters.`);
+      passwordInput?.setCustomValidity(PASSWORD_LENGTH_ERROR);
+      passwordInput?.reportValidity();
       return;
     }
     if (password !== confirm) {
-      setError("The passwords do not match.");
+      confirmInput?.setCustomValidity("The passwords do not match.");
+      confirmInput?.reportValidity();
       return;
     }
     setBusy(true);
@@ -66,34 +79,39 @@ export default function StepAuthMethod({ onDone }: { onDone: () => Promise<void>
           Continue with Google
         </button>
 
-        <form className="auth-form" onSubmit={submitPassword}>
+        <form className="auth-form setup-password-form" onSubmit={submitPassword}>
           <label className="auth-field">
             <span>New password</span>
             <input
+              name="password"
               type="password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                updatePasswordValidity(e.currentTarget, e.target.value);
+              }}
               autoComplete="new-password"
               minLength={10}
               maxLength={PASSWORD_MAX_LENGTH}
-              aria-describedby="setup-password-rule"
               required
             />
           </label>
           <label className="auth-field">
             <span>Confirm new password</span>
             <input
+              name="confirmPassword"
               type="password"
               value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
+              onChange={(e) => {
+                setConfirm(e.target.value);
+                updatePasswordValidity(e.currentTarget, e.target.value);
+              }}
               autoComplete="new-password"
               minLength={10}
               maxLength={PASSWORD_MAX_LENGTH}
-              aria-describedby="setup-password-rule"
               required
             />
           </label>
-          <p id="setup-password-rule" className="auth-copy">Use {PASSWORD_MIN_LENGTH}–{PASSWORD_MAX_LENGTH} characters.</p>
           {error ? <p className="auth-error" role="alert">{error}</p> : null}
           <button type="submit" className="auth-submit" disabled={busy}>
             {busy ? "One moment…" : "Set password and continue"}

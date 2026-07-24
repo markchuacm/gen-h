@@ -16,6 +16,7 @@ function renderFlow(
   onRemoveReport = vi.fn(),
   onPatch = vi.fn(),
   onReachStep = vi.fn(),
+  onToggle = vi.fn(),
 ) {
   return render(
     <ProfileFlow
@@ -24,7 +25,7 @@ function renderFlow(
       uploadErrors={[]}
       startAt={startAt}
       onPatch={onPatch}
-      onToggle={vi.fn()}
+      onToggle={onToggle}
       onToggleReport={vi.fn()}
       onAddReports={vi.fn()}
       onRemoveReport={onRemoveReport}
@@ -322,6 +323,106 @@ describe("ProfileFlow refinements", () => {
     );
   });
 
+  it("uses a shorter Other placeholder on mobile", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    try {
+      renderFlow({ ...DEFAULT_ANSWERS, conditions: ["Other"] }, 7);
+      expect((screen.getByLabelText("Other medical conditions") as HTMLInputElement).placeholder).toBe(
+        "Tell us another condition",
+      );
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("uses the concise family-history placeholder on mobile Question 9", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    try {
+      renderFlow({ ...DEFAULT_ANSWERS, family: ["Other"] }, 8);
+      expect((screen.getByLabelText("Other family history") as HTMLInputElement).placeholder).toBe(
+        "Tell us about your family history",
+      );
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it("lets the single-choice health and lifestyle answers be deselected", () => {
+    const onPatch = vi.fn();
+    const genderView = renderFlow(
+      {
+        ...DEFAULT_ANSWERS,
+        basics: { ...DEFAULT_ANSWERS.basics, sex: "Male" },
+        lifestyle: { ...DEFAULT_ANSWERS.lifestyle, exerciseDays: "1–2", diet: "Mixed" },
+        habits: { ...DEFAULT_ANSWERS.habits, alcohol: "14 or less drinks a week", smoking: "Never" },
+      },
+      1,
+      undefined,
+      onPatch,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Male" }));
+    expect(onPatch).toHaveBeenCalledWith({
+      basics: { ...DEFAULT_ANSWERS.basics, sex: "" },
+    });
+    genderView.unmount();
+
+    onPatch.mockClear();
+    const view = renderFlow(
+      {
+        ...DEFAULT_ANSWERS,
+        lifestyle: { ...DEFAULT_ANSWERS.lifestyle, exerciseDays: "1–2", diet: "Mixed" },
+      },
+      5,
+      undefined,
+      onPatch,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "1–2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Mixed" }));
+    expect(onPatch).toHaveBeenNthCalledWith(1, {
+      lifestyle: { ...DEFAULT_ANSWERS.lifestyle, exerciseDays: "", diet: "Mixed" },
+    });
+    expect(onPatch).toHaveBeenNthCalledWith(2, {
+      lifestyle: { ...DEFAULT_ANSWERS.lifestyle, exerciseDays: "1–2", diet: "" },
+    });
+    view.unmount();
+    onPatch.mockClear();
+
+    renderFlow(
+      {
+        ...DEFAULT_ANSWERS,
+        habits: { ...DEFAULT_ANSWERS.habits, alcohol: "14 or less drinks a week", smoking: "Never" },
+      },
+      6,
+      undefined,
+      onPatch,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "2 14 or less drinks a week" }));
+    fireEvent.click(screen.getByRole("button", { name: "4 Never" }));
+    expect(onPatch).toHaveBeenNthCalledWith(1, {
+      habits: { ...DEFAULT_ANSWERS.habits, alcohol: "", smoking: "Never" },
+    });
+    expect(onPatch).toHaveBeenNthCalledWith(2, {
+      habits: { ...DEFAULT_ANSWERS.habits, alcohol: "14 or less drinks a week", smoking: "", smokingProducts: [] },
+    });
+  });
+
   it("keeps the Prescription medication and Other details independently available on Question 9", () => {
     renderFlow(
       {
@@ -375,6 +476,54 @@ describe("ProfileFlow refinements", () => {
     expect(screen.getByText(/Blood work, urine tests/i)).toBeTruthy();
     expect(screen.queryByText(/Drop files here or click to browse/i)).toBeNull();
     expect(screen.queryByText(/PDF, JPG, PNG/i)).toBeNull();
+  });
+
+  it("shows uploaded-file confirmation inside the tile on mobile", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+
+    try {
+      renderFlow(
+        {
+          ...DEFAULT_ANSWERS,
+          reportSelections: ["health_screening"],
+          uploadedReports: [
+            {
+              id: "report-1",
+              name: "annual-health-screening-results-2026.pdf",
+              type: "application/pdf",
+              size: 1024,
+              uploadedAt: "2026-07-20T00:00:00.000Z",
+              category: "health_screening",
+              kind: "pdf",
+              status: "uploaded",
+            },
+          ],
+        },
+        11,
+      );
+
+      const healthUpload = screen.getByRole("button", {
+        name: /Upload health screenings: Successfully uploaded annual-health-screening-results-2026\.pdf/,
+      });
+      expect(healthUpload.classList.contains("is-uploaded")).toBe(true);
+      expect(screen.getByText("Successfully uploaded")).toBeTruthy();
+      expect(screen.getByText("annual-health-screening-results-2026.pdf")).toBeTruthy();
+      expect(screen.queryByText("Blood work, urine tests, health screening reports")).toBeNull();
+      expect(screen.queryByText("Files uploaded")).toBeNull();
+      expect(screen.getByRole("button", { name: "I don't have any tests" }).className).toContain(
+        "pf-report-tile--no-tests",
+      );
+      expect(screen.getByRole("button", { name: "Why we ask" })).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
   });
 
   it("lets an attachment exit before removing it from the layout", () => {
@@ -501,6 +650,29 @@ describe("ProfileFlow refinements", () => {
 
     expect(screen.queryByText("Before we start")).toBe(null);
     expect(screen.getByRole("button", { name: "Continue" })).toBeTruthy();
+  });
+
+  it("ignores Enter and number shortcuts on mobile", () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      value: () => ({ matches: true }),
+    });
+    const onToggle = vi.fn();
+
+    try {
+      renderFlow(DEFAULT_ANSWERS, 2, undefined, undefined, undefined, onToggle);
+      fireEvent.keyDown(window, { key: "1" });
+      fireEvent.keyDown(window, { key: "Enter" });
+
+      expect(onToggle).not.toHaveBeenCalled();
+      expect(screen.getByText("3 of 12")).toBeTruthy();
+    } finally {
+      Object.defineProperty(window, "matchMedia", {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
   });
 
   it("skips the welcome screen for a resumed or edited flow", () => {

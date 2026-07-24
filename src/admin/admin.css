@@ -1558,6 +1558,44 @@
   outline-offset: 0;
 }
 
+/* Reuse the doctor's searchable country-code field while matching the white,
+   lifted inputs used by the admin modal. The wrapper owns the focus ring so
+   the dial prefix, number, and country search stay visually unified. */
+.adm-field .pf-phone {
+  width: 100%;
+  min-height: 42px;
+  background: #fff;
+  box-shadow: var(--shadow-border);
+}
+
+.adm-field .pf-phone-number {
+  width: auto;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 10px 16px 10px 2px;
+  font-size: var(--adm-text-md);
+}
+
+.adm-field .pf-phone-number:focus,
+.adm-field .pf-phone-search input:focus {
+  outline: none;
+  border-color: transparent;
+}
+
+.adm-field .pf-phone-dial,
+.adm-field .pf-phone-number {
+  font-size: var(--adm-text-md);
+  font-weight: 400;
+}
+
+.adm-field .pf-phone-search input {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
 .adm-blooddraw-field {
   margin: 4px 0 16px;
 }

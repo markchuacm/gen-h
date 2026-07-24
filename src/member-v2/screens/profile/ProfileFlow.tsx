@@ -89,6 +89,27 @@ const REPORT_FILE_ICONS: Record<UploadedReportKind, LucideIcon> = {
   other: Paperclip,
 };
 
+function isMobileViewport() {
+  return typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(max-width: 620px)").matches;
+}
+
+function useIsMobileViewport() {
+  const [isMobile, setIsMobile] = useState(() => isMobileViewport());
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const media = window.matchMedia("(max-width: 620px)");
+    const sync = () => setIsMobile(media.matches);
+    sync();
+    media.addEventListener?.("change", sync);
+    return () => media.removeEventListener?.("change", sync);
+  }, []);
+
+  return isMobile;
+}
+
 function ChipGrid({
   options,
   selected,
@@ -168,7 +189,7 @@ function Segment({
             type="button"
             className={`pf-chip ${value === option ? "is-selected" : ""}`}
             aria-pressed={value === option}
-            onClick={() => onSelect(option)}
+            onClick={() => onSelect(value === option ? "" : option)}
           >
             {numberStart !== undefined && (
               <span className="pf-chip-key">{numberStart + index}</span>
@@ -221,23 +242,31 @@ function ReportUploadTile({
   category,
   label,
   helper,
+  uploadedReport,
+  mobile,
   onAddReports,
 }: {
   category: ReportUploadCategory;
   label: string;
   helper?: string;
+  uploadedReport?: UploadedReport;
+  mobile: boolean;
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
   const Icon = REPORT_ICONS[category];
+  const uploaded = mobile && uploadedReport && uploadedReport.status !== "uploading";
+  const TileIcon = uploaded ? Check : Icon;
+  const tileLabel = uploaded ? "Successfully uploaded" : label;
+  const tileHelper = uploaded ? uploadedReport.name : helper;
 
   return (
     <section className="pf-upload-group" aria-label={label}>
       <button
         type="button"
-        className={`pf-report-tile pf-report-upload-tile ${dragOver ? "is-drag" : ""}`}
-        aria-label={label}
+        className={`pf-report-tile pf-report-upload-tile ${uploaded ? "is-uploaded" : ""} ${dragOver ? "is-drag" : ""}`}
+        aria-label={uploaded ? `${label}: Successfully uploaded ${uploadedReport.name}` : label}
         onClick={() => inputRef.current?.click()}
         onDragOver={(event) => {
           event.preventDefault();
@@ -251,10 +280,17 @@ function ReportUploadTile({
           if (files.length) onAddReports(files, category);
         }}
       >
-        <span className="pf-report-tile-label">{label}</span>
-        {helper && <span className="pf-report-tile-helper">{helper}</span>}
+        <span className="pf-report-tile-label">{tileLabel}</span>
+        {tileHelper && (
+          <span
+            className={`pf-report-tile-helper${uploaded ? " pf-report-tile-helper--uploaded" : ""}`}
+            title={uploaded ? uploadedReport.name : undefined}
+          >
+            {tileHelper}
+          </span>
+        )}
         <span className="pf-report-tile-icon" aria-hidden="true">
-          <Icon strokeWidth={1.8} />
+          <TileIcon strokeWidth={uploaded ? 2.4 : 1.8} />
         </span>
       </button>
       <input
@@ -286,6 +322,8 @@ function ReportSelectionGrid({
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
   onRemoveReport: (id: string) => void;
 }) {
+  const isMobile = useIsMobileViewport();
+
   return (
     <div className="pf-upload-layout">
       <div className="pf-report-grid" role="group" aria-label="Previous test uploads">
@@ -300,6 +338,10 @@ function ReportSelectionGrid({
                 category={option.id}
                 label={option.label}
                 helper={option.helper}
+                uploadedReport={[...answers.uploadedReports]
+                  .reverse()
+                  .find((report) => report.category === option.id)}
+                mobile={isMobile}
                 onAddReports={onAddReports}
               />
             );
@@ -309,7 +351,7 @@ function ReportSelectionGrid({
             <button
               key={option.id}
               type="button"
-              className={`pf-report-tile ${selected ? "is-selected" : ""}`}
+              className={`pf-report-tile pf-report-tile--no-tests ${selected ? "is-selected" : ""}`}
               aria-pressed={selected}
               onClick={() => onToggleReport(option.id)}
             >
@@ -331,13 +373,15 @@ function ReportSelectionGrid({
           ))}
         </ul>
       )}
-      <section className="pf-upload-files" aria-label="Files uploaded">
-        <h3>Files uploaded</h3>
-        <AnimatedUploadedReports
-          reports={answers.uploadedReports}
-          onRemove={onRemoveReport}
-        />
-      </section>
+      {!isMobile && (
+        <section className="pf-upload-files" aria-label="Files uploaded">
+          <h3>Files uploaded</h3>
+          <AnimatedUploadedReports
+            reports={answers.uploadedReports}
+            onRemove={onRemoveReport}
+          />
+        </section>
+      )}
     </div>
   );
 }
@@ -545,6 +589,8 @@ function StepInputs({
   onAddReports: (files: FileList | File[], category: ReportUploadCategory) => void;
   onRemoveReport: (id: string) => void;
 }) {
+  const isMobile = useIsMobileViewport();
+
   if (step.kind === "reports") {
     return (
       <ReportSelectionGrid
@@ -665,13 +711,17 @@ function StepInputs({
           options={["Male", "Female"]}
           value={basics.sex}
           onSelect={(sex) => {
-            const nextSex = sex as "Male" | "Female";
+            const nextSex = sex as "" | "Male" | "Female";
             onPatch({
               basics: { ...basics, sex: nextSex },
-              habits: {
-                ...answers.habits,
-                alcohol: alcoholOptionForSex(answers.habits.alcohol, nextSex),
-              },
+              ...(nextSex
+                ? {
+                    habits: {
+                      ...answers.habits,
+                      alcohol: alcoholOptionForSex(answers.habits.alcohol, nextSex),
+                    },
+                  }
+                : null),
             });
           }}
         />
@@ -753,7 +803,7 @@ function StepInputs({
   if (step.kind === "habits") {
     const { habits } = answers;
     const alcoholOptions = alcoholOptionsForSex(answers.basics.sex);
-    const showSmokingProducts = habits.smoking !== "Never";
+    const showSmokingProducts = habits.smoking !== "" && habits.smoking !== "Never";
     return (
       <div className="pf-controls">
         <Segment
@@ -775,7 +825,7 @@ function StepInputs({
               habits: {
                 ...habits,
                 smoking: smoking as typeof habits.smoking,
-                smokingProducts: smoking === "Never" ? [] : habits.smokingProducts,
+                smokingProducts: smoking === "Never" || smoking === "" ? [] : habits.smokingProducts,
               },
             })
           }
@@ -843,7 +893,7 @@ function StepInputs({
               className="pf-other-input pf-other-detail-input"
               type="text"
               aria-label="Prescription medications and doses"
-              placeholder="Tell us your prescription medications and doses"
+              placeholder={isMobile ? "Prescription meds & doses" : "Tell us your prescription medications and doses"}
               value={answers.prescriptionMedicationDetails}
               disabled={!showPrescriptionInput}
               tabIndex={showPrescriptionInput ? 0 : -1}
@@ -861,7 +911,7 @@ function StepInputs({
             className="pf-other-input pf-other-detail-input"
             type="text"
             aria-label={`Other ${step.summaryLabel.toLowerCase()}`}
-            placeholder={step.otherPlaceholder}
+            placeholder={isMobile ? step.mobileOtherPlaceholder ?? step.otherPlaceholder : step.otherPlaceholder}
             value={answers[otherAnswerKey]}
             disabled={!showOtherInput}
             tabIndex={showOtherInput ? 0 : -1}
@@ -947,6 +997,26 @@ function ProfileFlow({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (composing) return;
+      const target = event.target as HTMLElement;
+      const inText = target.tagName === "INPUT" && (target as HTMLInputElement).type === "text";
+      const isEditable =
+        target.tagName === "TEXTAREA" ||
+        (target.tagName === "INPUT" &&
+          !["button", "submit", "reset", "checkbox", "radio"].includes(
+            (target as HTMLInputElement).type,
+          ));
+
+      if (isMobileViewport()) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          return;
+        }
+        if (/^[0-9]$/.test(event.key)) {
+          if (!isEditable) event.preventDefault();
+          return;
+        }
+      }
+
       if (intro) {
         // The Start button holds focus, so Enter on it already fires onClick —
         // only the unfocused case needs handling here.
@@ -957,8 +1027,6 @@ function ProfileFlow({
         if (event.key === "Escape") void onClose();
         return;
       }
-      const target = event.target as HTMLElement;
-      const inText = target.tagName === "INPUT" && (target as HTMLInputElement).type === "text";
       const inButton = target.tagName === "BUTTON";
       if (event.key === "Enter" && !inText && !inButton) {
         event.preventDefault();
@@ -1050,7 +1118,7 @@ function ProfileFlow({
           <p>Organising your answers the way your doctor reads them.</p>
         </div>
       ) : (
-        <div className="pf-stage" key={step.id}>
+        <div className={`pf-stage pf-stage--${step.id}`} key={step.id}>
           <span className="pf-stage-count">
             {stepIndex + 1} of {STEP_COUNT}
           </span>
@@ -1058,7 +1126,11 @@ function ProfileFlow({
             {step.prompt}
             {step.promptEm && <em>{step.promptEm}</em>}
           </h2>
-          {step.helper && <p className="pf-stage-helper">{step.helper}</p>}
+          {step.helper && (
+            <p className={`pf-stage-helper${step.id === "reason" ? " pf-stage-helper--keyboard" : ""}`}>
+              {step.helper}
+            </p>
+          )}
           <StepInputs
             step={step}
             answers={answers}

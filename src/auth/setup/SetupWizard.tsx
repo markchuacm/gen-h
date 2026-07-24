@@ -27,7 +27,7 @@ export default function SetupWizard() {
       : "consent";
 
   return (
-    <main className="auth-screen">
+    <main className={`auth-screen ${step === "consent" ? "auth-screen-consent" : ""}`}>
       {callbackError && step === "auth" ? (
         <p className="auth-error setup-callback-error" role="alert">
           {callbackError === "email_doesn't_match" || callbackError === "account_already_linked_to_different_user"
