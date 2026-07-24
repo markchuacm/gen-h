@@ -124,9 +124,13 @@ function Harness() {
   const [view, setView] = useState(params.get("view") ?? "doctor");
   return (
     <>
+      {/* Top-right, not bottom: the product's own mobile mode switch is fixed to
+          the bottom of the viewport, and harness chrome must never sit on top of
+          the thing being checked. */}
       <div style={{
-        position: "fixed", right: 16, bottom: 16, zIndex: 999, display: "flex", gap: 6,
-        padding: 6, borderRadius: 999, background: "#111827", color: "#fff", fontSize: 13,
+        position: "fixed", right: 12, top: 12, zIndex: 999, display: "flex", gap: 6,
+        padding: 5, borderRadius: 999, background: "rgba(17,24,39,0.82)",
+        backdropFilter: "blur(8px)", color: "#fff", fontSize: 12,
       }}>
         {["doctor", "member"].map((option) => (
           <button
@@ -134,7 +138,7 @@ function Harness() {
             type="button"
             onClick={() => setView(option)}
             style={{
-              padding: "6px 14px", borderRadius: 999, color: "#fff",
+              padding: "5px 12px", borderRadius: 999, color: "#fff",
               background: view === option ? "rgba(255,255,255,0.22)" : "transparent",
             }}
           >
@@ -149,4 +153,10 @@ function Harness() {
   );
 }
 
-createRoot(document.getElementById("root")!).render(<StrictMode><Harness /></StrictMode>);
+// Reuse the root across hot reloads; calling createRoot again on the same
+// container warns on every edit and buries real console output.
+const container = document.getElementById("root")! as HTMLElement & {
+  _root?: ReturnType<typeof createRoot>;
+};
+container._root ??= createRoot(container);
+container._root.render(<StrictMode><Harness /></StrictMode>);

@@ -10,11 +10,16 @@
   --doc-fill: rgba(15, 23, 42, 0.04); /* quiet fill, borderless inputs */
   --doc-hairline: rgba(17, 24, 39, 0.09); /* row separators */
   --danger-line: rgba(179, 38, 30, 0.16);
-  /* Biomarker status colours — same palette as the member results dashboard. */
-  --doc-amber: #c9973d;
-  --doc-amber-soft: rgba(201, 151, 61, 0.12);
-  --doc-red: #cd6353;
-  --doc-red-soft: rgba(205, 99, 83, 0.11);
+  /* Biomarker status colours — aliases of the shared --status-* tokens in
+     tokens.css, which the results dashboard and member care plan read too.
+     Use the -text pair wherever the colour carries type; the vivid pair is
+     for marks that carry none. */
+  --doc-amber: var(--status-amber);
+  --doc-amber-text: var(--status-amber-text);
+  --doc-amber-soft: var(--status-amber-soft);
+  --doc-red: var(--status-red);
+  --doc-red-text: var(--status-red-text);
+  --doc-red-soft: var(--status-red-soft);
 }
 
 /* ── Page scaffold (extends .p-page) ─────────────────────────────────────── */
@@ -2010,6 +2015,17 @@
   --guided-radius-sm: 16px;
   max-width: 1280px;
   gap: 0;
+  /* Fades in rather than inheriting doc-page's 14px rise: a translate on this
+     element would make it the containing block for the mode switch, which is
+     fixed to the viewport bottom on mobile, and the bar would fly in from
+     below the fold for the length of the animation. */
+  animation-name: guided-plan-in;
+}
+
+@keyframes guided-plan-in {
+  from {
+    opacity: 0;
+  }
 }
 
 /* The editor is form-dense; without this, inputs keep their UA border and
@@ -2049,6 +2065,17 @@
   min-height: 68px;
   margin-bottom: 8px;
   padding: 10px 0;
+}
+
+/* The glass rides a pseudo-element, not the bar itself. backdrop-filter makes
+   an element the containing block for its fixed-position descendants, and the
+   mode switch inside this bar is fixed to the viewport bottom on mobile — on
+   the bar it would pin the switch inside the header instead. */
+.guided-plan-topbar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background: color-mix(in srgb, var(--cream) 90%, transparent);
   backdrop-filter: blur(18px);
 }
@@ -2122,7 +2149,7 @@
 .guided-save-state.is-saving,
 .guided-save-state.is-unsaved {
   background: var(--doc-amber-soft);
-  color: var(--doc-amber);
+  color: var(--doc-amber-text);
 }
 
 .guided-save-state.is-error {
@@ -2158,8 +2185,9 @@
   font-weight: 560;
 }
 
+/* --muted only reaches 4.3:1 on the amber tint this banner sits on. */
 .guided-stale span {
-  color: var(--muted);
+  color: var(--doc-amber-text);
   font-size: var(--doc-text-sm);
 }
 
@@ -2411,14 +2439,14 @@
   padding: 4px 12px;
   border-radius: 999px;
   background: var(--doc-amber-soft);
-  color: var(--doc-amber);
+  color: var(--doc-amber-text);
   font-size: var(--doc-text-xs);
   font-variant-numeric: tabular-nums;
 }
 
 .guided-evidence-chip.is-needs_attention {
   background: var(--doc-red-soft);
-  color: var(--doc-red);
+  color: var(--doc-red-text);
 }
 
 .guided-evidence-chip > span {
@@ -2429,9 +2457,11 @@
   font-weight: 560;
 }
 
+/* The status word is the chip's whole point — it stays at full strength and
+   lets the 560 weight on the name and value carry the hierarchy instead. At
+   0.72 it read at 2.9:1 even against the darkened text colour. */
 .guided-evidence-chip em {
   font-style: normal;
-  opacity: 0.72;
 }
 
 .guided-profile-basis {
@@ -2492,7 +2522,11 @@
   line-height: 1.5;
 }
 
-/* Lifestyle category is a quiet attribute, never a colour system of its own. */
+/* Lifestyle category is a quiet attribute, never a colour system of its own.
+   Quiet still has to be readable: --muted on this fill lands at 4.2:1, and
+   3.9:1 where the chip sits inside a proposal card, so it takes the stronger
+   muted. Size matches .cp-category on the member's plan — one chip, one
+   treatment — and clears an 11px floor at this letter-spacing. */
 .guided-category,
 .guided-review-area li > .guided-category {
   display: inline-flex;
@@ -2502,8 +2536,8 @@
   padding: 0 9px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.06);
-  color: var(--muted);
-  font-size: 0.68rem;
+  color: var(--muted-strong);
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;

@@ -12,13 +12,19 @@
 }
 
 .results-dashboard {
-  --result-green: #3d9070;
-  --result-green-soft: rgba(61, 144, 112, 0.1);
+  /* Vivid pair drives the chart marks (dots, range bars, legend swatches);
+     the -text pair is for type. Aliases of the shared --status-* tokens so a
+     marker's status reads the same here and on the care plan. */
+  --result-green: var(--status-green);
+  --result-green-text: var(--status-green-text);
+  --result-green-soft: var(--status-green-soft);
   --result-green-zone: rgba(61, 144, 112, 0.14);
-  --result-amber: #c9973d;
-  --result-amber-soft: rgba(201, 151, 61, 0.12);
-  --result-red: #cd6353;
-  --result-red-soft: rgba(205, 99, 83, 0.11);
+  --result-amber: var(--status-amber);
+  --result-amber-text: var(--status-amber-text);
+  --result-amber-soft: var(--status-amber-soft);
+  --result-red: var(--status-red);
+  --result-red-text: var(--status-red-text);
+  --result-red-soft: var(--status-red-soft);
   --result-neutral: #8a8f94;
   --result-neutral-soft: rgba(17, 23, 27, 0.06);
   display: grid;
@@ -633,17 +639,17 @@
 
 .result-status-pill.status--optimal {
   background: var(--result-green-soft);
-  color: var(--result-green);
+  color: var(--result-green-text);
 }
 
 .result-status-pill.status--at-risk {
   background: var(--result-amber-soft);
-  color: var(--result-amber);
+  color: var(--result-amber-text);
 }
 
 .result-status-pill.status--needs-attention {
   background: var(--result-red-soft);
-  color: var(--result-red);
+  color: var(--result-red-text);
 }
 
 .result-status-pill.status--not-available {
