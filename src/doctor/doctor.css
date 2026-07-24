@@ -67,6 +67,25 @@
   color: var(--ink);
 }
 
+/* The full portal nav is intentionally case-scoped. Keep the doctor list
+   quiet, then reuse the member nav's interaction language once a patient is
+   open and the workflow tabs become useful. */
+.doc-case-nav .doc-case-account {
+  gap: 8px;
+  max-width: none;
+  color: var(--muted);
+}
+
+.doc-case-nav .doc-case-account:hover {
+  color: var(--ink);
+  translate: 0 -1px;
+}
+
+.doc-case-nav .doc-case-account svg {
+  width: 16px;
+  height: 16px;
+}
+
 .doc-head {
   display: flex;
   justify-content: space-between;
