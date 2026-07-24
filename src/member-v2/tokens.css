@@ -8,6 +8,10 @@
   --muted: #64748b;
   --faint: rgba(15, 23, 42, 0.1);
   --line: rgba(15, 23, 42, 0.13);
+  /* --muted reaches 4.76:1 on white, but any tinted fill under it drops below
+     4.5:1 (4.4:1 on a 4% fill, 3.9:1 on a chip inside one). Secondary text
+     sitting on a fill rather than on white uses this instead. */
+  --muted-strong: #515c70;
   --accent: #b85d35;
   --accent-dark: #964829;
   --accent-soft: #cf7a56;
@@ -16,6 +20,23 @@
   --danger-dark: #9a2820;
   --danger-tint: rgba(179, 38, 30, 0.08);
   --dark: #0f172a;
+
+  /* Biomarker status, written once for every surface that shows it — the
+     results dashboard, the doctor's care-plan editor and the member's plan
+     all read the same marker, so it must not drift between them.
+     The vivid pair stays for marks that carry no text (chart dots, range
+     bars, legend swatches). Text uses the -text pair: the vivid colours sit
+     at 2.4:1 and 3.4:1 on their own tints, well under WCAG AA's 4.5:1, and
+     status text at 0.78rem is never large text. */
+  --status-amber: #c9973d;
+  --status-amber-text: #89631f; /* 4.9:1 on --status-amber-soft */
+  --status-amber-soft: rgba(201, 151, 61, 0.12);
+  --status-red: #cd6353;
+  --status-red-text: #b53d2b; /* 5.0:1 on --status-red-soft */
+  --status-red-soft: rgba(205, 99, 83, 0.11);
+  --status-green: #3d9070;
+  --status-green-text: #2b7357; /* 5.1:1 on --status-green-soft */
+  --status-green-soft: rgba(61, 144, 112, 0.1);
   --container: min(1280px, calc(100% - clamp(32px, 5vw, 96px)));
   --shadow-border:
     0 0 0 1px rgba(0, 0, 0, 0.06),

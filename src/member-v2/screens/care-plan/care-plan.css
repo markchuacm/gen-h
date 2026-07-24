@@ -391,7 +391,11 @@ button.cp-marker-chip {
   text-decoration-thickness: 1px;
 }
 
-.cp-row-copy span {
+/* The instruction line only — the category chip is the row's other span and
+   owns its own size and colour. Matching it here silently overrode the chip
+   on specificity (0,1,1 beats 0,1,0), which is what the !important on
+   .cp-category used to be working around. */
+.cp-row-copy > span:not(.cp-category) {
   display: block;
   min-width: 0;
   font-size: 0.85rem;
@@ -633,11 +637,15 @@ button.cp-marker-chip {
 
 /* ── Co-authored released plan ──────────────────────────────────────────── */
 
+/* Status colours alias the shared --status-* tokens so a marker reads the
+   same here as on the results dashboard and in the doctor's editor. */
 .cp-coauthored {
-  --cp-amber: #c9973d;
-  --cp-amber-soft: rgba(201, 151, 61, 0.12);
-  --cp-red: #cd6353;
-  --cp-red-soft: rgba(205, 99, 83, 0.11);
+  --cp-amber: var(--status-amber);
+  --cp-amber-text: var(--status-amber-text);
+  --cp-amber-soft: var(--status-amber-soft);
+  --cp-red: var(--status-red);
+  --cp-red-text: var(--status-red-text);
+  --cp-red-soft: var(--status-red-soft);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -836,7 +844,7 @@ button.cp-marker-chip {
   padding: 5px 14px;
   border-radius: 999px;
   background: var(--cp-amber-soft);
-  color: var(--cp-amber);
+  color: var(--cp-amber-text);
   text-align: left;
   font-size: 0.78rem;
   font-variant-numeric: tabular-nums;
@@ -849,7 +857,7 @@ button.cp-marker-chip {
 
 .cp-evidence-chip.is-needs_attention {
   background: var(--cp-red-soft);
-  color: var(--cp-red);
+  color: var(--cp-red-text);
 }
 
 .cp-evidence-chip.is-needs_attention:hover {
@@ -861,9 +869,10 @@ button.cp-marker-chip {
   font-weight: 560;
 }
 
+/* Full strength, matching the doctor's chip: the status word is the payload,
+   and the 560 weight on the name and value already carries the hierarchy. */
 .cp-evidence-chip em {
   font-style: normal;
-  opacity: 0.72;
 }
 
 .cp-prevention-basis {
@@ -937,6 +946,9 @@ button.cp-marker-chip {
   padding: 0 20px 18px 76px;
 }
 
+/* Matches .guided-category in the doctor's editor — same chip, same
+   treatment. --muted only reaches 4.2:1 on this fill, hence the stronger
+   muted. */
 .cp-category {
   display: inline-flex;
   align-items: center;
@@ -944,8 +956,8 @@ button.cp-marker-chip {
   padding: 0 9px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.06);
-  color: var(--muted);
-  font-size: 0.66rem !important;
+  color: var(--muted-strong);
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
